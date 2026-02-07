@@ -19,8 +19,11 @@ app.use(helmet({
   contentSecurityPolicy: false, // Handled by frontend
 }));
 
+// In production, client is served from the same origin so CORS isn't needed.
+// In development, allow the Vite dev server.
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: isProduction ? true : (process.env.CORS_ORIGIN || 'http://localhost:5173'),
   credentials: true,
 }));
 
