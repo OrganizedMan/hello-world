@@ -42,28 +42,25 @@ router.post('/', (req: AuthRequest, res: Response) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, req.userId, name, type, initialBalance, initialBalance, isBudget, (maxOrder?.max_order ?? -1) + 1);
 
+    // For credit cards, always create the payment category
+    if (type === 'credit_card') {
+      const debtGroup = db.prepare(
+        "SELECT id FROM category_groups WHERE user_id = ? AND name = 'Debt Payments'"
+      ).get(req.userId) as any;
+
+      if (debtGroup) {
+        const catId = uuidv4();
+        db.prepare(`
+          INSERT INTO categories (id, group_id, user_id, name, sort_order, is_credit_card_payment, linked_account_id)
+          VALUES (?, ?, ?, ?, ?, 1, ?)
+        `).run(catId, debtGroup.id, req.userId, `${name} Payment`, 0, id);
+      }
+    }
+
     // Create initial balance transaction
     if (initialBalance !== 0) {
       const txId = uuidv4();
       const today = new Date().toISOString().split('T')[0];
-
-      // For credit cards, find or create the payment category
-      let categoryId = null;
-      if (type === 'credit_card') {
-        // Create a credit card payment category
-        const debtGroup = db.prepare(
-          "SELECT id FROM category_groups WHERE user_id = ? AND name = 'Debt Payments'"
-        ).get(req.userId) as any;
-
-        if (debtGroup) {
-          const catId = uuidv4();
-          db.prepare(`
-            INSERT INTO categories (id, group_id, user_id, name, sort_order, is_credit_card_payment, linked_account_id)
-            VALUES (?, ?, ?, ?, ?, 1, ?)
-          `).run(catId, debtGroup.id, req.userId, `${name} Payment`, 0, id);
-          categoryId = catId;
-        }
-      }
 
       db.prepare(`
         INSERT INTO transactions (id, user_id, account_id, date, payee, amount, cleared, approved)
