@@ -51,6 +51,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
   // ---------- tiles ----------
   let tiles = null;
   let rootLoaded = false;
+  let rootLoadedAt = 0;
   let tileErrs = 0, firstTileErr = '';
   const errEl = $('tileerror');
   function showError(msg) {
@@ -95,7 +96,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     tiles.lruCache.minBytesSize = (mobile ? 0.15 : 0.3) * 1024 * 1024 * 1024;
     tiles.lruCache.maxBytesSize = (mobile ? 0.3 : 0.5) * 1024 * 1024 * 1024;
 
-    tiles.addEventListener('load-tile-set', () => { rootLoaded = true; errEl.style.display = 'none'; });
+    tiles.addEventListener('load-tile-set', () => { rootLoaded = true; rootLoadedAt = performance.now(); errEl.style.display = 'none'; });
     tiles.addEventListener('load-error', (e) => {
       const msg = (e.error && (e.error.message || e.error.toString())) || 'unknown error';
       tileErrs++;
@@ -163,19 +164,46 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
   ray.firstHitOnly = true;
   const DOWN = new THREE.Vector3(0, -1, 0);
   let lastGround = null;
-  KW.player.groundFn = (x, z) => {
-    if (insideGrumpys) return KW.grumpysInterior.floorY;
-    if (!tiles || !rootLoaded) return lastGround;
-    // Until the first hit, sweep a tall column: the tileset's true surface
-    // can be hundreds of meters from our anchor height estimate.
-    const fromY = (lastGround === null ? 3000 : lastGround + 60);
-    ray.set(new THREE.Vector3(x, fromY, z), DOWN);
-    ray.far = lastGround === null ? 8000 : 200;
+  let groundSettled = false; // true once the tileset has finished its first load
+  // Sweep the full column (slow but exhaustive) and latch the topmost surface.
+  function sweepTall(x, z) {
+    ray.set(new THREE.Vector3(x, 3000, z), DOWN);
+    ray.far = 8000;
     const hits = ray.intersectObject(tiles.group, true);
     if (hits.length) {
       lastGround = hits[0].point.y;
       $('loading').style.display = 'none';
     }
+  }
+  KW.player.groundFn = (x, z) => {
+    if (insideGrumpys) return KW.grumpysInterior.floorY;
+    if (!tiles || !rootLoaded) return lastGround;
+    // Spawn is anchored at an estimated street height, but the streamed
+    // surface can be hundreds of meters off — and near downtown, the first
+    // coarse tiles to arrive sit well *above* the true street (the valley is
+    // ringed by mountains the low-LOD mesh smooths over). So keep sweeping the
+    // full column, taking the topmost hit, until the tileset has finished its
+    // initial load. Latching the first hit would strand the player in the air
+    // because the cheap follow-ray below can't reach back down to street level
+    // once the coarse tile is replaced by detail.
+    if (!groundSettled) {
+      sweepTall(x, z);
+      // Settle once the tileset reports a full load — or, if this renderer
+      // build doesn't expose loadProgress, after a grace period so we never
+      // sweep the whole column forever.
+      const loaded = tiles.loadProgress >= 1 || performance.now() - rootLoadedAt > 12000;
+      if (loaded && lastGround !== null) groundSettled = true;
+      return lastGround;
+    }
+    // Settled: a cheap short ray that follows the ground we already know.
+    ray.set(new THREE.Vector3(x, lastGround + 60, z), DOWN);
+    ray.far = 200;
+    const hits = ray.intersectObject(tiles.group, true);
+    if (hits.length) lastGround = hits[0].point.y;
+    // Missed entirely — the surface dropped out of the window (a cliff edge, or
+    // a stale latch). Recover with a full sweep instead of floating on the old
+    // value.
+    else sweepTall(x, z);
     return lastGround;
   };
   // Recovery sweep: if tile geometry is above the camera, we are under the
