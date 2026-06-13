@@ -1,0 +1,80 @@
+html, body {
+  margin: 0; padding: 0; overflow: hidden; height: 100%;
+  background: #1a1410;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  user-select: none; -webkit-user-select: none;
+}
+canvas { display: block; }
+
+#hud { position: fixed; inset: 0; pointer-events: none; }
+
+#crosshair {
+  position: absolute; left: 50%; top: 50%;
+  width: 4px; height: 4px; margin: -2px 0 0 -2px;
+  border-radius: 50%; background: rgba(255,255,255,0.65);
+  box-shadow: 0 0 3px rgba(0,0,0,0.6);
+}
+
+#intro {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 40%, rgba(40,28,16,0.88), rgba(12,8,5,0.96));
+  color: #f3e9d8; text-align: center; cursor: pointer;
+}
+#intro .panel { max-width: 560px; padding: 36px 44px; }
+#intro h1 {
+  font-size: 42px; margin: 0 0 6px; letter-spacing: 2px; font-weight: 700;
+  color: #ffd9a0; text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+}
+#intro h2 {
+  font-size: 15px; margin: 0 0 26px; font-weight: 400;
+  letter-spacing: 5px; text-transform: uppercase; color: #c9b89a;
+}
+#intro .controls {
+  display: inline-block; text-align: left; font-size: 14px;
+  line-height: 1.9; color: #e7dcc6; margin-bottom: 26px;
+}
+#intro .controls b {
+  display: inline-block; min-width: 88px; color: #ffd9a0; font-weight: 600;
+}
+#intro .start {
+  font-size: 17px; color: #fff; background: rgba(214,138,46,0.25);
+  border: 1px solid #d68a2e; border-radius: 8px; padding: 12px 30px;
+  display: inline-block; letter-spacing: 1px;
+}
+#intro .note { margin-top: 18px; font-size: 12px; color: #9c8d74; }
+
+#plaque {
+  position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%);
+  max-width: 460px; min-width: 300px;
+  background: rgba(24,17,10,0.82); border: 1px solid rgba(214,170,100,0.55);
+  border-radius: 10px; padding: 14px 20px; color: #f1e7d4;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  opacity: 0; transition: opacity 0.25s ease; pointer-events: none;
+}
+#plaque.visible { opacity: 1; }
+#plaque h3 {
+  margin: 0 0 6px; font-size: 16px; color: #ffd9a0; letter-spacing: 0.5px;
+}
+#plaque p { margin: 0; font-size: 13px; line-height: 1.55; color: #ded2bb; }
+
+#minimap {
+  position: absolute; top: 16px; right: 16px;
+  border: 1px solid rgba(214,170,100,0.5); border-radius: 8px;
+  background: rgba(20,16,10,0.78); opacity: 0.95;
+  transition: opacity 0.2s ease;
+}
+#minimap.hidden { display: none; }
+
+#hint {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  font-size: 12px; color: rgba(243,233,216,0.75); letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8); white-space: nowrap;
+}
+
+#location {
+  position: absolute; top: 18px; left: 20px; color: #f3e9d8;
+  font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85); opacity: 0.85;
+}
+#location .town { font-size: 17px; color: #ffd9a0; display: block; }

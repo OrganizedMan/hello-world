@@ -5,3 +5,7 @@ server/data/
 .env
 .DS_Store
 *.tsbuildinfo
+
+# keep the playable single-file build of the walking simulator
+!ketchum-walk/dist/
+!ketchum-walk/dist/**
