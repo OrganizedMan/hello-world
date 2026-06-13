@@ -2588,7 +2588,8 @@ KW.player = (function () {
     if (PL.groundFn) {
       const gy = PL.groundFn(pos.x, pos.z);
       if (gy !== null && gy !== undefined) {
-        pos.y += (gy - pos.y) * Math.min(1, dt * 9);
+        if (Math.abs(gy - pos.y) > 4) pos.y = gy; // big offset: snap, don't glide
+        else pos.y += (gy - pos.y) * Math.min(1, dt * 9);
       }
     } else {
       pos.y = 0;

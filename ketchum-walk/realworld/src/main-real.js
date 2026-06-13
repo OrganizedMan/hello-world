@@ -162,6 +162,26 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     }
     return lastGround;
   };
+  // Recovery sweep: if tile geometry is above the camera, we are under the
+  // world (whatever the cause) — snap to the topmost surface at our x/z.
+  const UP = new THREE.Vector3(0, 1, 0);
+  setInterval(() => {
+    if (!tiles || !rootLoaded || insideGrumpys) return;
+    const p2 = KW.player.position;
+    ray.set(new THREE.Vector3(p2.x, p2.y + 1.7, p2.z), UP);
+    ray.far = 2500;
+    if (ray.intersectObject(tiles.group, true).length) {
+      ray.set(new THREE.Vector3(p2.x, 8000, p2.z), DOWN);
+      ray.far = 16000;
+      const hits = ray.intersectObject(tiles.group, true);
+      if (hits.length) {
+        lastGround = hits[0].point.y;
+        p2.y = lastGround;
+        $('loading').style.display = 'none';
+      }
+    }
+  }, 2500);
+
   const fwd = new THREE.Vector3();
   KW.player.blockFn = (pos, nx, nz) => {
     if (insideGrumpys || !tiles || !rootLoaded || lastGround === null) return false;
@@ -243,6 +263,11 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
   KW.debug = { ctx, scene, get tiles() { return tiles; } };
 
+  // always-on one-line diagnostics (tiny, bottom-left)
+  const dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;left:8px;bottom:4px;font:10px Menlo,monospace;color:rgba(255,255,255,0.55);z-index:30;text-shadow:0 1px 2px #000;pointer-events:none';
+  document.body.appendChild(dbg);
+
   const clock = new THREE.Clock();
   let frame = 0;
   function loop() {
@@ -255,6 +280,9 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
       KW.plaques.update(KW.player.position);
       KW.audio.update(KW.player.position);
       updateLocation(KW.player.position);
+      dbg.textContent = 'y ' + KW.player.position.y.toFixed(1)
+        + ' · gnd ' + (lastGround === null ? 'none' : lastGround.toFixed(1))
+        + ' · tris ' + (renderer.info.render.triangles / 1000 | 0) + 'k';
     }
     if (tiles) {
       camera.updateMatrixWorld();
