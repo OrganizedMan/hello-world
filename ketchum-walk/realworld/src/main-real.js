@@ -40,10 +40,18 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
   scene.add(camera); // the carried schooner is a camera child
 
   KW.env.init(scene, renderer);
+  document.body.classList.add('realworld');
+  for (const b of document.querySelectorAll('#flyui .tb')) {
+    const set = (v) => (e) => { e.preventDefault(); KW.player.fly = v; };
+    b.addEventListener('touchstart', set(+b.dataset.fly), { passive: false });
+    b.addEventListener('touchend', set(0), { passive: false });
+    b.addEventListener('touchcancel', set(0), { passive: false });
+  }
 
   // ---------- tiles ----------
   let tiles = null;
   let rootLoaded = false;
+  let tileErrs = 0, firstTileErr = '';
   const errEl = $('tileerror');
   function showError(msg) {
     errEl.innerHTML = msg;
@@ -84,6 +92,8 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     tiles.addEventListener('load-tile-set', () => { rootLoaded = true; errEl.style.display = 'none'; });
     tiles.addEventListener('load-error', (e) => {
       const msg = (e.error && (e.error.message || e.error.toString())) || 'unknown error';
+      tileErrs++;
+      if (!firstTileErr) firstTileErr = msg;
       if (/40[13]/.test(msg)) {
         showError('<b>Google rejected the API key.</b><br>Check that the key is valid and the <i>Map Tiles API</i> is enabled for it in Google Cloud Console, then reload.<br><small>' + msg + '</small>');
       } else if (!rootLoaded) {
@@ -280,9 +290,15 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
       KW.plaques.update(KW.player.position);
       KW.audio.update(KW.player.position);
       updateLocation(KW.player.position);
+      let prog = '';
+      try {
+        if (tiles && tiles.loadProgress !== undefined) prog = ' · ' + Math.round(tiles.loadProgress * 100) + '%';
+      } catch (err) { /* older API */ }
       dbg.textContent = 'y ' + KW.player.position.y.toFixed(1)
         + ' · gnd ' + (lastGround === null ? 'none' : lastGround.toFixed(1))
-        + ' · tris ' + (renderer.info.render.triangles / 1000 | 0) + 'k';
+        + ' · tris ' + (renderer.info.render.triangles / 1000 | 0) + 'k'
+        + prog
+        + (tileErrs ? ' · ERR ' + tileErrs + ' ' + firstTileErr.slice(0, 60) : '');
     }
     if (tiles) {
       camera.updateMatrixWorld();

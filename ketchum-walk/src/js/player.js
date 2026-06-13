@@ -15,6 +15,8 @@ KW.player = (function () {
 
   PL.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   PL.touch = { f: 0, s: 0 };
+  PL.fly = 0;          // -1 | 0 | 1 from on-screen buttons
+  let flyHold = 0;     // seconds of terrain-follow suppression after flying
   PL.locked = false;
   PL.position = pos;
   PL.getYaw = () => yaw;
@@ -37,6 +39,7 @@ KW.player = (function () {
 
     document.addEventListener('keydown', (e) => {
       keys[e.code] = true;
+      if (e.code === 'Space' && PL.locked) e.preventDefault();
       if (e.code === 'KeyN') KW.env.toggleNight();
       if (e.code === 'KeyM') KW.minimap.toggle();
     });
@@ -158,12 +161,25 @@ KW.player = (function () {
     pos.x = Math.max(bounds.minX, Math.min(bounds.maxX, nx));
     pos.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, nz));
 
-    // terrain follow
+    // manual vertical flight (rescue control; Space/C on keyboard)
     if (PL.groundFn) {
-      const gy = PL.groundFn(pos.x, pos.z);
-      if (gy !== null && gy !== undefined) {
-        if (Math.abs(gy - pos.y) > 4) pos.y = gy; // big offset: snap, don't glide
-        else pos.y += (gy - pos.y) * Math.min(1, dt * 9);
+      const fly = PL.fly || (keys.Space ? 1 : 0) - (keys.KeyC ? 1 : 0);
+      if (fly) {
+        pos.y += fly * 9 * dt;
+        flyHold = 2.0;
+      } else if (flyHold > 0) {
+        flyHold -= dt;
+      }
+    }
+
+    // terrain follow (suspended while flying)
+    if (PL.groundFn) {
+      if (flyHold <= 0) {
+        const gy = PL.groundFn(pos.x, pos.z);
+        if (gy !== null && gy !== undefined) {
+          if (Math.abs(gy - pos.y) > 4) pos.y = gy; // big offset: snap, don't glide
+          else pos.y += (gy - pos.y) * Math.min(1, dt * 9);
+        }
       }
     } else {
       pos.y = 0;

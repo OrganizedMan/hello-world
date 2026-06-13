@@ -108,3 +108,6 @@ body.touch #hint { display: none; }
 }
 .tb-big { width: 66px; height: 66px; font-size: 26px; }
 .tb:active { background: rgba(214,138,46,0.5); }
+
+#flyui { display: none; position: absolute; left: 14px; bottom: 240px; }
+body.touch.realworld #flyui { display: flex; flex-direction: column; gap: 12px; }
