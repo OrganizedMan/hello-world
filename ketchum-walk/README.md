@@ -1,62 +1,71 @@
 # Ketchum, Idaho — Walking Simulator
 
-A first-person 3D walking simulator of downtown Ketchum, Idaho at summer
-golden hour. Runs entirely in a browser from a single HTML file — no
-install, no server, no internet connection needed.
+A first-person walking simulator of Ketchum, Idaho. Two editions, both
+single HTML files that open directly in Safari or Chrome:
 
-## How to play (plug and play)
+| File | What it is | Needs |
+|---|---|---|
+| `dist/Ketchum-RealWorld.html` | **Photoreal.** Streams Google's Photorealistic 3D Tiles — the actual photogrammetry of Ketchum from Google Earth — and runs the walking sim on top. | Internet + a free Google Maps API key |
+| `dist/Ketchum-Walking-Simulator.html` | **Offline/stylized.** Fully self-contained procedural recreation of downtown. Works with zero network, zero setup. | Nothing |
 
-1. Grab `dist/Ketchum-Walking-Simulator.html`.
-2. Double-click it (opens in Safari, Chrome, or any modern browser).
-3. Click "Take a walk". That's it.
+## Real-World Edition setup (one time)
+
+1. Get a Google Maps Platform API key and enable the **Map Tiles API**:
+   <https://developers.google.com/maps/documentation/tile/get-api-key>
+   (Google's free monthly credit comfortably covers personal walking around.)
+2. Open `Ketchum-RealWorld.html`, paste the key on the title screen, and
+   click **Walk the real Ketchum**. The key is stored only in your
+   browser's localStorage. You can also pass it as `?key=AIza...`.
+
+If the key is rejected or tiles fail to load, an on-screen panel explains
+what went wrong. Note: photogrammetry detail depends on Google's coverage
+of Ketchum; everywhere on Earth at least gets true terrain + aerial
+imagery.
+
+## Controls (both editions)
 
 | Key | Action |
 |---|---|
 | `W A S D` / arrows | Walk |
-| Mouse | Look around |
-| `Shift` | Jog |
-| `N` | Toggle day / night |
-| `M` | Show / hide minimap |
-| `Esc` | Release the mouse |
+| Mouse | Look · `Shift` jog |
+| `E` | Order a schooner / pick up / enter & leave Grumpy's |
+| `F` | Take a drink |
+| `G` | Set the schooner down |
+| `N` | Day / night |
+| `M` | Minimap on/off |
+| `Esc` | Release mouse |
 
-Walk up to the gold marker posts at landmarks (Pioneer Saloon, Casino
-Club, Town Square, Atkinsons', the Heritage & Ski Museum, Bald Mountain
-viewpoint, …) to read about them. Sound on — wind, songbirds, the Big
-Wood River to the west, and crickets after dark are all generated
-procedurally.
+## Grumpy's and the schooner
 
-## What's modeled
+Walk northwest to Grumpy's on Warm Springs Rd (follow the gold beacon),
+press `E` at the door to step inside the hand-built bar, and order a
+**schooner** — the giant 32 oz goblet of beer that is Grumpy's calling
+card. You can carry it anywhere in town, drink it down sip by sip, set it
+on the sidewalk, and come back for it later.
 
-The real downtown grid: Main St (Hwy 75) with River St through 6th St /
-Sun Valley Rd cross streets, and Spruce, Washington, East, Leadville and
-Walnut Avenues. Hand-placed landmarks sit at their approximate real
-locations; the remaining lots are filled procedurally (seeded, so the
-town is identical every run). Bald Mountain rises to the southwest with
-its ski runs visible.
+In the Real-World Edition, landmark plaques (Pioneer Saloon, Casino Club,
+Town Square, Atkinsons', Limelight, the Heritage & Ski Museum…) sit at
+their true coordinates under tall gold beacons.
 
 ## Developing
 
 ```bash
-node build.js   # writes dist/Ketchum-Walking-Simulator.html
+node build.js                      # offline edition → dist/Ketchum-Walking-Simulator.html
+cd realworld && npm install && cd ..
+node realworld/build-real.js       # real-world edition → dist/Ketchum-RealWorld.html
 ```
 
-No dependencies. Source is modular under `src/js/`; `build.js` inlines
-Three.js (vendored in `vendor/`) and all modules into the single output
-file.
+Layout:
+- `src/js/` — shared game modules (player, interact/schooner, audio,
+  plaques, minimap, textures, props) used by both editions
+- `src/js/districts/` — offline edition world data (expansion packs:
+  add a file, register it, add to `build.js`)
+- `realworld/src/` — tile streaming, real-coordinate places, Grumpy's
+  interior pocket, real-world bootstrap
 
-### Adding an expansion district (future sessions)
+### Calibrating real-world landmark positions
 
-1. Create `src/js/districts/<name>.js` modeled on `downtown.js` —
-   it calls `KW.registerDistrict({...})` with its own bounds, streets,
-   landmarks and a `build(ctx)` function.
-2. Keep using `KW.grid` constants so streets line up across districts
-   (e.g. Warm Springs extends west of x = -235, the Sun Valley resort
-   sits northeast of z = -610).
-3. Add the file to `SCRIPTS` in `build.js` and rebuild.
-
-### Visual-upgrade hooks
-
-`KW.quality` (in `src/js/config.js`) centralizes shadow resolution, fog,
-and pixel-ratio caps. A later "visual enhancement" sprint can raise these,
-swap `MeshLambertMaterial` for PBR materials, or add post-processing in
-`main.js` without touching district data.
+Coordinates live in `realworld/src/places.js`. Open the game with
+`?debug=1` to see your live lat/lon in the HUD, stand where a marker
+*should* be, and copy the values in. The world is local ENU meters around
+Main & 4th: +X east, +Z south, Y up.

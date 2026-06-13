@@ -1,0 +1,17 @@
+{
+  "name": "realworld",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "3d-tiles-renderer": "^0.4.28",
+    "esbuild": "^0.28.1",
+    "three": "^0.184.0"
+  }
+}

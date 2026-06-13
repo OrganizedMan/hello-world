@@ -4,6 +4,8 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, KW.quality.pixelRatioCap));
   renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   if (KW.quality.shadows) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -11,13 +13,14 @@
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
+  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.08, 7000);
+  scene.add(camera); // so the carried schooner renders
 
   KW.env.init(scene);
 
   // Build all registered districts (expansion packs register themselves
   // before this file runs — see config.js).
-  const ctx = { scene, colliders: [], plaques: [], trees: [] };
+  const ctx = { scene, colliders: [], plaques: [], trees: [], interactables: [] };
   let bounds = null, spawn = null, mainDistrict = null;
   for (const d of KW.districts) {
     d.build(ctx);
@@ -30,10 +33,12 @@
     }
   }
   KW.env.makeTrees(ctx.trees);
+  KW.env.forest();
   KW.debug = ctx; // console access for development / future sessions
 
   KW.player.init(camera, renderer.domElement, spawn, bounds, ctx.colliders);
   KW.plaques.init(ctx.plaques);
+  KW.interact.init(camera, scene, ctx.interactables);
   KW.minimap.init(mainDistrict, ctx.colliders, ctx.plaques);
 
   // intro overlay → pointer lock + audio
@@ -78,6 +83,7 @@
     const dt = Math.min(clock.getDelta(), 0.05);
     KW.player.update(dt);
     KW.env.update(dt);
+    KW.interact.update(dt, KW.player.position);
     if ((frame++ & 7) === 0) {
       KW.plaques.update(KW.player.position);
       KW.audio.update(KW.player.position);

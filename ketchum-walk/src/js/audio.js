@@ -98,6 +98,41 @@ KW.audio = (function () {
     o.start(); am.start();
   }
 
+  // one-shots for the schooner
+  A.pour = function () {
+    if (!started) return;
+    const t0 = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer(1.4);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 1.2;
+    bp.frequency.setValueAtTime(700, t0);
+    bp.frequency.exponentialRampToValueAtTime(2400, t0 + 1.2);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.1);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
+    src.connect(bp).connect(g).connect(master);
+    src.start(t0); src.stop(t0 + 1.4);
+  };
+  A.gulp = function () {
+    if (!started) return;
+    const t0 = ctx.currentTime;
+    for (let i = 0; i < 3; i++) {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      const t = t0 + i * 0.16;
+      o.frequency.setValueAtTime(160 - i * 18, t);
+      o.frequency.exponentialRampToValueAtTime(70, t + 0.1);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.12, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+      o.connect(g).connect(master);
+      o.start(t); o.stop(t + 0.16);
+    }
+  };
+
   A.update = function (playerPos) {
     if (!started) return;
     // river volume by distance to the Big Wood corridor

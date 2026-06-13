@@ -17,6 +17,15 @@ KW.player = (function () {
   PL.position = pos;
   PL.getYaw = () => yaw;
   PL.setYaw = (v) => { yaw = v; };
+  // Optional hooks for terrain-following and mesh collision (real-world build)
+  PL.groundFn = null;   // (x, z) => ground Y
+  PL.blockFn = null;    // (fromPos, nx, nz) => true if movement is blocked
+  PL.teleport = (x, z, yawTo, y) => {
+    pos.set(x, y !== undefined ? y : pos.y, z);
+    if (yawTo !== undefined) yaw = yawTo;
+    vel.set(0, 0, 0);
+  };
+  PL.setBounds = (b) => { bounds = b; };
 
   PL.init = function (cam, domElement, spawn, b, cols) {
     camera = cam; dom = domElement;
@@ -67,9 +76,23 @@ KW.player = (function () {
     // collide: resolve each axis separately for sliding
     nx = collideAxis(nx, pos.z, true) ? pos.x : nx;
     nz = collideAxis(nx, nz, false) ? pos.z : nz;
+    if (PL.blockFn && (nx !== pos.x || nz !== pos.z) && PL.blockFn(pos, nx, nz)) {
+      nx = pos.x; nz = pos.z;
+      vel.set(0, 0, 0);
+    }
 
     pos.x = Math.max(bounds.minX, Math.min(bounds.maxX, nx));
     pos.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, nz));
+
+    // terrain follow
+    if (PL.groundFn) {
+      const gy = PL.groundFn(pos.x, pos.z);
+      if (gy !== null && gy !== undefined) {
+        pos.y += (gy - pos.y) * Math.min(1, dt * 9);
+      }
+    } else {
+      pos.y = 0;
+    }
 
     // head bob
     const moving = Math.hypot(vel.x, vel.z);
@@ -78,7 +101,7 @@ KW.player = (function () {
     const bobY = Math.sin(bobPhase * 2) * 0.035 * bobAmp;
     const bobX = Math.cos(bobPhase) * 0.02 * bobAmp;
 
-    camera.position.set(pos.x + bobX * cos, EYE + bobY, pos.z - bobX * sin);
+    camera.position.set(pos.x + bobX * cos, pos.y + EYE + bobY, pos.z - bobX * sin);
     camera.rotation.order = 'YXZ';
     camera.rotation.y = yaw;
     camera.rotation.x = pitch;

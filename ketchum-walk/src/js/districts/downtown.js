@@ -49,6 +49,12 @@
     ['LEFTY\'S', 'Bar & Grill'], ['BOARD BIN', 'Skate & Snow'],
     ['STARBUCKS', 'Coffee'], ['VISIT SUN VALLEY', 'Visitor Center'],
     ['GOLD MINE', 'Thrift Store'], ['THE COVEY', null], ['SEGO', 'Restaurant'],
+    ['BACKWOODS MOUNTAIN SPORTS', null], ['JANE\'S ARTIFACTS', 'Art & Paper'],
+    ['CORNERSTONE', 'Bar & Grill'], ['PERRY\'S', 'Restaurant'],
+    ['SAWTOOTH TITLE', null], ['SILVER QUEEN', 'Saloon'], ['THE OPEN ROOM', 'Gallery'],
+    ['KENTWOOD LODGE', null], ['LUCKY DOG', 'Consignment'], ['HEMINGWAY\'S', 'Books & Prints'],
+    ['ALPINE PEDALER', 'Bike Shop'], ['HOT WATER INN', null], ['VALLEY PADDLE', null],
+    ['WISEGUY PIZZA', null], ['THE GRILL AT KNOB HILL', null], ['SUSHI ON SECOND', null],
   ];
 
   // ---- Landmarks (hand-placed; reserved rects keep filler away) ----
@@ -56,34 +62,34 @@
   const W = -Math.PI / 2;
   const LANDMARKS = [
     { x: -(MAIN_OFF + 10), z: -3.45 * P, w: 14, d: 20, ry: E, floors: 1, h: 6.2,
-      style: 'falsefront', color: 0x7a5c3e, trim: 0x3a2a1a, porch: true,
+      style: 'falsefront', facade: 'batten_dark', trim: 0xE8E0CC, porch: true,
       sign: { text: 'PIONEER SALOON', style: 'neon', hang: true, y: 4.6 } },
     { x: MAIN_OFF + 9, z: -2.42 * P, w: 11, d: 18, ry: W, floors: 1, h: 5.4,
-      style: 'falsefront', color: 0xc9bda4, trim: 0x303030,
+      style: 'falsefront', facade: 'clap_cream', trim: 0x303030,
       sign: { text: 'CASINO', style: 'neon', y: 4.2 } },
     { x: -(MAIN_OFF + 9), z: -2.38 * P, w: 13, d: 18, ry: E, floors: 2,
-      style: 'brick', color: 0xa05a40, trim: 0x3a2a1a,
+      style: 'brick', facade: 'brick_red', trim: 0x3a2a1a,
       sign: { text: 'WHISKEY JACQUES\'', style: 'neon', hang: true } },
     { x: MAIN_OFF + 9, z: -2.62 * P, w: 12, d: 18, ry: W, floors: 2,
-      style: 'brick', color: 0x8a4f38, trim: 0x2e2620, awning: 0x35424a,
+      style: 'brick', facade: 'brick_tan', trim: 0x2e2620, awning: 'awning_blue',
       sign: { text: 'THE SAWTOOTH CLUB', style: 'paint' } },
     { x: -(MAIN_OFF + 15), z: -0.5 * P, w: 36, d: 28, ry: E, floors: 3, floorH: 3.5,
-      style: 'lodge', color: 0x9c8c74, trim: 0x4f4337, sideWindows: 'right',
+      style: 'lodge', facade: 'batten_tan', trim: 0x4f4337, sideWindows: 'right',
       sign: { text: 'LIMELIGHT HOTEL', style: 'paint', y: 9.0 } },
     { x: 2 * P + ST_OFF + 14, z: -3.5 * P, w: 30, d: 26, ry: W, floors: 1, h: 7,
-      style: 'retail', color: 0xc6b89c, trim: 0x5c4a36, awning: 0x6e2f28,
+      style: 'retail', facade: 'stucco_cream', trim: 0x5c4a36, awning: 'awning_red',
       sign: { text: 'ATKINSONS\' MARKET', style: 'paint', sub: 'Giacobbi Square', y: 4.4 } },
     { x: -1.55 * P, z: -1.4 * P, w: 16, d: 12, ry: 0, floors: 1, h: 4.2,
-      style: 'chalet', color: 0x8a6f52, trim: 0x3a2a1a, storefront: false,
+      style: 'chalet', facade: 'log', trim: 0xE8E0CC, storefront: false, roofColor: 0x44584a,
       sign: { text: 'KETCHUM-SUN VALLEY MUSEUM', style: 'wood', y: 3.4 } },
     { x: MAIN_OFF + 10, z: -3.42 * P, w: 15, d: 20, ry: W, floors: 2,
-      style: 'falsefront', color: 0x6d6258, trim: 0x2c2620, porch: true,
+      style: 'falsefront', facade: 'clap_brown', trim: 0xF2EAD8, porch: true,
       sign: { text: 'WARFIELD', style: 'paint', sub: 'Distillery & Brewery' } },
     { x: P + ST_OFF + 8, z: -2.55 * P, w: 13, d: 15, ry: W, floors: 1, h: 5.0,
-      style: 'falsefront', color: 0x4f5e52, trim: 0x2a2118,
+      style: 'falsefront', facade: 'clap_sage', trim: 0x2a2118,
       sign: { text: 'THE ELEPHANT\'S PERCH', style: 'wood', hang: true } },
     { x: P + ST_OFF + 9, z: -4.62 * P, w: 16, d: 14, ry: W, floors: 2,
-      style: 'brick', color: 0xb09a78, trim: 0x3c3328,
+      style: 'brick', facade: 'brick_paint', trim: 0x3c3328,
       sign: { text: 'KETCHUM CITY HALL', style: 'paint' } },
   ];
 
@@ -231,16 +237,21 @@
       const wdt = av.c === 0 ? G.MAIN_W : G.STREET_W;
       flat(asphalt, wdt, zSpanW + 400, av.c * P, zMid - 100, 0.025, 0xffffff, [wdt / 6, (zSpanW + 400) / 6]);
     }
-    // sidewalk aprons under every block
+    // sidewalk aprons under every block, with raised curbs
     for (let c = -2; c < 3; c++) {
       for (let r = 0; r < 6; r++) {
         const x0 = c * P + (c === 0 ? G.MAIN_W / 2 : G.STREET_W / 2);
         const x1 = (c + 1) * P - (c === -1 ? G.MAIN_W / 2 : G.STREET_W / 2);
         const z1 = -r * P - G.STREET_W / 2, z0 = -(r + 1) * P + G.STREET_W / 2;
-        flat(walk, x1 - x0, z1 - z0, (x0 + x1) / 2, (z0 + z1) / 2, 0.05, 0xffffff, [(x1 - x0) / 2.4, (z1 - z0) / 2.4]);
+        flat(walk, x1 - x0, z1 - z0, (x0 + x1) / 2, (z0 + z1) / 2, 0.12, 0xffffff, [(x1 - x0) / 2.4, (z1 - z0) / 2.4]);
+        // curb faces
+        walk.box(x1 - x0, 0.13, 0.18, (x0 + x1) / 2, 0.065, z1 + 0.02, 0xb8b2a4);
+        walk.box(x1 - x0, 0.13, 0.18, (x0 + x1) / 2, 0.065, z0 - 0.02, 0xb8b2a4);
+        walk.box(0.18, 0.13, z1 - z0, x0 + 0.02, 0.065, (z0 + z1) / 2, 0xb8b2a4);
+        walk.box(0.18, 0.13, z1 - z0, x1 - 0.02, 0.065, (z0 + z1) / 2, 0xb8b2a4);
       }
     }
-    // lane dashes on Main + crosswalks at Main intersections
+    // lane dashes on Main + crosswalks + parking stripes
     for (let z = 20; z > Z_MIN - 30; z -= 6) paint.box(0.25, 0.02, 3, 0, 0.06, z, 0xd6b53c);
     for (const st of STREETS) {
       for (const dz of [-1, 1]) {
@@ -249,24 +260,39 @@
         }
       }
     }
+    for (let r = 0; r < 6; r++) { // angled-parking ticks along Main
+      for (let i = 0; i < 9; i++) {
+        const z = -r * P - 14 - i * 7.4;
+        for (const sx of [-1, 1]) {
+          paint.box(0.14, 0.02, 5.0, sx * (G.MAIN_W / 2 - 2.6), 0.06, z, 0xc8c8c0);
+        }
+      }
+    }
 
-    const mA = new THREE.Mesh(asphalt.merge(), new THREE.MeshLambertMaterial({ map: T.asphalt(), vertexColors: true }));
-    const mW = new THREE.Mesh(walk.merge(), new THREE.MeshLambertMaterial({ map: T.concrete(), vertexColors: true }));
+    const asphTex = T.asphalt(), concTex = T.concrete();
+    const mA = new THREE.Mesh(asphalt.merge(), new THREE.MeshPhongMaterial({
+      map: asphTex.map, bumpMap: asphTex.bumpMap, bumpScale: 0.02,
+      shininess: 8, specular: 0x333333, vertexColors: true,
+    }));
+    const mW = new THREE.Mesh(walk.merge(), new THREE.MeshPhongMaterial({
+      map: concTex.map, bumpMap: concTex.bumpMap, bumpScale: 0.015,
+      shininess: 3, specular: 0x222222, vertexColors: true,
+    }));
     const mP = new THREE.Mesh(paint.merge(), new THREE.MeshLambertMaterial({ vertexColors: true }));
     mA.receiveShadow = mW.receiveShadow = true;
     scene.add(mA, mW, mP);
 
     // park grass
-    const grassT = T.grass();
+    const grassT = T.grass().map;
     for (const g of [
       { x: P + 26, z: -3.75 * P, w: 34, d: 34 },        // Town Square green
       { x: -1.5 * P, z: -1.42 * P, w: 60, d: 56 },      // Forest Service Park
     ]) {
       const gm = new THREE.Mesh(new THREE.PlaneGeometry(g.w, g.d),
         new THREE.MeshLambertMaterial({ map: grassT }));
-      gm.material.map = grassT;
+      gm.material.map.repeat.set(g.w / 7, g.d / 7);
       gm.rotation.x = -Math.PI / 2;
-      gm.position.set(g.x, 0.07, g.z);
+      gm.position.set(g.x, 0.14, g.z);
       gm.receiveShadow = true;
       scene.add(gm);
     }
@@ -284,27 +310,32 @@
         }
       }
     }
-    // lamps at every intersection + street signs
+    // lamps at every intersection + street signs (stop signs face cross-street traffic at Main)
     for (const st of STREETS) {
       for (const av of AVENUES) {
         const ix = av.c * P, iz = -st.r * P;
         const ow = (av.c === 0 ? G.MAIN_W : G.STREET_W) / 2 + 1.4;
         const oh = G.STREET_W / 2 + 1.4;
-        Pr.streetSign(ix + ow, iz + oh, av.name, st.name);
+        Pr.streetSign(ix + ow, iz + oh, av.name, st.name, av.c === 0 ? Math.PI / 2 : false);
         if (av.c !== 0) Pr.lamp(ix - ow, iz - oh);
+        if ((st.r + av.c) % 2 === 0 && av.c !== 0) Pr.hydrant(ix - ow - 0.8, iz + oh + 0.8);
       }
     }
-    // parked cars along Main
-    const carCols = [0x5a6e76, 0x8a8d90, 0x3c4a3a, 0x7a3b30, 0x2c3440, 0xb8b6ae, 0x4f5d73];
-    for (let i = 0; i < 26; i++) {
-      const z = -18 - rng() * (5.6 * P);
+    // alley power lines flanking Main, and along 2nd St
+    Pr.powerRun(-47, 10, -47, Z_MIN - 10);
+    Pr.powerRun(47, 10, 47, Z_MIN - 10);
+    Pr.powerRun(X_MIN - 10, -2 * P - 47, X_MAX + 10, -2 * P - 47);
+    // parked vehicles along Main (trucks, SUVs, sedans)
+    const carCols = [0x5a6e76, 0x8a8d90, 0x3c4a3a, 0x7a3b30, 0x2c3440, 0xb8b6ae, 0x4f5d73, 0x6e5136];
+    for (let i = 0; i < 30; i++) {
+      const z = -16 - rng() * (5.6 * P);
       const sx = rng() < 0.5 ? -1 : 1;
       if (Math.abs((z % P + P) % P) < 12) continue; // keep intersections clear
-      Pr.car(sx * (G.MAIN_W / 2 - 1.6), z, sx > 0 ? 0 : Math.PI, carCols[i % carCols.length]);
+      Pr.car(sx * (G.MAIN_W / 2 - 2.0), z, sx > 0 ? 0 : Math.PI, carCols[i % carCols.length], (i * 7) % 3);
     }
     for (let i = 0; i < 10; i++) {
       const x = 30 + rng() * 120;
-      Pr.car(x, -2 * P + (rng() < 0.5 ? -4.6 : 4.6), Math.PI / 2, carCols[(i + 3) % carCols.length]);
+      Pr.car(x, -2 * P + (rng() < 0.5 ? -4.6 : 4.6), Math.PI / 2, carCols[(i + 3) % carCols.length], i % 3);
     }
 
     // Town Square furniture
