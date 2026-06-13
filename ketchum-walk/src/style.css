@@ -87,3 +87,24 @@ canvas { display: block; }
   opacity: 0; transition: opacity 0.15s ease; pointer-events: none;
 }
 #prompt.visible { opacity: 1; }
+
+#joy {
+  display: none; position: absolute; width: 112px; height: 112px;
+  border-radius: 50%; border: 2px solid rgba(255,217,160,0.4);
+  background: rgba(24,17,10,0.25); pointer-events: none;
+}
+#joynub {
+  position: absolute; left: 36px; top: 36px; width: 40px; height: 40px;
+  border-radius: 50%; background: rgba(255,217,160,0.55);
+}
+#touchui { display: none; position: absolute; right: 14px; bottom: 90px; }
+body.touch #touchui { display: flex; flex-direction: column; gap: 12px; }
+body.touch #hint { display: none; }
+.tb {
+  width: 54px; height: 54px; border-radius: 50%; pointer-events: auto;
+  border: 1px solid rgba(214,170,100,0.7); background: rgba(24,17,10,0.6);
+  color: #ffd9a0; font-size: 20px; font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+}
+.tb-big { width: 66px; height: 66px; font-size: 26px; }
+.tb:active { background: rgba(214,138,46,0.5); }

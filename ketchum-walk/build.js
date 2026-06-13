@@ -42,7 +42,7 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <title>Ketchum, Idaho — Walking Simulator</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <style>
 ${css}
 </style>

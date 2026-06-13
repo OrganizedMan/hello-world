@@ -63,8 +63,9 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     }));
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, renderer);
-    tiles.errorTarget = 8;
-    tiles.lruCache.maxBytesSize = 0.5 * 1024 * 1024 * 1024;
+    const mobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    tiles.errorTarget = mobile ? 16 : 8;
+    tiles.lruCache.maxBytesSize = (mobile ? 0.22 : 0.5) * 1024 * 1024 * 1024;
 
     tiles.addEventListener('load-tile-set', () => { rootLoaded = true; errEl.style.display = 'none'; });
     tiles.addEventListener('load-error', (e) => {
@@ -179,7 +180,14 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     }
     KW.audio.start();
     KW.player.lock();
+    if (KW.player.isTouch) intro.style.display = 'none';
   });
+  for (const b of document.querySelectorAll('#touchui .tb')) {
+    b.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: b.dataset.k }));
+    }, { passive: false });
+  }
   keyInput.addEventListener('click', (e) => e.stopPropagation());
   document.addEventListener('pointerlockchange', () => {
     intro.style.display = document.pointerLockElement === renderer.domElement ? 'none' : 'flex';

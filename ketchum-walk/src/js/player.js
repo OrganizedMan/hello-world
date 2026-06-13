@@ -13,6 +13,8 @@ KW.player = (function () {
   let bounds = { minX: -1e9, maxX: 1e9, minZ: -1e9, maxZ: 1e9 };
   let colliders = [];
 
+  PL.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  PL.touch = { f: 0, s: 0 };
   PL.locked = false;
   PL.position = pos;
   PL.getYaw = () => yaw;
@@ -49,14 +51,86 @@ KW.player = (function () {
     document.addEventListener('pointerlockchange', () => {
       PL.locked = document.pointerLockElement === dom;
     });
+
+    if (PL.isTouch) initTouch();
   };
 
-  PL.lock = function () { dom.requestPointerLock(); };
+  PL.lock = function () {
+    if (PL.isTouch) { PL.locked = true; return; }
+    dom.requestPointerLock();
+  };
+
+  // ---- touch controls: left side = move joystick, right side = look ----
+  function initTouch() {
+    document.body.classList.add('touch');
+    const joy = document.getElementById('joy');
+    const nub = document.getElementById('joynub');
+    let moveId = null, lookId = null;
+    let ox = 0, oy = 0, lx = 0, ly = 0;
+    const R = 56;
+
+    function setNub(dx, dy) {
+      if (nub) nub.style.transform = `translate(${dx}px, ${dy}px)`;
+    }
+    dom.addEventListener('touchstart', (e) => {
+      if (!PL.locked) return;
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (t.clientX < window.innerWidth * 0.45 && moveId === null) {
+          moveId = t.identifier; ox = t.clientX; oy = t.clientY;
+          if (joy) {
+            joy.style.display = 'block';
+            joy.style.left = (ox - R) + 'px';
+            joy.style.top = (oy - R) + 'px';
+            setNub(0, 0);
+          }
+        } else if (lookId === null) {
+          lookId = t.identifier; lx = t.clientX; ly = t.clientY;
+        }
+      }
+    }, { passive: false });
+    dom.addEventListener('touchmove', (e) => {
+      if (!PL.locked) return;
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (t.identifier === moveId) {
+          let dx = t.clientX - ox, dy = t.clientY - oy;
+          const m = Math.hypot(dx, dy);
+          if (m > R) { dx *= R / m; dy *= R / m; }
+          PL.touch.f = -dy / R;
+          PL.touch.s = dx / R;
+          setNub(dx, dy);
+        } else if (t.identifier === lookId) {
+          yaw -= (t.clientX - lx) * 0.005;
+          pitch -= (t.clientY - ly) * 0.005;
+          pitch = Math.max(-1.45, Math.min(1.45, pitch));
+          lx = t.clientX; ly = t.clientY;
+        }
+      }
+    }, { passive: false });
+    const end = (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === moveId) {
+          moveId = null; PL.touch.f = 0; PL.touch.s = 0;
+          if (joy) joy.style.display = 'none';
+        } else if (t.identifier === lookId) {
+          lookId = null;
+        }
+      }
+    };
+    dom.addEventListener('touchend', end);
+    dom.addEventListener('touchcancel', end);
+  }
 
   PL.update = function (dt) {
-    const fwd = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-    const str = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
-    const speed = (keys.ShiftLeft || keys.ShiftRight) ? JOG : WALK;
+    let fwd = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+    let str = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+    let speed = (keys.ShiftLeft || keys.ShiftRight) ? JOG : WALK;
+    if (!fwd && !str && (PL.touch.f || PL.touch.s)) {
+      fwd = PL.touch.f; str = PL.touch.s;
+      const mag = Math.min(1, Math.hypot(fwd, str));
+      speed = mag > 0.85 ? JOG : WALK * mag; // push to the edge to jog
+    }
 
     const sin = Math.sin(yaw), cos = Math.cos(yaw);
     // forward in look direction (XZ), strafe perpendicular

@@ -46,7 +46,14 @@
   intro.addEventListener('click', () => {
     KW.audio.start();
     KW.player.lock();
+    if (KW.player.isTouch) intro.style.display = 'none';
   });
+  for (const b of document.querySelectorAll('#touchui .tb')) {
+    b.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: b.dataset.k }));
+    }, { passive: false });
+  }
   document.addEventListener('pointerlockchange', () => {
     intro.style.display = document.pointerLockElement === renderer.domElement ? 'none' : 'flex';
   });
