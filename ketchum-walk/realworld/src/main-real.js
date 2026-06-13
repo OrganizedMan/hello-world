@@ -90,7 +90,10 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     tiles.setResolutionFromRenderer(camera, renderer);
     const mobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     tiles.errorTarget = mobile ? 10 : 6;
-    tiles.lruCache.maxBytesSize = (mobile ? 0.22 : 0.5) * 1024 * 1024 * 1024;
+    // min/max must stay ordered: loading halts at max, but eviction only
+    // frees memory above min — min > max deadlocks the streamer.
+    tiles.lruCache.minBytesSize = (mobile ? 0.15 : 0.3) * 1024 * 1024 * 1024;
+    tiles.lruCache.maxBytesSize = (mobile ? 0.3 : 0.5) * 1024 * 1024 * 1024;
 
     tiles.addEventListener('load-tile-set', () => { rootLoaded = true; errEl.style.display = 'none'; });
     tiles.addEventListener('load-error', (e) => {
@@ -297,7 +300,8 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
       try {
         if (tiles && tiles.stats) {
           st = ' · dl ' + tiles.stats.downloading + ' parse ' + tiles.stats.parsing
-            + ' vis ' + tiles.stats.visible + ' fail ' + tiles.stats.failed;
+            + ' vis ' + tiles.stats.visible + ' fail ' + tiles.stats.failed
+            + ' cache ' + (tiles.lruCache.cachedBytes / 1048576 | 0) + 'MB';
         }
         if (tiles && tiles.loadProgress !== undefined) st += ' · ' + Math.round(tiles.loadProgress * 100) + '%';
       } catch (err) { /* older API */ }
