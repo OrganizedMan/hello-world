@@ -42,10 +42,9 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
   KW.env.init(scene, renderer);
   document.body.classList.add('realworld');
   for (const b of document.querySelectorAll('#flyui .tb')) {
-    const set = (v) => (e) => { e.preventDefault(); KW.player.fly = v; };
-    b.addEventListener('touchstart', set(+b.dataset.fly), { passive: false });
-    b.addEventListener('touchend', set(0), { passive: false });
-    b.addEventListener('touchcancel', set(0), { passive: false });
+    const set = (v) => (e) => { e.preventDefault(); e.stopPropagation(); KW.player.fly = v; };
+    for (const ev of ['touchstart', 'pointerdown']) b.addEventListener(ev, set(+b.dataset.fly), { passive: false });
+    for (const ev of ['touchend', 'touchcancel', 'pointerup', 'pointerleave']) b.addEventListener(ev, set(0), { passive: false });
   }
 
   // ---------- tiles ----------
@@ -86,7 +85,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, renderer);
     const mobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    tiles.errorTarget = mobile ? 16 : 8;
+    tiles.errorTarget = mobile ? 10 : 6;
     tiles.lruCache.maxBytesSize = (mobile ? 0.22 : 0.5) * 1024 * 1024 * 1024;
 
     tiles.addEventListener('load-tile-set', () => { rootLoaded = true; errEl.style.display = 'none'; });
@@ -290,14 +289,19 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
       KW.plaques.update(KW.player.position);
       KW.audio.update(KW.player.position);
       updateLocation(KW.player.position);
-      let prog = '';
+      let st = '';
       try {
-        if (tiles && tiles.loadProgress !== undefined) prog = ' · ' + Math.round(tiles.loadProgress * 100) + '%';
+        if (tiles && tiles.stats) {
+          st = ' · dl ' + tiles.stats.downloading + ' parse ' + tiles.stats.parsing
+            + ' vis ' + tiles.stats.visible + ' fail ' + tiles.stats.failed;
+        }
+        if (tiles && tiles.loadProgress !== undefined) st += ' · ' + Math.round(tiles.loadProgress * 100) + '%';
       } catch (err) { /* older API */ }
-      dbg.textContent = 'y ' + KW.player.position.y.toFixed(1)
+      dbg.textContent = (window.KW_BUILD ? window.KW_BUILD.slice(6, 22) + ' · ' : '')
+        + 'y ' + KW.player.position.y.toFixed(1)
         + ' · gnd ' + (lastGround === null ? 'none' : lastGround.toFixed(1))
         + ' · tris ' + (renderer.info.render.triangles / 1000 | 0) + 'k'
-        + prog
+        + st
         + (tileErrs ? ' · ERR ' + tileErrs + ' ' + firstTileErr.slice(0, 60) : '');
     }
     if (tiles) {

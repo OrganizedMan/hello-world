@@ -9,6 +9,7 @@ const esbuild = require('esbuild');
 const ROOT = path.join(__dirname, '..');
 
 async function main() {
+  const stamp = 'build ' + new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
   const result = await esbuild.build({
     entryPoints: [path.join(__dirname, 'src/entry-real.js')],
     bundle: true,
@@ -46,7 +47,7 @@ async function main() {
      <input id="apikey" type="text" placeholder="AIza..." spellcheck="false" autocomplete="off">
      <div class="start" id="startbtn">Walk the real Ketchum</div>`);
   ui = ui.replace('<h2>Idaho &middot; Elev. 5,853 ft</h2>',
-    '<h2>Idaho &middot; Elev. 5,853 ft &middot; Real-World Edition</h2>');
+    `<h2>Idaho &middot; Elev. 5,853 ft &middot; Real-World Edition<br><span style="font-size:10px;letter-spacing:1px;opacity:0.6">${stamp}</span></h2>`);
   ui += '\n<div id="loading">Streaming Ketchum from Google&hellip; first load takes a moment</div>\n<div id="tileerror"></div>';
 
   const html = `<!DOCTYPE html>
@@ -62,6 +63,7 @@ ${css}
 <body>
 ${ui}
 <script>
+window.KW_BUILD = '${stamp}';
 window.addEventListener('error', function (e) {
   var d = document.getElementById('tileerror');
   if (d && d.style.display !== 'block') {
