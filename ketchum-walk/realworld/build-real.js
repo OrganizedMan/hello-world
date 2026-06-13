@@ -62,6 +62,15 @@ ${css}
 <body>
 ${ui}
 <script>
+window.addEventListener('error', function (e) {
+  var d = document.getElementById('tileerror');
+  if (d && d.style.display !== 'block') {
+    d.style.display = 'block';
+    d.innerHTML = '<b>Startup error.</b><br><small>' + (e.message || 'unknown') + '</small>';
+  }
+});
+</script>
+<script>
 ${js}
 </script>
 </body>

@@ -19,7 +19,10 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
   // ---------- API key handling ----------
   const params = new URLSearchParams(location.search);
   const DEBUG = params.has('debug');
-  let apiKey = params.get('key') || localStorage.getItem('kw_google_key') || '';
+  // localStorage throws in sandboxed viewers (iOS Files preview) — never let it kill the app
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* no persistence */ } };
+  let apiKey = params.get('key') || lsGet('kw_google_key') || '';
   const keyInput = $('apikey');
   keyInput.value = apiKey;
 
@@ -46,6 +49,13 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     errEl.innerHTML = msg;
     errEl.style.display = 'block';
   }
+  window.addEventListener('error', (e) => {
+    showError('<b>Something went wrong.</b><br><small>' + (e.message || 'unknown error') + '</small>');
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const m = e.reason && (e.reason.message || String(e.reason));
+    showError('<b>Something went wrong.</b><br><small>' + m + '</small>');
+  });
 
   function startTiles(key) {
     const dracoLoader = new DRACOLoader();
@@ -169,10 +179,11 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
   // ---------- intro / pointer lock ----------
   const intro = $('intro');
-  $('startbtn').addEventListener('click', () => {
+  let started = false;
+  const startGame = () => {
     const key = keyInput.value.trim();
     if (!key) { keyInput.focus(); keyInput.style.borderColor = '#ff6a4a'; return; }
-    localStorage.setItem('kw_google_key', key);
+    lsSet('kw_google_key', key);
     if (!tiles) {
       apiKey = key;
       startTiles(key);
@@ -181,7 +192,14 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     KW.audio.start();
     KW.player.lock();
     if (KW.player.isTouch) intro.style.display = 'none';
-  });
+    started = true;
+  };
+  $('startbtn').addEventListener('click', startGame);
+  // iOS: divs don't always synthesize clicks — handle the touch directly
+  $('startbtn').addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (!started || intro.style.display !== 'none') startGame();
+  }, { passive: false });
   for (const b of document.querySelectorAll('#touchui .tb')) {
     b.addEventListener('touchstart', (e) => {
       e.preventDefault(); e.stopPropagation();

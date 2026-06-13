@@ -17,6 +17,7 @@ KW.audio = (function () {
     if (started) return;
     started = true;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
     master = ctx.createGain();
     master.gain.value = 0.7;
     master.connect(ctx.destination);
