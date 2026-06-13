@@ -8,6 +8,7 @@ import {
   TileCompressionPlugin,
   TilesFadePlugin,
   ReorientationPlugin,
+  EnforceNonZeroErrorPlugin,
 } from '3d-tiles-renderer/plugins';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
@@ -70,6 +71,9 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
     tiles = new TilesRenderer();
     tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: key, autoRefreshToken: true }));
+    // Google tilesets contain zero-geometric-error tiles that halt LOD
+    // refinement (symptom: coarse blobs, "100%", nothing downloading).
+    tiles.registerPlugin(new EnforceNonZeroErrorPlugin());
     tiles.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader }));
     tiles.registerPlugin(new TileCompressionPlugin());
     tiles.registerPlugin(new TilesFadePlugin());
