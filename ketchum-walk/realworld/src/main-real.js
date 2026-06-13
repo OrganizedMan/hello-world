@@ -69,6 +69,10 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     tiles.registerPlugin(new ReorientationPlugin({
       lat: P.ORIGIN.lat * THREE.MathUtils.DEG2RAD,
       lon: P.ORIGIN.lon * THREE.MathUtils.DEG2RAD,
+      // Ketchum is ~1765 m above the WGS84 ellipsoid; anchor the origin at
+      // street level so the scene (sky, fog, spawn) is sane. The ground
+      // raycast below absorbs the remaining offset.
+      height: 1765,
       recenter: true,
     }));
     tiles.setCamera(camera);
@@ -146,9 +150,11 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
   KW.player.groundFn = (x, z) => {
     if (insideGrumpys) return KW.grumpysInterior.floorY;
     if (!tiles || !rootLoaded) return lastGround;
-    const fromY = (lastGround === null ? 500 : lastGround + 40);
+    // Until the first hit, sweep a tall column: the tileset's true surface
+    // can be hundreds of meters from our anchor height estimate.
+    const fromY = (lastGround === null ? 3000 : lastGround + 60);
     ray.set(new THREE.Vector3(x, fromY, z), DOWN);
-    ray.far = lastGround === null ? 2000 : 120;
+    ray.far = lastGround === null ? 8000 : 200;
     const hits = ray.intersectObject(tiles.group, true);
     if (hits.length) {
       lastGround = hits[0].point.y;
