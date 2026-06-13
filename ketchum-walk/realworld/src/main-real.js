@@ -90,11 +90,16 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, renderer);
     const mobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    tiles.errorTarget = mobile ? 10 : 6;
+    // Allowed screen-space error before a tile refines. At eye level the
+    // nearest ground tile fills much of the screen, so a lenient target
+    // leaves it a stretched, blurry blob (sharp in the distance, mush up
+    // close). Keep it tight — there's ample headroom in tris and bandwidth.
+    tiles.errorTarget = mobile ? 6 : 4;
     // min/max must stay ordered: loading halts at max, but eviction only
-    // frees memory above min — min > max deadlocks the streamer.
-    tiles.lruCache.minBytesSize = (mobile ? 0.15 : 0.3) * 1024 * 1024 * 1024;
-    tiles.lruCache.maxBytesSize = (mobile ? 0.3 : 0.5) * 1024 * 1024 * 1024;
+    // frees memory above min — min > max deadlocks the streamer. Give the
+    // tighter errorTarget room to hold the extra detail without thrashing.
+    tiles.lruCache.minBytesSize = (mobile ? 0.2 : 0.3) * 1024 * 1024 * 1024;
+    tiles.lruCache.maxBytesSize = (mobile ? 0.4 : 0.6) * 1024 * 1024 * 1024;
 
     tiles.addEventListener('load-tile-set', () => { rootLoaded = true; rootLoadedAt = performance.now(); errEl.style.display = 'none'; });
     tiles.addEventListener('load-error', (e) => {
