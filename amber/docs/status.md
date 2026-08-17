@@ -34,7 +34,7 @@ Against the plan's twelve expected first deliverables:
 | --- | --- | --- |
 | 1 | `AGENTS.md` + non-divergent `CLAUDE.md` pointer | done |
 | 2 | `docs/m0-experiment-plan.md`, frozen, with split and effort bound | done |
-| 3 | `docs/feasibility-results.md` with pose coverage and storage tables | **partially filled** — §0 environment, control provenance, §A1–A3 incremental-mapper pose (128/128, PASSED), and §A4a probe all done; global-mapper benchmark, §A4b full training, §A5 mobile, and all Gate B tables still pending |
+| 3 | `docs/feasibility-results.md` with pose coverage and storage tables | **partially filled** — §0 environment, control provenance, §A1–A3 incremental-mapper pose (128/128, PASSED), §A4a probe, and §A4b full training (5.3 GB peak, PASSED) all done; global-mapper benchmark, §A5 mobile, and all Gate B tables still pending |
 | 4 | `docs/decisions/README.md` | done |
 | 5 | `docs/decisions/0001-sfm-pipeline.md` | written, **Status: Proposed** by design |
 | 6 | M0 outcome ADR (proceed / re-scope / stop) | **blocked** — needs Gate A+B evidence |
@@ -131,8 +131,26 @@ ADR 0004 and transcribed into `docs/feasibility-results.md` §A4a.
    typed `I/O error while constructing BrushVfs`. `--with-viewer` is opt-in.
 
 Timing data point: 200 steps, 128 images, 800 px → **9 s**. Not a budget; a
-single point from a deliberately trivial run. A full-length training pass with
-memory watched (§A4b) has not been run.
+single point from a deliberately trivial run.
+
+### Full training run (§A4b) — PASSED on memory
+
+30,000-step training on the reference COLMAP model, wrapped in
+`/usr/bin/time -l`:
+
+| Metric | Value |
+| --- | --- |
+| Peak memory footprint | **5.31 GB** of 16 GB (~33%) |
+| Wall clock | 2.77 h (9965.76 s) |
+| CPU utilization | ~50% of wall clock — plausibly GPU/Metal-bound |
+| Checkpoints | 6 (steps 5000–30000) |
+| Evaluation renders | 480 = 30 eval passes × 16 held-out views, confirming the A4a stride finding at full scale |
+
+The exact command (resolution, splat cap) used for this run is **not yet
+recorded verbatim** — only the `time -l` report and output listing were
+captured. AGENTS.md rule 6 requires the literal command; get it before this
+entry is considered complete. PLY `sha256` and independent "does it load in a
+viewer" confirmation are deferred to §A5.
 
 ---
 
@@ -142,10 +160,9 @@ Being explicit, because code that has never run is not evidence:
 
 - **Gate A global-mapper benchmark** on a copied feature database — the
   incremental-mapper result (§A1–A3) is in; the comparison point is not.
-- **Gate A full training run** — the 9 s probe was 200 steps at 800 px. No peak
-  memory measured, so the 16 GB question is open.
 - **Gate A conversion and mobile check** — no `.sog` produced, no iPhone load
-  time or frame rate recorded.
+  time or frame rate recorded. The full-training PLY (§A4b) exists and is
+  waiting for this step.
 - **Gate B in its entirety** — no iPhone captures recorded.
 - **`amber process`** — the `import`, `poses`, `train`, `quality`, and `package`
   stages have never run against real tools. Only `frames` has real end-to-end
@@ -175,7 +192,7 @@ Bound: six sessions, three active hours each — two for Gate A, four for Gate B
 
 | Session | Gate | Work |
 | --- | --- | --- |
-| 1 | setup + A | Toolchain fully installed and verified (`amber doctor` → Ready); control dataset acquired; Brush eval-split probe run and ADR 0004 resolved; incremental-mapper pose run on the control — **128/128 registered, PASSED** |
+| 1 | setup + A | Toolchain fully installed and verified (`amber doctor` → Ready); control dataset acquired; Brush eval-split probe run and ADR 0004 resolved; incremental-mapper pose run — **128/128 registered, PASSED**; full 30,000-step Brush training on the reference model — **5.31 GB peak memory, PASSED** |
 
 Five sessions remain. At the bound, publish whatever exists and write the M0
 outcome ADR regardless of how tempting another parameter looks.
@@ -184,10 +201,12 @@ outcome ADR regardless of how tempting another parameter looks.
 
 ## Immediate next steps
 
-1. Global-mapper benchmark on a copied feature database, for the P4 comparison
+1. Record the exact command used for the §A4b full training run (resolution,
+   splat cap) and `shasum -a 256` its output PLY — required by AGENTS.md rule 6
+   before that entry counts as complete.
+2. Global-mapper benchmark on a copied feature database, for the P4 comparison
    point against the incremental-mapper result already in §A1–A3.
-2. Full-length Brush run on the control with memory watched; fill in §A4b.
-3. Convert to `.sog`, open on Mac and iPhone, record §A5.
+3. Convert the §A4b PLY to `.sog`, open on Mac and iPhone, record §A5.
 4. Confirm whether `view_graph_calibrator` is present in this COLMAP build.
 5. Pin SplatTransform's version string (its `--help` opens with a banner).
 6. Only then record the two Gate B captures per `docs/capture-guide.md`.

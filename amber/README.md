@@ -22,7 +22,8 @@ Full detail, including what has never been run, is in
 | Unit + integration tests | 212 passing |
 | M0 Gate A pose (incremental mapper) | **PASSED** — 128/128 registered on the public control |
 | M0 Gate A trainer eval-split behavior | proven on the public control; resolved ADR 0004 |
-| M0 Gate A full training + mobile check | not yet run |
+| M0 Gate A full training (memory) | **PASSED** — 5.31 GB peak of 16 GB, 30,000 steps |
+| M0 Gate A mobile/viewer check | not yet run |
 | M0 Gate B | **not started** — no iPhone captures yet |
 | A completed scene archive | **not produced** — needs COLMAP and Brush |
 | M0 outcome ADR (proceed/re-scope/stop) | blocked on those measurements |
