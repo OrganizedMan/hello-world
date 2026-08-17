@@ -9,16 +9,20 @@ faithful reconstruction.
 
 ## Status
 
-**Milestone 1 codebase, Milestone 0 not yet executed.**
+**Milestone 1 codebase; Milestone 0 Gate A partially executed.**
+Full detail, including what has never been run, is in
+[`docs/status.md`](docs/status.md).
 
 | Deliverable | State |
 | --- | --- |
 | Frozen M0 experiment plan | written — `docs/m0-experiment-plan.md` |
-| Decision log | ADRs 0001–0003 — `docs/decisions/` |
+| Decision log | ADRs 0001–0004 — `docs/decisions/` |
 | `amber doctor` | working |
 | `amber process` golden path | implemented; needs the toolchain to run |
-| Unit + integration tests | 191 passing |
-| M0 Gate A / Gate B measurements | **not run** — needs the target Mac |
+| Unit + integration tests | 206 passing |
+| M0 Gate A trainer half | proven on the public control; resolved ADR 0004 |
+| M0 Gate A pose half | **not run** — needs COLMAP on the Mac |
+| M0 Gate B | **not started** — no iPhone captures yet |
 | A completed scene archive | **not produced** — needs COLMAP and Brush |
 | M0 outcome ADR (proceed/re-scope/stop) | blocked on those measurements |
 | ADR 0001 defaults (feature/matcher/mapper) | **Proposed**, deferred to Gate B evidence |
