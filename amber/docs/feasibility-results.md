@@ -63,9 +63,53 @@ Control scene: COLMAP South Building (see experiment plan §2).
 | Stage | Mapper | Registered / total | Connected models | Mean reproj. err. (px) | Wall clock | Peak RSS |
 | --- | --- | --- | --- | --- | --- | --- |
 | Feature extraction | — | — | — | — | **19.2 s** (0.304 min by COLMAP's timer) | _(not captured)_ |
-| Matching (exhaustive) | — | — | — | — | **~13 min** — see note | _(not captured)_ |
-| Mapping | incremental | _(pending)_ | _(pending)_ | _(pending)_ | _(pending)_ | _(pending)_ |
-| Mapping | global | _(pending)_ | _(pending)_ | _(pending)_ | _(pending)_ | _(pending)_ |
+| Matching (exhaustive) | — | — | — | — | **16.6 min** (996.6 s; COLMAP's own timer) | _(not captured)_ |
+| Mapping | incremental | **128 / 128 (100%)** | **1** | **0.613** | **2.094 min** (125.4 s) | _(not captured)_ |
+| Mapping | global | _(not run this session)_ | | | | |
+
+**Gate A part 1: PASSED, decisively.** 128 of 128 images registered — not just
+above the 126 floor, a perfect result. `model_analyzer` output:
+
+```
+Rigs: 1
+Cameras: 1
+Frames: 128
+Registered frames: 128
+Images: 128
+Registered images: 128
+Points: 84907
+Observations: 503064
+Mean track length: 5.924883
+Mean observations per image: 3930.187500
+Mean reprojection error: 0.612813px
+```
+
+Registered frames equal registered images exactly, so there is exactly **one**
+connected model — no fragmentation, and nothing for the dominant-model-fraction
+gate condition to penalize. The reprojection error (0.61 px) sits well inside
+the 1.5 px gate threshold defined for Gate B captures, though that threshold is
+not being applied to the control here — this run's purpose is proving the
+toolchain, not passing Amber's own gate.
+
+**Registration order was not sequential.** The incremental mapper picked its own
+starting pair — images #71 and #74 — and grew outward via repeated
+retriangulation/global bundle-adjustment rounds (about 16 of them across the
+run), rather than registering image 1, 2, 3… in order. This is expected
+behavior for `colmap mapper` and is why "sequential" in `sequential_matcher`
+refers to the *matching* strategy for video, not an assumption about
+registration order.
+
+**CPU, not GPU, dominates wall clock here.** The `time` output shows
+487% CPU utilization during mapping (289.58s user + 336.05s system against
+128.34s wall) and 145% during matching — both are heavily multi-threaded CPU
+work. SIFT extraction is GPU-accelerated, but bundle adjustment and matching
+verification are not. Peak RSS was not captured this run; a follow-up should
+wrap these commands with `/usr/bin/time -l` (macOS) to get it, which also
+addresses AGENTS.md's storage/memory measurement rule.
+
+Total elapsed for Gate A part 1: 19.2 s + 16.6 min + 2.1 min ≈ **19 minutes**,
+dominated by exhaustive matching's O(n²) cost on an unordered photo set — see
+the note below on why this figure does not transfer to Amber's video path.
 
 **Acceleration — measured, not assumed.** COLMAP announced
 `Creating SIFT GPU feature extractor` and `Creating SIFT GPU feature matcher`.

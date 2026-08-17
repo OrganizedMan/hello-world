@@ -16,11 +16,13 @@ reported as measured unless it was actually measured.
 The Milestone 1 codebase is written and tested: a six-stage local pipeline
 (`amber process`) with pose and trainer backends behind interfaces, a
 conjunctive pose gate loaded from a frozen predeclaration, an archival scene
-format with safe pruning, and 206 passing tests. Milestone 0 — the measurement
-milestone — has begun on the target Mac. The trainer half of Gate A is proven and
-resolved a real design problem (ADR 0004). The pose half of Gate A has not run,
-and Gate B has not started, so no scene archive exists and no quality claim has
-been made.
+format with safe pruning, and 212 passing tests. Milestone 0 — the measurement
+milestone — is underway on the target Mac. Gate A part 1 (pose from the raw
+public control) is **complete and passed decisively**: 128 of 128 images
+registered, one connected model, 0.61 px mean reprojection error. The trainer
+half of Gate A is proven for its eval-split behavior (ADR 0004) but has not yet
+run a full-length training pass. Gate B has not started, so no scene archive
+exists yet and no quality claim has been made about a real capture.
 
 ---
 
@@ -32,7 +34,7 @@ Against the plan's twelve expected first deliverables:
 | --- | --- | --- |
 | 1 | `AGENTS.md` + non-divergent `CLAUDE.md` pointer | done |
 | 2 | `docs/m0-experiment-plan.md`, frozen, with split and effort bound | done |
-| 3 | `docs/feasibility-results.md` with pose coverage and storage tables | **partially filled** — §0 environment and tool pins done, control provenance done, §A4a probe done; §A1–A3 pose, §A4b full training, §A5 mobile and all Gate B tables still pending |
+| 3 | `docs/feasibility-results.md` with pose coverage and storage tables | **partially filled** — §0 environment, control provenance, §A1–A3 incremental-mapper pose (128/128, PASSED), and §A4a probe all done; global-mapper benchmark, §A4b full training, §A5 mobile, and all Gate B tables still pending |
 | 4 | `docs/decisions/README.md` | done |
 | 5 | `docs/decisions/0001-sfm-pipeline.md` | written, **Status: Proposed** by design |
 | 6 | M0 outcome ADR (proceed / re-scope / stop) | **blocked** — needs Gate A+B evidence |
@@ -43,7 +45,7 @@ Against the plan's twelve expected first deliverables:
 | 11 | Unit tests for manifest, stage state, split determinism/immutability, comparison intersections, subprocess parsing, prune safety, checksums | done — 177 unit tests |
 | 12 | Integration script incl. prune/regenerate | done — 29 integration tests + `scripts/integration_test.sh` |
 
-Code: ~6,000 lines under `amber/`, ~2,500 lines of tests. 7 commits on the branch.
+Code: ~6,000 lines under `amber/`, ~2,500 lines of tests. Commits accumulating on the branch as M0 evidence lands.
 
 ---
 
@@ -87,8 +89,33 @@ still-unmeasured storage multiplier.
 
 ## Gate A findings so far
 
-Four measurements exist, all from the Brush probe, recorded in ADR 0004 and
-transcribed into `docs/feasibility-results.md` §A4a.
+### Pose from raw control images (§A1–A3) — PASSED
+
+Incremental mapper, full 128-image set, single-camera:
+
+| Metric | Value |
+| --- | --- |
+| Registered | **128 / 128 (100%)** |
+| Connected models | **1** |
+| Mean reprojection error | **0.613 px** |
+| Sparse points | 84,907 |
+| Mean track length | 5.92 |
+| Feature extraction | 19.2 s (GPU SIFT) |
+| Exhaustive matching | 16.6 min (GPU SIFT, CPU-bound verification, 145% CPU) |
+| Incremental mapping | 2.1 min (487% CPU — bundle adjustment is heavily threaded) |
+
+Registration order was not sequential — the mapper picked its own starting pair
+(images #71, #74) and grew outward through ~16 rounds of retriangulation and
+global bundle adjustment. Peak RSS was not captured; a follow-up run should wrap
+the commands in `/usr/bin/time -l` to get it.
+
+The **global-mapper benchmark** (on a copied feature database, per §8.3) has not
+been run this session.
+
+### Brush eval-split probe (§A4a)
+
+Four measurements, all from a deliberately trivial 200-step run, recorded in
+ADR 0004 and transcribed into `docs/feasibility-results.md` §A4a.
 
 1. **Stride phase.** `--eval-split-every N` selects sorted-filename indices
    0, N, 2N, … The 128-image control proves it: the held-out set spans a
@@ -104,7 +131,8 @@ transcribed into `docs/feasibility-results.md` §A4a.
    typed `I/O error while constructing BrushVfs`. `--with-viewer` is opt-in.
 
 Timing data point: 200 steps, 128 images, 800 px → **9 s**. Not a budget; a
-single point from a deliberately trivial run.
+single point from a deliberately trivial run. A full-length training pass with
+memory watched (§A4b) has not been run.
 
 ---
 
@@ -112,10 +140,8 @@ single point from a deliberately trivial run.
 
 Being explicit, because code that has never run is not evidence:
 
-- **Gate A part 1** — COLMAP pose on the control's raw images. This is the pose
-  toolchain's only proof, and the pass condition (≥126 of 128 registered) is
-  what separates "your footage is bad" from "your install is bad".
-- **Gate A global-mapper benchmark** on a copied feature database.
+- **Gate A global-mapper benchmark** on a copied feature database — the
+  incremental-mapper result (§A1–A3) is in; the comparison point is not.
 - **Gate A full training run** — the 9 s probe was 200 steps at 800 px. No peak
   memory measured, so the 16 GB question is open.
 - **Gate A conversion and mobile check** — no `.sog` produced, no iPhone load
@@ -149,7 +175,7 @@ Bound: six sessions, three active hours each — two for Gate A, four for Gate B
 
 | Session | Gate | Work |
 | --- | --- | --- |
-| 1 | setup + A | Toolchain install begun; Brush installed and proven; control dataset acquired; eval-split probe run; ADR 0004 resolved and implemented |
+| 1 | setup + A | Toolchain fully installed and verified (`amber doctor` → Ready); control dataset acquired; Brush eval-split probe run and ADR 0004 resolved; incremental-mapper pose run on the control — **128/128 registered, PASSED** |
 
 Five sessions remain. At the bound, publish whatever exists and write the M0
 outcome ADR regardless of how tempting another parameter looks.
@@ -158,9 +184,8 @@ outcome ADR regardless of how tempting another parameter looks.
 
 ## Immediate next steps
 
-1. **Gate A part 1 — COLMAP pose on the control's raw images**, plus the
-   global-mapper benchmark on a copied database. Fill in §A1–A3. This is the
-   single item blocking everything downstream.
+1. Global-mapper benchmark on a copied feature database, for the P4 comparison
+   point against the incremental-mapper result already in §A1–A3.
 2. Full-length Brush run on the control with memory watched; fill in §A4b.
 3. Convert to `.sog`, open on Mac and iPhone, record §A5.
 4. Confirm whether `view_graph_calibrator` is present in this COLMAP build.

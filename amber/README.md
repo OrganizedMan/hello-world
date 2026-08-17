@@ -19,9 +19,10 @@ Full detail, including what has never been run, is in
 | Decision log | ADRs 0001–0004 — `docs/decisions/` |
 | `amber doctor` | working |
 | `amber process` golden path | implemented; needs the toolchain to run |
-| Unit + integration tests | 206 passing |
-| M0 Gate A trainer half | proven on the public control; resolved ADR 0004 |
-| M0 Gate A pose half | **not run** — needs COLMAP on the Mac |
+| Unit + integration tests | 212 passing |
+| M0 Gate A pose (incremental mapper) | **PASSED** — 128/128 registered on the public control |
+| M0 Gate A trainer eval-split behavior | proven on the public control; resolved ADR 0004 |
+| M0 Gate A full training + mobile check | not yet run |
 | M0 Gate B | **not started** — no iPhone captures yet |
 | A completed scene archive | **not produced** — needs COLMAP and Brush |
 | M0 outcome ADR (proceed/re-scope/stop) | blocked on those measurements |

@@ -83,9 +83,20 @@ def test_the_effort_bound_is_declared(thresholds: dict, plan_text: str):
     assert "six focused working sessions" in plan_text
 
 
-def test_the_plan_records_that_m0_has_not_run(plan_text: str):
-    """Guards against a future edit quietly claiming unmeasured results."""
-    assert "M0 has **not been executed**" in plan_text
+def test_the_plan_declares_its_execution_status(plan_text: str):
+    """Guards against a future edit quietly claiming unmeasured results.
+
+    The original form asserted the plan said "not been executed", which
+    stopped being true the moment Gate A part 1 passed. What must never
+    disappear is an explicit, checkable status statement in §1 — bold text
+    naming what has and has not run — so a reader is never left assuming.
+    """
+    section_1 = plan_text.split("## 1. Execution status", 1)[1].split("## 2.", 1)[0]
+    assert "**" in section_1, "§1 must state execution status in bold, not prose"
+    assert "not yet" in section_1 or "not been executed" in section_1, (
+        "§1 must be explicit about what remains unexecuted, even after partial "
+        "progress"
+    )
 
 
 def test_the_feasibility_report_declares_its_execution_status():

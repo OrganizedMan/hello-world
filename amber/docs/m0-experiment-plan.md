@@ -16,21 +16,23 @@ JSON matches the values quoted in this document.
 
 ## 1. Execution status
 
-M0 has **not been executed**. It requires the target hardware:
+**Gate A part 1 (pose from raw control images) is complete and passed: 128 of
+128 images registered, one connected model, mean reprojection error 0.61 px.**
+Gate A parts 2–5 and all of Gate B remain to be run:
 
 | Requirement | Needed for | Status |
 | --- | --- | --- |
-| Apple-silicon Mac, 16 GB (2025 MacBook Air) | every stage | not available in the build container |
-| FFmpeg / FFprobe | Gate A1, all decode | not installed |
-| COLMAP 4.x | Gate A3, Gate B pose | not installed |
-| Brush | Gate A4, Gate B training | not installed |
-| SplatTransform | Gate A5, delivery | not installed |
-| iPhone 16 Pro + Safari | Gate A5, Gate B viewer trial | not available |
+| Apple-silicon Mac, 16 GB (2025 MacBook Air) | every stage | **available** — `Jacks-Air` |
+| FFmpeg / FFprobe | Gate A1, all decode | **installed** — 9.0.1 |
+| COLMAP 4.x | Gate A3, Gate B pose | **installed and run** — 4.1.1, GPU SIFT confirmed |
+| Brush | Gate A4, Gate B training | **installed** — v0.3.0; eval-split probe run, full training not yet run |
+| SplatTransform | Gate A5, delivery | **installed** — via npm, not yet run |
+| iPhone 16 Pro + Safari | Gate A5, Gate B viewer trial | not yet used |
 | Two controlled iPhone captures | Gate B | not recorded |
 
-The tooling in this repository is written and unit-tested; `amber doctor`
-reports the above as missing rather than assuming them. Results tables in
-`docs/feasibility-results.md` are empty and must be filled by real runs.
+`amber doctor` reports **Ready to process**. Results tables in
+`docs/feasibility-results.md` are being filled from real runs as they happen;
+anything still marked _(pending)_ there has genuinely not been executed.
 
 ## 2. Public control (Gate A)
 
