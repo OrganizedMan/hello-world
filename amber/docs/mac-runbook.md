@@ -88,17 +88,46 @@ tar -xf brush-app-aarch64-apple-darwin.tar.xz
 ls                                   # confirm the extracted binary's name
 ```
 
-The archive is named `brush-app` but the project's own docs invoke `brush`, so
-check what actually landed before moving it. Then clear the macOS quarantine
-flag — without this, Gatekeeper refuses to run an unsigned download with "the
-developer cannot be verified":
+This is a `cargo-dist` release, so it unpacks into a folder rather than dropping
+a bare binary, and the executable inside is `brush_app` — underscore, not
+hyphen. Locate it rather than guessing:
 
 ```bash
-BRUSH_BIN=brush                      # or brush-app, per the ls above
-xattr -d com.apple.quarantine "$BRUSH_BIN" 2>/dev/null || true
-chmod +x "$BRUSH_BIN"
-sudo mv "$BRUSH_BIN" /usr/local/bin/brush
+find . -maxdepth 2 -type f -perm -u+x -name 'brush*'
+# → ./brush-app-aarch64-apple-darwin/brush_app
+```
+
+Install it as `brush`, which is the name Amber's backend looks for. Note that
+**`/usr/local/bin` does not exist on many Apple-silicon Macs** — Homebrew moved
+to `/opt/homebrew` — so create it first or `mv` fails with a confusing
+"No such file or directory" that appears to blame the source file:
+
+```bash
+sudo mkdir -p /usr/local/bin
+xattr -d com.apple.quarantine ./brush-app-aarch64-apple-darwin/brush_app 2>/dev/null || true
+chmod +x ./brush-app-aarch64-apple-darwin/brush_app
+sudo mv ./brush-app-aarch64-apple-darwin/brush_app /usr/local/bin/brush
 brush --help
+```
+
+`/usr/local/bin` is in `/etc/paths` by default, so it joins your PATH as soon as
+it exists. If you have Homebrew and would rather skip `sudo`, its bin directory
+is already yours to write to:
+
+```bash
+mv ./brush-app-aarch64-apple-darwin/brush_app "$(brew --prefix)/bin/brush"
+```
+
+The `xattr` line matters: without it Gatekeeper refuses an unsigned download
+with "the developer cannot be verified", which reads like a corrupt file rather
+than a permissions flag. If it still complains, `xattr -c "$(which brush)"`
+clears every attribute.
+
+Record the pin while you are here — a hash of the exact binary is a stronger
+pin than a version string:
+
+```bash
+shasum -a 256 "$(which brush)"
 ```
 
 Brush runs headless as a CLI; `--with-viewer` opens the UI alongside it.
