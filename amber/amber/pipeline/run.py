@@ -6,6 +6,7 @@ its artifacts or fails with a diagnostic naming the responsible stage.
 
 from __future__ import annotations
 
+import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -494,6 +495,7 @@ class Pipeline:
             )
             dataset = ColmapDataset(
                 image_dir=self.store.working_dir / "training-frames",
+                evaluation_image_dir=self.store.working_dir / "evaluation-frames",
                 sparse_model_dir=text_model,
                 training_frame_ids=list(split.training_frame_ids),
                 evaluation_frame_ids=list(split.evaluation_frame_ids),
@@ -522,7 +524,14 @@ class Pipeline:
                 tree_bytes(self.store.working_dir / "training-frames"),
                 [result.ply_path] if result.ply_path else [],
             )
-            self.state.complete("train", ply=str(result.ply_path))
+            self.state.complete(
+                "train",
+                ply=str(result.ply_path),
+                evaluation_render_dir=str(result.evaluation_render_dir)
+                if result.evaluation_render_dir
+                else None,
+                evaluation_rendered_ids=result.evaluation_rendered_ids,
+            )
             emit(
                 self.events,
                 "train",
@@ -546,6 +555,7 @@ class Pipeline:
             split = manifest.frame_config.as_split()
             render_dir = self.store.qa_dir / "evaluation-renders"
             render_dir.mkdir(parents=True, exist_ok=True)
+            self._import_trainer_renders(render_dir)
 
             metrics = evaluate_holdout(
                 render_dir,
@@ -662,6 +672,26 @@ class Pipeline:
         return manifest
 
     # -- shared -----------------------------------------------------------
+
+    def _import_trainer_renders(self, destination: Path) -> int:
+        """Copy the trainer's held-out renders into the scene's QA evidence.
+
+        The trainer writes them under its own working directory, which is
+        regenerable and prunable. QA evidence is archival, so the renders are
+        copied rather than referenced in place.
+        """
+        source = self.state.record("train").outputs.get("evaluation_render_dir")
+        if not source:
+            return 0
+        source_dir = Path(source)
+        if not source_dir.is_dir():
+            return 0
+        copied = 0
+        for render in sorted(source_dir.iterdir()):
+            if render.is_file():
+                shutil.copy2(render, destination / f"{render.stem}.png")
+                copied += 1
+        return copied
 
     def _fail(self, stage: str, exc: Exception) -> None:
         diagnostic = getattr(exc, "diagnostic", None)

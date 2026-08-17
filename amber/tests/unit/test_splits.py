@@ -96,9 +96,25 @@ def test_registered_interval_holds_out_every_eighth_frame():
     split = frames_mod.registered_interval_split(registered, SplitConfig.production())
 
     assert len(split.evaluation_frame_ids) == 10
-    assert split.evaluation_frame_ids[0] == "f007"
+    assert split.evaluation_frame_ids[0] == "f000"
     assert set(split.training_frame_ids).isdisjoint(split.evaluation_frame_ids)
     assert len(split.training_frame_ids) + len(split.evaluation_frame_ids) == 80
+
+
+def test_the_interval_holdout_starts_at_index_zero():
+    """Phase matters: it must match the trainer's stride selection (ADR 0004).
+
+    Brush's `--eval-split-every N` picks sorted indices 0, N, 2N, ..., so Amber
+    holding out indices 7, 15, ... would silently score the wrong frames.
+    """
+    registered = [
+        FrameRecord(id=f"f{i:03d}", index=i, timestamp=i / 4.0) for i in range(64)
+    ]
+    split = frames_mod.registered_interval_split(registered, SplitConfig.production())
+    ordered_ids = [f.id for f in registered]
+    positions = [ordered_ids.index(i) for i in split.evaluation_frame_ids]
+
+    assert positions == list(range(0, 64, 8))
 
 
 def test_small_captures_use_a_stratified_holdout_instead():

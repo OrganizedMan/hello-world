@@ -254,7 +254,13 @@ def registered_interval_split(
 
     interval = config.evaluation_interval or 8
     if len(ordered) >= MIN_REGISTERED_FOR_INTERVAL:
-        evaluation = ordered[interval - 1 :: interval]
+        # Offset 0, not interval-1. Brush's `--eval-split-every N` selects
+        # sorted-filename indices 0, N, 2N, ... (measured on the M0 control;
+        # see ADR 0004). Amber's frame IDs sort temporally, so aligning the
+        # offset makes the trainer's holdout identical to Amber's by
+        # construction rather than by a renaming scheme. Both are "every Nth
+        # frame by temporal order"; only the phase differs.
+        evaluation = ordered[::interval]
     else:
         holdout = max(
             MIN_HOLDOUT_VIEWS,

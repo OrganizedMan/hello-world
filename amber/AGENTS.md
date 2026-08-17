@@ -32,6 +32,10 @@ The long development plan is reference material; this file is standing context.
    **training images**. They are independent tiers.
 10. Keep evaluation RGB frames out of Gaussian supervision. Evaluation frames
     may participate in pose estimation; they may never supervise training.
+    Brush can only render an evaluation set it selected itself, so this is
+    enforced by aligning its stride selection to the locked split and verifying
+    the result both before and after training (ADR 0004) — not by hiding the
+    frames. Never downgrade either check to a warning.
 11. Never change the evaluation split of a scene that already has a training or
     metric artifact. A deliberate new split creates a new run/version and
     invalidates rather than overwrites prior metrics.
