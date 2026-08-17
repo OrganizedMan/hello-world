@@ -250,24 +250,37 @@ using data with a known-good answer.
 
 ### Get the control scene
 
-COLMAP's datasets live at <https://demuc.de/colmap/datasets/>. South Building is
-128 images of the "South" building at UNC Chapel Hill, provided by Christopher
-Zach. List the directory to get the exact filename rather than guessing it:
+South Building is 128 images of the "South" building at UNC Chapel Hill,
+provided by Christopher Zach. The archives are **published as assets of COLMAP
+release 3.11.1**; <https://demuc.de/colmap/datasets/> only links to them, so
+downloading from that host gets you a small HTML page rather than a zip:
 
 ```bash
 mkdir -p ~/amber-control && cd ~/amber-control
-curl -s https://demuc.de/colmap/datasets/ | grep -io 'href="[^"]*"'
+curl -L -O https://github.com/colmap/colmap/releases/download/3.11.1/south-building.zip
+ls -lh south-building.zip
 ```
 
-Then download whichever entry is South Building (conventionally
-`south-building.zip`):
+**Check the size before unzipping.** Expect hundreds of MB. A file of a few
+hundred *bytes* means you fetched a web page, and `unzip` will report
+"End-of-central-directory signature not found", which reads like a corrupt
+download rather than a wrong URL.
 
 ```bash
-curl -L -O https://demuc.de/colmap/datasets/south-building.zip
 unzip -q south-building.zip
-ls south-building
 find south-building -maxdepth 2 -type d
 ```
+
+If a URL ever 404s, list what the release actually carries:
+
+```bash
+curl -s https://api.github.com/repos/colmap/colmap/releases/tags/3.11.1 \
+| python3 -c "import sys,json;[print(a['name']) for a in json.load(sys.stdin).get('assets',[])]"
+```
+
+Note that `graham-hall` and `person-hall` are split multi-part archives
+(`.z01`, `.z02`, …) and need every part downloaded before extraction. South
+Building is a single file, which is one reason it is the chosen control.
 
 That `find` matters for the next two phases: note whether the archive ships a
 reference sparse reconstruction (a `sparse/` directory) alongside `images/`.
