@@ -6,7 +6,6 @@ __pycache__/
 build/
 dist/
 .amber-doctor/
-docs/doctor-report.json
 
 # Never commit personal footage or scene archives.
 *.MOV

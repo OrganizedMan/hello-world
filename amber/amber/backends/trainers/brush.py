@@ -30,7 +30,12 @@ from typing import Any, Iterable, Sequence
 from ...config import TrainConfig
 from ...events import EventSink, emit
 from ...models import AmberError
-from ...tools import ProcessRunner, SubprocessFailure, discover_tool
+from ...tools import (
+    ProcessRunner,
+    SubprocessFailure,
+    discover_tool,
+    resolve_version,
+)
 from ..poses.colmap_model import write_filtered_model
 from .base import BackendHealth, ColmapDataset, TrainResult
 
@@ -176,16 +181,8 @@ class BrushBackend:
         resolved = resolve_flags(flags)
         missing = [c for c in REQUIRED_CAPABILITIES if resolved.get(c) is None]
 
-        # `--help` opens with a banner, not a version, so ask separately. A
-        # banner recorded as a version would pin nothing (AGENTS.md rule 6).
-        version = info.version
-        try:
-            probe = self.runner.run([self.executable, "--version"], check=False)
-            reported = (probe.stdout or probe.stderr).strip().splitlines()
-            if reported and any(ch.isdigit() for ch in reported[0]):
-                version = reported[0].strip()
-        except OSError:  # pragma: no cover - defensive
-            pass
+        # `--help` opens with a banner, not a version, so ask separately.
+        version = resolve_version(self.runner, self.executable, info.version)
 
         return BackendHealth(
             name=self.name,

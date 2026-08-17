@@ -32,7 +32,7 @@ Against the plan's twelve expected first deliverables:
 | --- | --- | --- |
 | 1 | `AGENTS.md` + non-divergent `CLAUDE.md` pointer | done |
 | 2 | `docs/m0-experiment-plan.md`, frozen, with split and effort bound | done |
-| 3 | `docs/feasibility-results.md` with pose coverage and storage tables | **structure only — tables still empty** |
+| 3 | `docs/feasibility-results.md` with pose coverage and storage tables | **partially filled** — §0 environment and tool pins done, control provenance done, §A4a probe done; §A1–A3 pose, §A4b full training, §A5 mobile and all Gate B tables still pending |
 | 4 | `docs/decisions/README.md` | done |
 | 5 | `docs/decisions/0001-sfm-pipeline.md` | written, **Status: Proposed** by design |
 | 6 | M0 outcome ADR (proceed / re-scope / stop) | **blocked** — needs Gate A+B evidence |
@@ -72,23 +72,23 @@ Target: 2025 MacBook Air, 16 GB unified memory (`Jacks-Air`).
 | Control dataset | **downloaded** — COLMAP South Building, 400 MB, `images/` + `sparse/` in **text** format | extracted and used |
 | FFmpeg / FFprobe | **installed** 9.0.1 | `amber doctor` |
 | COLMAP | **installed** 4.1.1 (Homebrew `4.1.1_3`) | `amber doctor`; `global_mapper` present |
-| SplatTransform | **NOT FOUND** | `amber doctor` — blocks delivery derivatives only |
+| SplatTransform | **installed** via npm (node v20.20.2) | `amber doctor` |
 
-`amber doctor` reports **not ready**, with SplatTransform the sole missing tool.
-Versions above still need pinning into `docs/feasibility-results.md` §0.
+`amber doctor` reports **Ready to process**. Versions are pinned in
+`docs/feasibility-results.md` §0 and `docs/doctor-report.json`.
 
 Measured COLMAP detail worth carrying forward: this build reports
 `FeatureExtraction.max_image_size` with a default of **`-1`** (no limit), *not*
 the 3200 the development plan assumed. See experiment-plan amendment A1 and
-ADR 0001. Free space on the target machine at setup: **34.9 GB**, which is worth
-watching against the still-unmeasured storage multiplier.
+ADR 0001. Free space after the installs: **34.7 GB**, worth watching against the
+still-unmeasured storage multiplier.
 
 ---
 
 ## Gate A findings so far
 
-Four measurements exist, all from the Brush probe. **They are recorded in ADR
-0004 but have not yet been transcribed into `docs/feasibility-results.md` §A4.**
+Four measurements exist, all from the Brush probe, recorded in ADR 0004 and
+transcribed into `docs/feasibility-results.md` §A4a.
 
 1. **Stride phase.** `--eval-split-every N` selects sorted-filename indices
    0, N, 2N, … The 128-image control proves it: the held-out set spans a
@@ -158,17 +158,13 @@ outcome ADR regardless of how tempting another parameter looks.
 
 ## Immediate next steps
 
-1. `git pull` on the Mac, then finish the toolchain:
-   `brew install ffmpeg colmap` and the SplatTransform install.
-2. `./scripts/doctor.sh` to completion; commit `docs/doctor-report.json` and fill
-   in `docs/feasibility-results.md` §0. **Record COLMAP's `max_image_size`
-   option name and default** while doing it.
-3. Transcribe the four Gate A findings above into §A4.
-4. Run Gate A part 1 (COLMAP pose on the control) and the global-mapper
-   benchmark. Fill in §A1–A3. **This is the gate that currently blocks
-   everything else.**
-5. Full-length Brush run on the control with memory watched; fill in §A4.
-6. Convert to `.sog`, open on Mac and iPhone, record §A5.
-7. Only then record the two Gate B captures per `docs/capture-guide.md`.
+1. **Gate A part 1 — COLMAP pose on the control's raw images**, plus the
+   global-mapper benchmark on a copied database. Fill in §A1–A3. This is the
+   single item blocking everything downstream.
+2. Full-length Brush run on the control with memory watched; fill in §A4b.
+3. Convert to `.sog`, open on Mac and iPhone, record §A5.
+4. Confirm whether `view_graph_calibrator` is present in this COLMAP build.
+5. Pin SplatTransform's version string (its `--help` opens with a banner).
+6. Only then record the two Gate B captures per `docs/capture-guide.md`.
 
 `docs/mac-runbook.md` has the copy-paste commands for every step above.

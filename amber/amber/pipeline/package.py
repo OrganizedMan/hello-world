@@ -16,7 +16,7 @@ from typing import Any, Sequence
 from ..config import DELIVERY_PROFILES, DeliveryProfile
 from ..events import EventSink, emit
 from ..models import AmberError
-from ..tools import ProcessRunner, discover_tool
+from ..tools import ProcessRunner, discover_tool, resolve_version
 
 FLAG_PATTERN = re.compile(r"(--[a-z0-9][a-z0-9-]*)")
 
@@ -66,7 +66,7 @@ class SplatTransform:
         flags = set(FLAG_PATTERN.findall(info.raw_version_output or ""))
         return {
             "available": info.available,
-            "version": info.version,
+            "version": resolve_version(self.runner, self.executable, info.version),
             "executable": info.executable,
             "flags": sorted(flags),
             "sh_flag": next((f for f in SH_FLAG_CANDIDATES if f in flags), None),

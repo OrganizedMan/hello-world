@@ -88,9 +88,24 @@ def test_the_plan_records_that_m0_has_not_run(plan_text: str):
     assert "M0 has **not been executed**" in plan_text
 
 
-def test_the_feasibility_report_claims_no_unmeasured_results():
+def test_the_feasibility_report_declares_its_execution_status():
+    """Guards the honesty header, not a particular stage of progress.
+
+    The original form asserted the report said "not executed", which stopped
+    being true the moment Gate A produced its first real measurement. What must
+    never disappear is the explicit status and the rule-19 statement that an
+    unrun stage is reported as not run.
+    """
     text = (REPO_ROOT / "docs" / "feasibility-results.md").read_text(encoding="utf-8")
-    assert "**Status: not executed.**" in text
+    recognised = (
+        "**Status: not executed.**",
+        "**Status: in progress.**",
+        "**Status: complete.**",
+    )
+    assert any(marker in text for marker in recognised), (
+        "the feasibility report must state its execution status explicitly"
+    )
+    assert "never as an estimate" in text
 
 
 def test_the_thresholds_file_is_valid_json():

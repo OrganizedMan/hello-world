@@ -254,6 +254,27 @@ def discover_tool(
     )
 
 
+def resolve_version(
+    runner: "ProcessRunner", executable: str, fallback: str | None
+) -> str | None:
+    """Get a version string, preferring `--version` over a `--help` banner.
+
+    Several tools open their help with a product banner ("Brush - universal
+    splats", "Transform and Filter Gaussian Splats"). Recording that as the
+    version would pin nothing, so ask `--version` and accept the answer only if
+    it contains a digit (AGENTS.md rule 6).
+    """
+    try:
+        probe = runner.run([executable, "--version"], check=False)
+    except (OSError, ToolMissingError):  # pragma: no cover - defensive
+        return fallback
+    for line in ((probe.stdout or "") + "\n" + (probe.stderr or "")).splitlines():
+        line = line.strip()
+        if line and any(ch.isdigit() for ch in line):
+            return line
+    return fallback
+
+
 def _first_line(text: str) -> str | None:
     for line in text.splitlines():
         line = line.strip()
