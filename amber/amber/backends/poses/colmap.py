@@ -24,6 +24,38 @@ from .colmap_model import model_stats
 
 OPTION_PATTERN = re.compile(r"--([A-Za-z0-9_.]+)\s+arg(?:\s+\(=([^)]*)\))?")
 
+# COLMAP announces which SIFT implementation it created, and logs the actual
+# pixel dimensions it read per image. Both are measured facts the plan requires
+# recording rather than assuming (§8.2, §8.3).
+ACCELERATION_PATTERN = re.compile(
+    r"Creating SIFT (GPU|CPU) feature (extractor|matcher)", re.IGNORECASE
+)
+DIMENSIONS_PATTERN = re.compile(r"Dimensions:\s+(\d+)\s*x\s*(\d+)")
+
+
+def parse_acceleration(log_text: str) -> str | None:
+    """Report the SIFT implementation COLMAP actually created.
+
+    GPU SIFT on Apple silicon must never be assumed; this reads what the run
+    announced.
+    """
+    match = ACCELERATION_PATTERN.search(log_text)
+    return f"sift_{match.group(1).lower()}" if match else None
+
+
+def parse_effective_dimensions(log_text: str) -> tuple[int, int] | None:
+    """Largest image dimensions COLMAP reported reading.
+
+    This is the "effective image size" the plan insists on: what the extractor
+    saw, not what was requested.
+    """
+    sizes = [
+        (int(w), int(h)) for w, h in DIMENSIONS_PATTERN.findall(log_text)
+    ]
+    if not sizes:
+        return None
+    return max(sizes, key=lambda wh: max(wh))
+
 # Option names that have differed across COLMAP versions, most recent first.
 MAX_IMAGE_SIZE_OPTIONS = (
     "FeatureExtraction.max_image_size",
@@ -84,6 +116,7 @@ class ColmapPoseBackend:
         self.runner = runner or ProcessRunner()
         self.executable = executable
         self._commands: list[dict[str, Any]] = []
+        self._measured: dict[str, Any] = {}
 
     # -- layout -----------------------------------------------------------
 
@@ -269,10 +302,10 @@ class ColmapPoseBackend:
         for mask in masks:
             shutil.copy2(mask.path, self.mask_dir / f"{mask.frame_id}.png")
 
-    def _run(self, command: list[str], stage: str) -> float:
+    def _run(self, command: list[str], stage: str):
         result = self.runner.run(command)
         self._commands.append({"stage": stage, **result.to_dict()})
-        return result.duration_seconds
+        return result
 
     def _extract_features(
         self,
@@ -301,7 +334,15 @@ class ColmapPoseBackend:
         ]
         if use_masks:
             command += [f"--{MASK_PATH_OPTIONS[0]}", str(self.mask_dir)]
-        return self._run(command, "feature_extraction")
+
+        result = self._run(command, "feature_extraction")
+        log = f"{result.stdout}\n{result.stderr}"
+        self._measured["extraction_acceleration"] = parse_acceleration(log)
+        dimensions = parse_effective_dimensions(log)
+        if dimensions:
+            self._measured["effective_width"] = dimensions[0]
+            self._measured["effective_height"] = dimensions[1]
+        return result.duration_seconds
 
     def _match(
         self, config: PoseConfig, capabilities: dict[str, Any], events: EventSink
@@ -328,7 +369,11 @@ class ColmapPoseBackend:
                     "--SequentialMatching.vocab_tree_path",
                     config.vocab_tree_path,
                 ]
-        return self._run(command, "matching")
+        result = self._run(command, "matching")
+        self._measured["matching_acceleration"] = parse_acceleration(
+            f"{result.stdout}\n{result.stderr}"
+        )
+        return result.duration_seconds
 
     def _map(
         self, config: PoseConfig, capabilities: dict[str, Any], events: EventSink
@@ -353,7 +398,7 @@ class ColmapPoseBackend:
                         str(self.database_path),
                     ],
                     "view_graph_calibration",
-                )
+                ).duration_seconds
             emit(events, "poses", "info", "reconstructing (global mapper)")
             elapsed += self._run(
                 [
@@ -367,7 +412,7 @@ class ColmapPoseBackend:
                     str(self.sparse_dir),
                 ],
                 "global_mapping",
-            )
+            ).duration_seconds
         elif config.mapper_type == "incremental":
             emit(events, "poses", "info", "reconstructing (incremental mapper)")
             elapsed += self._run(
@@ -382,7 +427,7 @@ class ColmapPoseBackend:
                     str(self.sparse_dir),
                 ],
                 "incremental_mapping",
-            )
+            ).duration_seconds
         else:
             raise AmberError(f"unknown mapper type {config.mapper_type!r}")
         return elapsed
@@ -466,6 +511,12 @@ class ColmapPoseBackend:
                 "option": capabilities.get("max_image_size_option"),
                 "cli_default": capabilities.get("max_image_size_cli_default"),
                 "requested": config.max_image_size,
+                "effective_width": self._measured.get("effective_width"),
+                "effective_height": self._measured.get("effective_height"),
+                "extraction_acceleration": self._measured.get(
+                    "extraction_acceleration"
+                ),
+                "matching_acceleration": self._measured.get("matching_acceleration"),
             },
         )
         gap_seconds, gap_frames = temporal_gaps(frames, registered_ids)

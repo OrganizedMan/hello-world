@@ -62,13 +62,36 @@ Control scene: COLMAP South Building (see experiment plan §2).
 
 | Stage | Mapper | Registered / total | Connected models | Mean reproj. err. (px) | Wall clock | Peak RSS |
 | --- | --- | --- | --- | --- | --- | --- |
-| Feature extraction | — | — | — | — | _(pending)_ | _(pending)_ |
-| Matching | — | — | — | — | _(pending)_ | _(pending)_ |
+| Feature extraction | — | — | — | — | **19.2 s** (0.304 min by COLMAP's timer) | _(not captured)_ |
+| Matching (exhaustive) | — | — | — | — | **~13 min** — see note | _(not captured)_ |
 | Mapping | incremental | _(pending)_ | _(pending)_ | _(pending)_ | _(pending)_ | _(pending)_ |
 | Mapping | global | _(pending)_ | _(pending)_ | _(pending)_ | _(pending)_ | _(pending)_ |
 
-Effective feature-extraction image size (requested vs. what COLMAP saw):
-_(pending)_
+**Acceleration — measured, not assumed.** COLMAP announced
+`Creating SIFT GPU feature extractor` and `Creating SIFT GPU feature matcher`.
+GPU SIFT **is** available on this Apple-silicon build, which the plan explicitly
+told us not to assume either way. Amber now parses this from the run log and
+records it per-run (`effective_image_size.extraction_acceleration`).
+
+**Effective feature-extraction image size.** Requested: no limit
+(`FeatureExtraction.max_image_size` default `-1`). Effective: **3072 × 2304**,
+the full source resolution, confirmed from COLMAP's own per-image
+`Dimensions:` lines. Requested and effective agree here — which is exactly the
+check §8.2 demands and which amendment A1 predicted.
+
+**Other observations from the extraction pass.** Camera model defaulted to
+`SIMPLE_RADIAL` (Amber's provisional default is `OPENCV`); focal length came
+from an EXIF prior at 2484.86 px; feature counts ranged roughly
+8,200–15,000 per image; and this build reports a gravity prior per image
+(`Gravity: X=0.000, Y=1.000, Z=0.000`), a capability Amber does not currently
+use.
+
+**Note on the matching cost.** Exhaustive matching ran 9 blocks at 40–140 s
+each. This is the correct matcher for an unordered photo collection like the
+control, but it is **O(n²) and does not transfer to Amber's video path**, which
+uses `sequential_matcher` with loop detection. Do not derive a frame budget for
+iPhone captures from this number; measure sequential matching separately in
+Gate B.
 
 ### A4a — evaluation-split probe (ADR 0004)
 

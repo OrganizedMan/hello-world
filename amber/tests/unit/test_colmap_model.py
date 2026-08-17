@@ -189,3 +189,64 @@ def test_the_longest_gap_wins_when_there_are_several():
     _seconds, run = temporal_gaps(frames, registered)
 
     assert run == 4
+
+
+# --------------------------------------------------------------------------
+# measured facts parsed from a real COLMAP run
+# --------------------------------------------------------------------------
+
+REAL_EXTRACTION_LOG = """
+I20260817 09:22:21.190167 feature_extraction.cc:494] === Feature extraction ===
+I20260817 09:22:21.330794 sift.cc:757] Creating SIFT GPU feature extractor
+I20260817 09:22:22.180879 feature_extraction.cc:270] Processed file [1/128]
+I20260817 09:22:22.180908 feature_extraction.cc:273]   Name:            P1180141.JPG
+I20260817 09:22:22.180913 feature_extraction.cc:282]   Dimensions:      3072 x 2304
+I20260817 09:22:22.180927 feature_extraction.cc:289]   Focal Length:    2484.86px (Prior)
+I20260817 09:22:22.180935 feature_extraction.cc:294]   Features:        12728 (SIFT)
+"""
+
+REAL_MATCHING_LOG = """
+I20260817 09:22:39.935625 sift.cc:1559] Creating SIFT GPU feature matcher
+I20260817 09:24:38.457876 feature_matching.cc:217] in 118.502s
+"""
+
+
+def test_gpu_sift_is_detected_from_the_extraction_log():
+    """The plan forbids assuming GPU SIFT on Apple silicon; this measures it."""
+    from amber.backends.poses.colmap import parse_acceleration
+
+    assert parse_acceleration(REAL_EXTRACTION_LOG) == "sift_gpu"
+    assert parse_acceleration(REAL_MATCHING_LOG) == "sift_gpu"
+
+
+def test_cpu_sift_is_reported_as_cpu():
+    from amber.backends.poses.colmap import parse_acceleration
+
+    log = "sift.cc:757] Creating SIFT CPU feature extractor"
+    assert parse_acceleration(log) == "sift_cpu"
+
+
+def test_an_absent_acceleration_line_is_not_guessed():
+    from amber.backends.poses.colmap import parse_acceleration
+
+    assert parse_acceleration("nothing relevant here") is None
+
+
+def test_effective_dimensions_come_from_what_colmap_read():
+    """Requested size and effective size are different facts (§8.2)."""
+    from amber.backends.poses.colmap import parse_effective_dimensions
+
+    assert parse_effective_dimensions(REAL_EXTRACTION_LOG) == (3072, 2304)
+
+
+def test_the_largest_reported_dimensions_win():
+    from amber.backends.poses.colmap import parse_effective_dimensions
+
+    log = "Dimensions: 1600 x 1200\nDimensions: 3072 x 2304\nDimensions: 800 x 600"
+    assert parse_effective_dimensions(log) == (3072, 2304)
+
+
+def test_absent_dimensions_are_not_invented():
+    from amber.backends.poses.colmap import parse_effective_dimensions
+
+    assert parse_effective_dimensions("no dimensions logged") is None
