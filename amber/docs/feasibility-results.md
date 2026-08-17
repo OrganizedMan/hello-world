@@ -25,7 +25,7 @@ documentation.
 | --- | --- | --- | --- | --- |
 | FFmpeg | yes | 9.0.1 | Homebrew | n/a |
 | FFprobe | yes | 9.0.1 | Homebrew | n/a |
-| COLMAP | yes | 4.1.1 | Homebrew `4.1.1_3` | **unverified** — not asserted; do not assume GPU SIFT on Apple silicon |
+| COLMAP | yes | 4.1.1 | Homebrew `4.1.1_3` | **GPU SIFT confirmed** for both extractor and matcher — measured from the §A1 run log, not assumed |
 | Brush | yes | `brush-cli 0.3.0` | `brush-app-aarch64-apple-darwin`, cargo-dist release | **unverified** — WebGPU/Metal path not yet confirmed from a run |
 | SplatTransform | yes | `@playcanvas/splat-transform` via npm (node v20.20.2) | _(version string pending — its `--help` opens with a banner)_ | n/a |
 | SuperSplat viewer | yes | _(pending — not yet used)_ | _(pending)_ | n/a |

@@ -136,7 +136,7 @@ Being explicit, because code that has never run is not evidence:
 | Stratified comparison splits cannot be rendered | Known limitation. `stride_for_split` rejects them explicitly. Needs a renderer accepting arbitrary cameras; deferred (ADR 0004). An inconclusive comparison is an allowed M0 outcome. |
 | `min_registered_frames` floors (object 80, room 120) | **Labeled assumptions.** No comparable public control at that capture scale. The M0 outcome ADR confirms or revises them. |
 | COLMAP `max_image_size` option name and default | **Resolved.** `FeatureExtraction.max_image_size`, default `-1` (no limit) on COLMAP 4.1.1 — not the 3200 the plan assumed. Amendment A1; ADR 0001 updated. |
-| GPU/Metal acceleration for COLMAP and Brush | Both report `unverified`. Deliberately not asserted from documentation. |
+| GPU acceleration | **COLMAP resolved:** GPU SIFT confirmed for extractor and matcher, measured from the §A1 run log. **Brush still unverified** — no run has announced its backend. |
 | SplatTransform splat-count limit flag | Unverified. SH flag confirmed as `-H/--filter-harmonics`; the code warns rather than guessing if a limit flag is absent. |
 | Default retention profile (Complete vs Compact) | Cannot be chosen until Gate B storage numbers exist. |
 | Archive size range | Unmeasured. No promise may be made yet. |
