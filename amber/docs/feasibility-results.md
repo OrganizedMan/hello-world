@@ -184,23 +184,27 @@ wrapped in `/usr/bin/time -l`.**
 | Item | Value |
 | --- | --- |
 | Brush completed without exhausting 16 GB | **yes — passed with margin** |
-| Peak memory footprint (macOS `time -l`) | **5,702,945,720 B ≈ 5.31 GB** (~33% of 16 GB) |
-| Maximum resident set size (`getrusage`) | 1,970,110,464 B ≈ 1.83 GB — undercounts vs. footprint above; macOS RSS does not fully capture Metal/GPU-mapped memory, so peak footprint is the trustworthy figure |
-| Wall clock | **9965.76 s ≈ 166.1 min ≈ 2.77 h** |
-| CPU time | 4708.12 s user + 281.36 s sys ≈ 4989.5 s total (≈50% average utilization of wall clock — plausibly GPU/Metal-bound rather than CPU-bound during much of the run) |
-| Checkpoints exported | 6: steps 5000, 10000, 15000, 20000, 25000, 30000 |
-| Evaluation renders produced | 480 = 30 eval passes × 16 held-out views — consistent with default `--eval-every 1000` over 30,000 steps and `--eval-split-every 8` on 128 images, confirming A4a's stride finding at full scale |
+| Peak memory footprint (macOS `time -l`) | **5,702,945,720 B = 5.31 GiB** (~33% of the machine's 16 GiB) |
+| Maximum resident set size (`getrusage`) | 1,970,110,464 B = 1.83 GiB — undercounts vs. footprint above; macOS `phys_footprint` (what Activity Monitor calls "Memory") includes GPU/IOKit-mapped and compressed pages that RSS does not, so peak footprint is the figure to judge against 16 GiB |
+| Wall clock | **9965.76 s = 166.1 min = 2.77 h** |
+| CPU time | 4708.12 s user + 281.36 s sys = 4989.5 s total (≈50% average utilization of wall clock — plausibly GPU/Metal-bound rather than CPU-bound during much of the run) |
+| Checkpoints exported | 6: steps 5000, 10000, 15000, 20000, 25000, 30000 — consistent with the documented `--export-every` default of 5000 over 30,000 steps |
+| Evaluation renders produced | **480 (observed).** The decomposition is **not determined** by this number alone: 30 passes × 16 views, 15 × 32, and 60 × 8 are all reachable from documented `--eval-every` / `--eval-split-every` combinations. Defaults make 30 × 16 the most likely, but that is an inference, not a measurement, and it is **not** independent corroboration of A4a's stride finding. Resolve by recording the command below. |
 | Output directory size | 2.3 GB total (6 PLYs + 480 renders) |
 | Output PLY loads | not yet independently verified — deferred to §A5 (open in SuperSplat) |
 | Output PLY sha256 | _(pending — record `shasum -a 256 export_30000.ply`)_ |
 | Exact command | _(pending — record verbatim per AGENTS.md rule 6; only the `time -l` report and file listing were captured for this entry)_ |
 
-**Gate A memory criterion: PASSED, decisively.** 5.3 GB peak leaves roughly
-10.7 GB of headroom on the 16 GB machine, even without yet trying the
+**Gate A memory criterion: PASSED, decisively.** 5.31 GiB peak leaves roughly
+10.7 GiB of headroom on the 16 GiB machine, even without yet trying the
 "beautiful" profile's higher resolution/step counts. This is the exit
 criterion "Brush produces a loadable PLY from the reference COLMAP model
 without exhausting 16 GB unified memory" — memory is settled; "loadable" is
 confirmed once §A5 opens the PLY in a real viewer.
+
+The memory and timing figures above come straight from `time -l` and stand on
+their own regardless of which flags were used. The *interpretation* of the
+render count does not — see that row.
 
 **Low IPC / CPU utilization is the notable open question**, not a red flag by
 itself: instructions retired (9.77 trillion) over cycles elapsed

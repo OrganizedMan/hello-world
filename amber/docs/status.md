@@ -140,11 +140,11 @@ single point from a deliberately trivial run.
 
 | Metric | Value |
 | --- | --- |
-| Peak memory footprint | **5.31 GB** of 16 GB (~33%) |
+| Peak memory footprint | **5.31 GiB** of 16 GiB (~33%) |
 | Wall clock | 2.77 h (9965.76 s) |
 | CPU utilization | ~50% of wall clock — plausibly GPU/Metal-bound |
 | Checkpoints | 6 (steps 5000–30000) |
-| Evaluation renders | 480 = 30 eval passes × 16 held-out views, confirming the A4a stride finding at full scale |
+| Evaluation renders | 480 observed; the pass × view decomposition is ambiguous (30×16, 15×32, 60×8 all fit) and is **not** corroboration of A4a until the command is recorded |
 
 The exact command (resolution, splat cap) used for this run is **not yet
 recorded verbatim** — only the `time -l` report and output listing were
