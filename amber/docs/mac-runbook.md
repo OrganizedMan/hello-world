@@ -248,18 +248,36 @@ running anything else; it is the pin for everything that follows.
 The point of Gate A is to separate *your* problems from *the tools'* problems
 using data with a known-good answer.
 
-### Get the control scene — **VERIFY**
+### Get the control scene
 
-Get the South Building dataset URL from
-<https://colmap.github.io/datasets.html>:
+COLMAP's datasets live at <https://demuc.de/colmap/datasets/>. South Building is
+128 images of the "South" building at UNC Chapel Hill, provided by Christopher
+Zach. List the directory to get the exact filename rather than guessing it:
 
 ```bash
 mkdir -p ~/amber-control && cd ~/amber-control
-# substitute the real URL from the datasets page:
+curl -s https://demuc.de/colmap/datasets/ | grep -io 'href="[^"]*"'
+```
+
+Then download whichever entry is South Building (conventionally
+`south-building.zip`):
+
+```bash
 curl -L -O https://demuc.de/colmap/datasets/south-building.zip
 unzip -q south-building.zip
 ls south-building
+find south-building -maxdepth 2 -type d
 ```
+
+That `find` matters for the next two phases: note whether the archive ships a
+reference sparse reconstruction (a `sparse/` directory) alongside `images/`.
+Phase 4 trains from that reference model, and without it you cannot separate a
+trainer failure from a pose failure.
+
+The COLMAP docs carry no formal license for these datasets, only the attribution
+above. **Record the retrieval URL, the date, and that attribution in
+`docs/feasibility-results.md` before using the data**, and note the absence of an
+explicit license rather than assuming one.
 
 **Record the license and the retrieval URL and date in
 `docs/feasibility-results.md` before using the data.** Do not skip this — the

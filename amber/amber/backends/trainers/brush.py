@@ -37,7 +37,13 @@ FLAG_CANDIDATES: dict[str, tuple[str, ...]] = {
     "total_steps": ("--total-steps", "--steps", "--iterations"),
     "sh_degree": ("--sh-degree", "--sh"),
     "max_splats": ("--max-splats", "--max-gaussians", "--cap-max"),
-    "eval_split": ("--eval-split-every", "--eval-every"),
+    # Brush selects its evaluation set by stride and can only render the set it
+    # chose itself; there is no render-from-given-cameras command. See ADR 0004
+    # for how held-out rendering will be reconciled with Amber's locked split.
+    # Detected here so `amber doctor` surfaces them; not yet used.
+    "eval_split": ("--eval-split-every",),
+    "eval_save_to_disk": ("--eval-save-to-disk",),
+    "export_name": ("--export-name",),
 }
 
 REQUIRED_CAPABILITIES = ("output",)
