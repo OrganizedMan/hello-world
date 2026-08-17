@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+build/
+dist/
+.amber-doctor/
+docs/doctor-report.json
+
+# Never commit personal footage or scene archives.
+*.MOV
+*.mov
+*.mp4
+*.ply
+*.sog
+Amber Memories/
