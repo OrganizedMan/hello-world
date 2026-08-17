@@ -75,43 +75,125 @@ ffprobe -version | head -1
 colmap help
 ```
 
-### Brush — **VERIFY**
+### Brush
 
-Not in Homebrew. Check <https://github.com/ArthurBrussee/brush> for a
-prebuilt Apple-silicon release first; if there is one, download it and put the
-binary on your PATH:
+Not in Homebrew, but it **does** ship an Apple-silicon binary. As of v0.3.0 the
+release asset is `brush-app-aarch64-apple-darwin.tar.xz` — note `.tar.xz`, not
+`.tar.gz`.
 
 ```bash
-# after downloading and unpacking the release
-sudo mv brush /usr/local/bin/
-chmod +x /usr/local/bin/brush
+cd ~/Downloads
+curl -L -O https://github.com/ArthurBrussee/brush/releases/latest/download/brush-app-aarch64-apple-darwin.tar.xz
+tar -xf brush-app-aarch64-apple-darwin.tar.xz
+ls                                   # confirm the extracted binary's name
+```
+
+The archive is named `brush-app` but the project's own docs invoke `brush`, so
+check what actually landed before moving it. Then clear the macOS quarantine
+flag — without this, Gatekeeper refuses to run an unsigned download with "the
+developer cannot be verified":
+
+```bash
+BRUSH_BIN=brush                      # or brush-app, per the ls above
+xattr -d com.apple.quarantine "$BRUSH_BIN" 2>/dev/null || true
+chmod +x "$BRUSH_BIN"
+sudo mv "$BRUSH_BIN" /usr/local/bin/brush
 brush --help
 ```
 
-If there is no release binary, build from source (needs Rust):
+Brush runs headless as a CLI; `--with-viewer` opens the UI alongside it.
+
+**Save the `brush --help` output.** Amber discovers Brush's flags rather than
+assuming them, so if the real names differ from the candidates in
+`amber/backends/trainers/brush.py`, that text is what you need to correct them.
+
+#### If the download 404s
+
+The asset name may have changed in a later release. Ask GitHub directly rather
+than hunting through the releases page:
+
+```bash
+curl -s https://api.github.com/repos/ArthurBrussee/brush/releases/latest \
+| python3 -c "import sys,json;d=json.load(sys.stdin);print('tag:',d.get('tag_name','NONE'));[print('  ',a['name']) for a in d.get('assets',[])]"
+```
+
+Confirm your own architecture too — `arm64` means Apple silicon:
+
+```bash
+uname -m
+```
+
+#### Reading the asset names
+
+Rust binaries are named by target triple, `architecture-vendor-os`:
+
+| In the filename | Meaning | Want it? |
+| --- | --- | --- |
+| `aarch64-apple-darwin` | Apple silicon Mac | **yes** |
+| `arm64` + `macos`/`darwin` | same, informal naming | **yes** |
+| `universal` / `universal2` | Intel **and** Apple silicon | yes |
+| `x86_64-apple-darwin` | Intel Mac | no — wrong chip |
+| `unknown-linux-gnu`, `pc-windows-msvc` | Linux, Windows | no |
+| `Source code (zip)` / `(tar.gz)` | GitHub adds these to *every* release | **no — not a binary** |
+
+That last row is the common trap: those two entries exist on every GitHub
+release whether or not the project ships binaries, so their presence tells you
+nothing.
+
+#### If a matching binary exists
+
+macOS quarantines downloaded binaries and Gatekeeper will refuse to run them
+("the developer cannot be verified"). Strip the flag:
+
+```bash
+cd ~/Downloads
+tar -xzf brush-*.tar.gz          # or: unzip brush-*.zip
+xattr -d com.apple.quarantine brush 2>/dev/null || true
+chmod +x brush
+sudo mv brush /usr/local/bin/
+brush --help
+```
+
+#### If there is no matching binary
+
+This is the likely outcome and it is not a problem. Build from source:
 
 ```bash
 brew install rust
 git clone https://github.com/ArthurBrussee/brush.git ~/Developer/brush
-cd ~/Developer/brush && cargo build --release
+cd ~/Developer/brush
+cargo build --release
 sudo cp target/release/brush /usr/local/bin/
+brush --help
 cd ~/Developer/hello-world/amber
 ```
+
+The first `cargo build --release` compiles every dependency and takes a while.
+Warnings are expected; you want `Finished` at the end and no `error:` lines.
 
 **Save the output of `brush --help` somewhere.** Amber discovers Brush's flags
 rather than assuming them, and if the flag names differ from the candidates in
 `amber/backends/trainers/brush.py`, that help text is what you need to fix it.
 
-### SplatTransform — **VERIFY**
+### SplatTransform
 
-An npm package from PlayCanvas. Check
-<https://github.com/playcanvas/splat-transform> for the published name:
+Confirmed published as `@playcanvas/splat-transform`:
 
 ```bash
 brew install node
 npm install -g @playcanvas/splat-transform
 splat-transform --help
 ```
+
+Usage is `splat-transform input [actions] output [actions]`, and the output
+format follows the output file's extension — so `scene.sog` produces SOG with no
+format flag needed.
+
+The spherical-harmonic control is `-H, --filter-harmonics <0|1|2|3>`, which
+removes SH bands above *n*. That is equivalent to setting the delivery SH
+degree, and it is what Amber's delivery profiles use: `mobile-sh0` passes 0,
+`mobile-sh2` passes 2. Milestone 2 measures which one to default to on your
+actual iPhone.
 
 ### Checkpoint
 

@@ -20,7 +20,15 @@ from ..tools import ProcessRunner, discover_tool
 
 FLAG_PATTERN = re.compile(r"(--[a-z0-9][a-z0-9-]*)")
 
-SH_FLAG_CANDIDATES = ("--harmonic-degree", "--sh-degree", "--shN")
+# Verified against playcanvas/splat-transform: `-H, --filter-harmonics <0|1|2|3>`
+# removes SH bands above n, which is equivalent to setting the delivery SH
+# degree. The older guesses are kept as fallbacks for other builds.
+SH_FLAG_CANDIDATES = (
+    "--filter-harmonics",
+    "--harmonic-degree",
+    "--sh-degree",
+    "--shN",
+)
 SPLAT_LIMIT_FLAG_CANDIDATES = ("--max-splats", "--limit")
 
 
