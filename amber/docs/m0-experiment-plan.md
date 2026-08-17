@@ -216,4 +216,24 @@ comparisons they invalidate.
 
 ### Amendment log
 
-_(none)_
+**A1 — 2026-08-17 — COLMAP's feature-extraction size default is not 3200.**
+
+Measured on the target Mac: COLMAP **4.1.1** (Homebrew `4.1.1_3`) reports
+`FeatureExtraction.max_image_size` with a CLI default of **`-1`**, meaning no
+limit. §6's P2 row is therefore mislabeled: 3200 is *not* "current CLI default"
+on this build, and the development plan's §8.2 premise — that a 4K input is
+already reduced internally unless the limit is raised — does not hold here.
+
+What changes: the *rationale* for the P1–P3 resolution sweep. It is no longer
+"discover and defeat a silent downscale" but "measure whether downscaling pose
+images helps or hurts, given that the default is full resolution."
+
+What does not change: the three configurations themselves (1600 / 3200 / source
+long edge) remain as predeclared, and every gate threshold is untouched.
+
+**Comparisons invalidated: none.** No pose configuration had been run when this
+was measured.
+
+Amber still records the option name, the CLI-reported default, the requested
+value, and the effective dimensions for every run, so this correction is visible
+per-run rather than only here.

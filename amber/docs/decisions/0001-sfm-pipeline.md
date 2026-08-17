@@ -16,9 +16,17 @@ Four choices interact and must not be conflated in a comparison:
 1. feature extractor (SIFT vs. COLMAP-native ALIKED);
 2. matcher (sequential + loop detection vs. LightGlue via ONNX);
 3. mapper (incremental `mapper` vs. built-in `global_mapper`);
-4. pose image resolution — and critically, the *effective* resolution, since
-   COLMAP 4.x reports `FeatureExtraction.max_image_size=3200`, so a 4K input is
-   silently reduced unless that limit is raised.
+4. pose image resolution — and critically, the *effective* resolution rather
+   than the requested one.
+
+On point 4, the development plan warned that COLMAP 4.x defaults
+`FeatureExtraction.max_image_size` to 3200 and therefore silently downscales 4K
+input. **Measured on the target Mac, COLMAP 4.1.1 reports that default as `-1`
+(no limit)**, so the premise does not hold on this build — see experiment-plan
+amendment A1. The lesson generalises rather than disappearing: the default moved
+between versions, which is exactly why every run records the option name, the
+CLI-reported default, the requested value, and the effective dimensions instead
+of trusting any documented figure.
 
 ## Decision
 
@@ -45,7 +53,7 @@ Interim defaults shipped in code, marked provisional:
 | Matcher | `sequential_matcher` + loop detection | Correct prior for video; loop detection recovers revisits |
 | Mapper | `mapper` (incremental) | COLMAP documents it as most robust and well-tested |
 | Camera model | `OPENCV` | Permits radial distortion; a pinhole assumption is wrong for a phone lens |
-| Pose long edge | source, with `max_image_size` raised to match | Prevents a silent internal downscale; benchmarked in P1–P3 |
+| Pose long edge | source | COLMAP 4.1.1 already defaults to no limit; benchmarked in P1–P3 |
 | Training long edge | 1600 | Fits the 16 GB budget; independent of the pose tier |
 
 ## Alternatives

@@ -175,10 +175,22 @@ class BrushBackend:
         flags = parse_flags(help_text)
         resolved = resolve_flags(flags)
         missing = [c for c in REQUIRED_CAPABILITIES if resolved.get(c) is None]
+
+        # `--help` opens with a banner, not a version, so ask separately. A
+        # banner recorded as a version would pin nothing (AGENTS.md rule 6).
+        version = info.version
+        try:
+            probe = self.runner.run([self.executable, "--version"], check=False)
+            reported = (probe.stdout or probe.stderr).strip().splitlines()
+            if reported and any(ch.isdigit() for ch in reported[0]):
+                version = reported[0].strip()
+        except OSError:  # pragma: no cover - defensive
+            pass
+
         return BackendHealth(
             name=self.name,
             available=True,
-            version=info.version,
+            version=version,
             executable=info.executable,
             capabilities={
                 "flags": sorted(flags),

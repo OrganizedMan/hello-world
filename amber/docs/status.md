@@ -70,13 +70,18 @@ Target: 2025 MacBook Air, 16 GB unified memory (`Jacks-Air`).
 | --- | --- | --- |
 | Brush | **installed and proven** v0.3.0 (`brush-app-aarch64-apple-darwin`, cargo-dist) | trained the public control; headless CLI confirmed |
 | Control dataset | **downloaded** — COLMAP South Building, 400 MB, `images/` + `sparse/` in **text** format | extracted and used |
-| FFmpeg / FFprobe | not confirmed | `brew install ffmpeg` not yet verified |
-| COLMAP | not confirmed | `brew install colmap` not yet verified |
-| SplatTransform | not confirmed | package name verified as `@playcanvas/splat-transform`; install not verified |
+| FFmpeg / FFprobe | **installed** 9.0.1 | `amber doctor` |
+| COLMAP | **installed** 4.1.1 (Homebrew `4.1.1_3`) | `amber doctor`; `global_mapper` present |
+| SplatTransform | **NOT FOUND** | `amber doctor` — blocks delivery derivatives only |
 
-`./scripts/doctor.sh` has not yet been run to completion, so no
-`docs/doctor-report.json` exists and no versions have been pinned in
-`docs/feasibility-results.md` §0.
+`amber doctor` reports **not ready**, with SplatTransform the sole missing tool.
+Versions above still need pinning into `docs/feasibility-results.md` §0.
+
+Measured COLMAP detail worth carrying forward: this build reports
+`FeatureExtraction.max_image_size` with a default of **`-1`** (no limit), *not*
+the 3200 the development plan assumed. See experiment-plan amendment A1 and
+ADR 0001. Free space on the target machine at setup: **34.9 GB**, which is worth
+watching against the still-unmeasured storage multiplier.
 
 ---
 
@@ -130,7 +135,7 @@ Being explicit, because code that has never run is not evidence:
 | --- | --- |
 | Stratified comparison splits cannot be rendered | Known limitation. `stride_for_split` rejects them explicitly. Needs a renderer accepting arbitrary cameras; deferred (ADR 0004). An inconclusive comparison is an allowed M0 outcome. |
 | `min_registered_frames` floors (object 80, room 120) | **Labeled assumptions.** No comparable public control at that capture scale. The M0 outcome ADR confirms or revises them. |
-| COLMAP `max_image_size` option name and default on this machine | Unrecorded. Matters because a 4K input is silently downscaled unless raised. |
+| COLMAP `max_image_size` option name and default | **Resolved.** `FeatureExtraction.max_image_size`, default `-1` (no limit) on COLMAP 4.1.1 — not the 3200 the plan assumed. Amendment A1; ADR 0001 updated. |
 | GPU/Metal acceleration for COLMAP and Brush | Both report `unverified`. Deliberately not asserted from documentation. |
 | SplatTransform splat-count limit flag | Unverified. SH flag confirmed as `-H/--filter-harmonics`; the code warns rather than guessing if a limit flag is absent. |
 | Default retention profile (Complete vs Compact) | Cannot be chosen until Gate B storage numbers exist. |
