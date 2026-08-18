@@ -109,9 +109,33 @@ def test_extracted_mesh_endpoint_returns_nonempty_geometry():
     r = client.get("/api/family-room/mesh?source=extracted")
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"LIVING_ROOM.EAST", "LIVING_ROOM.SOUTH"}
+    # The extracted source additionally carries the kitchen island (a
+    # second, independent extraction technique) alongside the two walls.
+    assert set(body) == {"LIVING_ROOM.EAST", "LIVING_ROOM.SOUTH", "KITCHEN.ISLAND"}
 
 
 def test_unknown_source_is_400():
     r = client.get("/api/family-room?source=bogus")
     assert r.status_code == 400
+
+
+def test_extracted_source_includes_kitchen_island_fixture():
+    r = client.get("/api/family-room?source=extracted")
+    body = r.json()
+    assert "fixtures" in body
+    island = body["fixtures"][0]
+    assert island["id"] == "KITCHEN.ISLAND"
+    assert island["width"]["display"] == "8'-7\""
+    assert island["depth"]["display"] == "4'-3\""
+    assert island["provenance_state"] == "PROPOSED"
+    assert island["match_quality"]["width_error_in"] < 1.0
+
+
+def test_hand_traced_source_has_no_fixtures_key():
+    body = client.get("/api/family-room?source=hand_traced").json()
+    assert "fixtures" not in body
+
+
+def test_hand_traced_mesh_has_no_kitchen_island():
+    body = client.get("/api/family-room/mesh?source=hand_traced").json()
+    assert "KITCHEN.ISLAND" not in body

@@ -21,16 +21,27 @@ from fastapi.responses import Response
 from fixtures_garrigan import (
     build_family_room,
     build_family_room_from_extraction,
+    build_kitchen_island_from_extraction,
     diagnose_extracted_family_room,
     diagnose_family_room,
     tv_wall_interval,
 )
-from geometry import build_wall_solid, compute_geometry_hash
+from geometry import build_cabinetry_solid, build_wall_solid, compute_geometry_hash, nm_to_m
 from ingest import PyMuPdfBackend, detect_tier
+from units import NM_PER_FOOT
 from validate import run_validation
 
 from .repo_paths import FIXTURE_SOURCE_DIR
-from .serialize import wall_to_dict
+from .serialize import cabinetry_to_dict, wall_to_dict
+
+# The kitchen island isn't yet registered into the family room's
+# coordinate frame (plan §5.1's SheetCS -> RegionCS -> ProjectCS chain
+# isn't built in Sprint 1) — see fixtures_garrigan.kitchen_island's module
+# docstring. This offset is a display-only placement, applied here at the
+# API boundary so it renders beside rather than inside the room, without
+# pretending the island's own local coordinates mean anything relative to
+# the walls.
+_ISLAND_DISPLAY_OFFSET_M = (nm_to_m(2 * NM_PER_FOOT), nm_to_m(-8 * NM_PER_FOOT), 0.0)
 
 app = FastAPI(title="PDF-to-3D Stage 0 API")
 
@@ -63,6 +74,12 @@ def _solids(source: str, room):
     if key not in _cache:
         _cache[key] = {w.id: build_wall_solid(w) for w in room.walls}
     return _cache[key]
+
+
+def _island():
+    if "island" not in _cache:
+        _cache["island"] = build_kitchen_island_from_extraction()
+    return _cache["island"]
 
 
 @app.get("/api/health")
@@ -115,6 +132,19 @@ def family_room(source: str = "hand_traced"):
             for m in room.matches
         ]
 
+        # The kitchen island: a second, independent extraction technique
+        # (poché footprint measurement, not dimension-chain matching —
+        # see fixtures_garrigan.kitchen_island). Not registered to the
+        # room's coordinate frame yet (see module docstring), so it's
+        # listed as its own fixture rather than folded into `walls`.
+        island = _island()
+        fixture_dict = cabinetry_to_dict(island.cabinetry)
+        fixture_dict["match_quality"] = {
+            "width_error_in": round(island.footprint_match.width_error_in, 3),
+            "depth_error_in": round(island.footprint_match.depth_error_in, 3),
+        }
+        result["fixtures"] = [fixture_dict]
+
     return result
 
 
@@ -129,6 +159,16 @@ def family_room_mesh(source: str = "hand_traced"):
             "vertices": mesh.vert_properties.tolist(),
             "triangles": mesh.tri_verts.tolist(),
         }
+
+    if source == "extracted":
+        island = _island()
+        island_solid = build_cabinetry_solid(island.cabinetry).translate(_ISLAND_DISPLAY_OFFSET_M)
+        island_mesh = island_solid.to_mesh()
+        result[island.cabinetry.id] = {
+            "vertices": island_mesh.vert_properties.tolist(),
+            "triangles": island_mesh.tri_verts.tolist(),
+        }
+
     return result
 
 

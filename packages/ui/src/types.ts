@@ -56,6 +56,18 @@ export interface DimensionMatchInfo {
   error_in: number
 }
 
+export interface FixtureInfo {
+  id: string
+  level_id: string
+  kind: string
+  label: string
+  width: NmField
+  depth: NmField
+  height: NmField
+  provenance_state: string
+  match_quality?: { width_error_in: number; depth_error_in: number }
+}
+
 export interface FamilyRoomResponse {
   source: FamilyRoomSource
   walls: WallSegment[]
@@ -63,6 +75,7 @@ export interface FamilyRoomResponse {
   validation: ValidationReport
   geometry_hash: string
   dimension_matches?: DimensionMatchInfo[]
+  fixtures?: FixtureInfo[]
 }
 
 export interface MeshData {

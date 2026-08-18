@@ -1,4 +1,4 @@
-import type { DimensionMatchInfo, WallSegment } from '../types'
+import type { DimensionMatchInfo, FixtureInfo, WallSegment } from '../types'
 
 // The pane where the reported family-room failure would have been caught
 // in five seconds (plan §11): each wall's openings, in order, with the
@@ -9,10 +9,12 @@ export function WallInspector({
   walls,
   tvInterval,
   dimensionMatches,
+  fixtures,
 }: {
   walls: WallSegment[]
   tvInterval: { wall_id: string; t_start_nm: number; t_end_nm: number }
   dimensionMatches?: DimensionMatchInfo[]
+  fixtures?: FixtureInfo[]
 }) {
   return (
     <div className="panel wall-inspector" data-testid="wall-inspector">
@@ -45,6 +47,30 @@ export function WallInspector({
           )}
         </div>
       ))}
+      {fixtures && fixtures.length > 0 && (
+        <div className="fixtures-block" data-testid="fixtures-block">
+          <h3>Fixtures</h3>
+          {fixtures.map((f) => (
+            <div key={f.id} className="wall-block">
+              <h4>
+                {f.label}{' '}
+                <span className={`provenance-badge provenance-${f.provenance_state.toLowerCase()}`}>
+                  {f.provenance_state}
+                </span>
+              </h4>
+              <p className="wall-meta">
+                {f.kind} · {f.width.display} × {f.depth.display} × {f.height.display} high
+              </p>
+              {f.match_quality && (
+                <p className="wall-meta">
+                  extraction match: width {f.match_quality.width_error_in.toFixed(3)}&quot;, depth{' '}
+                  {f.match_quality.depth_error_in.toFixed(3)}&quot; from the labelled dimensions
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {dimensionMatches && dimensionMatches.length > 0 && (
         <div className="match-quality" data-testid="match-quality">
           <h3>Extraction match quality</h3>

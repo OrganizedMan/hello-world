@@ -5,7 +5,7 @@ wants to see (readable ft-in strings alongside raw nm, enum names, etc).
 """
 from __future__ import annotations
 
-from core_schema import UNKNOWN, Opening, WallSegment
+from core_schema import UNKNOWN, FixedCabinetry, Opening, WallSegment
 from units import nm_to_ft_in
 
 
@@ -27,6 +27,21 @@ def opening_to_dict(o: Opening) -> dict:
         "connects": list(o.connects) if o.connects else None,
         "annotation": o.annotation,
         "provenance_state": o.prov.state.value,
+    }
+
+
+def cabinetry_to_dict(c: FixedCabinetry) -> dict:
+    xs = [p.x_nm for p in c.footprint]
+    ys = [p.y_nm for p in c.footprint]
+    return {
+        "id": c.id,
+        "level_id": c.level_id,
+        "kind": c.kind,
+        "label": c.label,
+        "width": _nm_field(max(xs) - min(xs)),
+        "depth": _nm_field(max(ys) - min(ys)),
+        "height": _nm_field(c.height_nm),
+        "provenance_state": c.prov.state.value,
     }
 
 

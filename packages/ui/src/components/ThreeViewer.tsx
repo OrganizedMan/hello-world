@@ -16,6 +16,12 @@ import type { FamilyRoomMeshResponse } from '../types'
 // building axis instead, which tumbles the model rather than orbiting it
 // like a turntable — camera.up is set to Z below specifically to fix that.
 const WALL_COLOR = 0xcbd5e1
+// Fixtures (e.g. the kitchen island) get a distinct wood-tone material so
+// they read as furniture, not a wall. The mesh response is a flat
+// {id: mesh} dict with no per-entry type tag, so the caller passes the
+// set of ids that are fixtures (from FamilyRoomResponse.fixtures)
+// explicitly, rather than this component guessing from naming.
+const FIXTURE_COLOR = 0x92652c
 const UP = new THREE.Vector3(0, 0, 1)
 
 // A horizontal two-finger trackpad swipe (no click held) fires `wheel`
@@ -31,9 +37,11 @@ type PresetName = 'iso' | 'top' | 'front' | 'side'
 
 interface Props {
   mesh: FamilyRoomMeshResponse | null
+  fixtureIds?: string[]
 }
 
-export function ThreeViewer({ mesh }: Props) {
+export function ThreeViewer({ mesh, fixtureIds }: Props) {
+  const fixtureIdSet = new Set(fixtureIds ?? [])
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -68,9 +76,10 @@ export function ThreeViewer({ mesh }: Props) {
       geometry.setIndex(data.triangles.flat())
       geometry.computeVertexNormals()
 
+      const isFixture = fixtureIdSet.has(wallId)
       const material = new THREE.MeshStandardMaterial({
-        color: WALL_COLOR,
-        roughness: 0.9,
+        color: isFixture ? FIXTURE_COLOR : WALL_COLOR,
+        roughness: isFixture ? 0.6 : 0.9,
         metalness: 0.0,
         side: THREE.DoubleSide,
       })
@@ -165,7 +174,7 @@ export function ThreeViewer({ mesh }: Props) {
       container.removeChild(presetBar)
       container.removeChild(renderer.domElement)
     }
-  }, [mesh])
+  }, [mesh, fixtureIds])
 
   return <div ref={containerRef} className="three-viewer" data-testid="three-viewer" />
 }

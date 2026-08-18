@@ -79,9 +79,14 @@ export default function App() {
         <SourcePanel tiers={tiers} />
         <div className="panel viewer-panel">
           <h2>Deterministic 3D model</h2>
-          <ThreeViewer mesh={mesh} />
+          <ThreeViewer mesh={mesh} fixtureIds={room.fixtures?.map((f) => f.id)} />
         </div>
-        <WallInspector walls={room.walls} tvInterval={room.tv_wall_interval} dimensionMatches={room.dimension_matches} />
+        <WallInspector
+          walls={room.walls}
+          tvInterval={room.tv_wall_interval}
+          dimensionMatches={room.dimension_matches}
+          fixtures={room.fixtures}
+        />
         <ValidationPanel report={room.validation} geometryHash={room.geometry_hash} />
       </main>
     </div>

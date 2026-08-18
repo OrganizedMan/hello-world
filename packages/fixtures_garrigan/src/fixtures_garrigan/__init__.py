@@ -12,9 +12,11 @@ from .family_room_extracted import (
     build_family_room_from_extraction,
     diagnose_extracted_family_room,
 )
+from .kitchen_island import ExtractedKitchenIsland, build_kitchen_island_from_extraction
 
 __all__ = [
     "HandTracedFamilyRoom", "build_family_room", "diagnose_family_room", "tv_wall_interval",
     "CEILING_HEIGHT_NM", "EAST_WALL_ID", "SOUTH_WALL_ID",
     "ExtractedFamilyRoom", "build_family_room_from_extraction", "diagnose_extracted_family_room",
+    "ExtractedKitchenIsland", "build_kitchen_island_from_extraction",
 ]
