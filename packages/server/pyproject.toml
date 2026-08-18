@@ -3,13 +3,13 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "server"
+name = "pdf3d-server"
 version = "0.1.0"
 description = "Localhost API exposing the Stage 0 pipeline for the review UI (plan §15) — no external network by default"
 requires-python = ">=3.11"
 dependencies = [
-    "core-schema", "units", "constraints", "geometry", "validate",
-    "ingest", "fixtures-garrigan",
+    "pdf3d-core-schema", "pdf3d-units", "pdf3d-constraints", "pdf3d-geometry", "pdf3d-validate",
+    "pdf3d-ingest", "pdf3d-fixtures-garrigan",
     "fastapi>=0.141", "uvicorn>=0.52",
 ]
 

@@ -9,12 +9,21 @@ The tool described in [`docs/plan/pdf-to-3d-development-plan.md`](../docs/plan/p
 ```bash
 # once
 pip install -r requirements-dev.txt
-for p in packages/*/; do pip install -e "$p"; done
+./tools/install_dev.sh          # NOT `pip install -e packages/*/` — see below
 cd packages/ui && npm install && cd ../..
 
 # every time
 ./tools/run_dev.sh
 ```
+
+**Do not install with `pip install -e packages/*/`.** Alphabetical glob
+order doesn't match the dependency graph — `constraints` sorts before
+`core_schema` but depends on it — so that loop fails partway through.
+Before these packages were namespaced `pdf3d-*`, that partial failure was
+worse than an error: pip silently fell back to an unrelated public PyPI
+package that happened to share the bare name `constraints`, and the
+server would fail to start with an `ImportError` far from the actual
+cause. `tools/install_dev.sh` installs in real dependency order instead.
 
 Then open **http://127.0.0.1:5173/**. You should see the source PDF page, a live 3D model you can orbit with the mouse, a wall-by-wall opening inventory, and a validation report — all built from the same locked geometry hash shown in the header.
 

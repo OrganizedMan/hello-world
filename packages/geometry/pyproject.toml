@@ -3,11 +3,11 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "geometry"
+name = "pdf3d-geometry"
 version = "0.1.0"
 description = "Deterministic solid construction (manifold3d) and the geometry hash (plan §8)"
 requires-python = ">=3.11"
-dependencies = ["core-schema", "units", "numpy>=2", "manifold3d>=3"]
+dependencies = ["pdf3d-core-schema", "pdf3d-units", "numpy>=2", "manifold3d>=3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
