@@ -1,0 +1,64 @@
+# The mandatory topology regression test (plan §16, §22, Appendix A).
+#
+# This is the specific failure that motivated the project: a prior
+# generative render moved the mudroom opening and mounted the 60" TV over
+# the 5'-0" opening into the original living room. Those are two different
+# walls. This file asserts the correct topology so that failure mode is
+# checked on every run, against both the Tier A (vector) and Tier C
+# (hand-traced-from-raster) fixtures — see §14's Stage 0 gate and §22's
+# proof-of-concept, which both require this file to pass twice.
+#
+# Status: not yet runnable — no model builder exists yet (Sprint 2).
+# `tools/run_assertions.py` reports every assertion below as SKIPPED with
+# that reason, on purpose, per the "fail cleanly" requirement in the plan's
+# human-in-the-loop principle (§ Human-in-the-loop requirement) — a missing
+# capability must never look like a silent pass.
+
+level: first
+variant: proposed
+source_sheet: A-1
+
+assertions:
+  - assert_wall_openings_ordered:
+      wall: LIVING_ROOM.EAST
+      expected:
+        - {kind: window}
+        - {kind: solid, annotation: "60\" TV"}
+        - {kind: unframed, connects_to: MUDROOM}
+
+  - assert_no_opening_on_wall_interval:
+      wall: LIVING_ROOM.EAST
+      interval_containing_annotation: "60\" TV"
+      reason: >
+        The 5'-0" opening belongs to the SOUTH wall, not this one.
+        Regression guard for the 2026-08 render failure.
+
+  - assert_wall_openings_ordered:
+      wall: LIVING_ROOM.SOUTH
+      expected:
+        - {kind: cased, width: "5'-0\"", connects_to: "(E) LIVING ROOM"}
+
+  - assert_opening_chain:
+      wall: LIVING_ROOM.SOUTH
+      chain: ["3'-1\"", "5'-0\"", "3'-1\""]
+
+  - assert_dimension:
+      entity: KITCHEN.ISLAND
+      dim: length
+      value: "8'-7\""
+      tol: "1\""
+
+  - assert_dimension:
+      entity: KITCHEN.ISLAND
+      dim: width
+      value: "4'-3\""
+      tol: "1\""
+
+  - assert_ceiling_height:
+      room: LIVING_ROOM
+      value: "8'-5\""
+      tol: "1\""
+
+  - assert_text_not_classified_as_dimension:
+      text: "CLG HT - 8' 5\""
+      reason: known false-positive guard — matches a naive feet-inches regex

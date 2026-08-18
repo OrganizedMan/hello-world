@@ -1,0 +1,36 @@
+# Second-floor assertions (plan Appendix A, §16). Sheet A-2 carries a
+# third region, "Proposed - Second Floor OP#B" — a design option that
+# must stay a distinct variant, never merged into the base proposal.
+# Status: not yet runnable — see first-floor-topology.yaml header.
+
+level: second
+source_sheet: A-2
+
+assertions:
+  - assert_variant_exists:
+      variant: proposed
+      region_title: "Proposed - Second floor."
+
+  - assert_variant_exists:
+      variant: "option:OP#B"
+      region_title: "Proposed - Second floor OP#B"
+
+  - assert_variants_are_distinct:
+      a: proposed
+      b: "option:OP#B"
+      reason: >
+        OP#B is a partial-scope alternative (adds a small new bathroom off
+        the hall) and must never be silently merged with, or mistaken for,
+        the base proposed second floor.
+
+  - assert_room_exists:
+      variant: proposed
+      room: BEDROOM_1
+      ceiling_height: "8'-0\""
+      tol: "1\""
+
+  - assert_room_exists:
+      variant: proposed
+      room: BEDROOM_2
+      ceiling_height: "8'-0\""
+      tol: "1\""

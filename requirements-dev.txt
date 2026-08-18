@@ -1,0 +1,12 @@
+# Development dependencies for the PDF-to-3D packages under packages/
+# (docs/plan/pdf-to-3d-development-plan.md). Install with:
+#
+#   pip install -r requirements-dev.txt
+#   for p in packages/*/; do pip install -e "$p"; done
+#
+# pymupdf is isolated behind packages/ingest/src/ingest/pymupdf_backend.py
+# (plan §18 R5) — see that file before adding a second import site.
+pymupdf>=1.28
+pytest>=8
+hypothesis>=6.100
+pyyaml>=6
