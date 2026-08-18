@@ -48,11 +48,21 @@ export interface ValidationReport {
   checks: CheckResult[]
 }
 
+export type FamilyRoomSource = 'hand_traced' | 'extracted'
+
+export interface DimensionMatchInfo {
+  text: string
+  axis: string
+  error_in: number
+}
+
 export interface FamilyRoomResponse {
+  source: FamilyRoomSource
   walls: WallSegment[]
   tv_wall_interval: { wall_id: string; t_start_nm: number; t_end_nm: number }
   validation: ValidationReport
   geometry_hash: string
+  dimension_matches?: DimensionMatchInfo[]
 }
 
 export interface MeshData {

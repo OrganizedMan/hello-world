@@ -39,6 +39,7 @@ from .provenance import (
     ProvenanceState,
     SourceKind,
     SourceRef,
+    proposed,
     user_authored,
     user_confirmed,
 )
@@ -57,7 +58,7 @@ __all__ = [
     # provenance
     "TOLERANCE_EXPLICIT_NM", "TOLERANCE_MEASURED_NM", "Provenance",
     "ProvenanceBasis", "ProvenanceState", "SourceKind", "SourceRef",
-    "user_authored", "user_confirmed",
+    "proposed", "user_authored", "user_confirmed",
     # unknown
     "UNKNOWN", "IntOrUnknown",
     # wall topology

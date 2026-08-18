@@ -18,7 +18,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from fixtures_garrigan import build_family_room, diagnose_family_room, tv_wall_interval
+from fixtures_garrigan import (
+    build_family_room,
+    build_family_room_from_extraction,
+    diagnose_extracted_family_room,
+    diagnose_family_room,
+    tv_wall_interval,
+)
 from geometry import build_wall_solid, compute_geometry_hash
 from ingest import PyMuPdfBackend, detect_tier
 from validate import run_validation
@@ -35,19 +41,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_SOURCES = ("hand_traced", "extracted")
 _cache: dict = {}
 
 
-def _room():
-    if "room" not in _cache:
-        _cache["room"] = build_family_room()
-    return _cache["room"]
+def _room(source: str):
+    if source not in _SOURCES:
+        raise HTTPException(400, f"unknown source {source!r}; choose one of {list(_SOURCES)}")
+    key = f"room:{source}"
+    if key not in _cache:
+        _cache[key] = build_family_room() if source == "hand_traced" else build_family_room_from_extraction()
+    return _cache[key]
 
 
-def _solids(room):
-    if "solids" not in _cache:
-        _cache["solids"] = {w.id: build_wall_solid(w) for w in room.walls}
-    return _cache["solids"]
+def _diagnoses(source: str, room):
+    return diagnose_family_room(room) if source == "hand_traced" else diagnose_extracted_family_room(room)
+
+
+def _solids(source: str, room):
+    key = f"solids:{source}"
+    if key not in _cache:
+        _cache[key] = {w.id: build_wall_solid(w) for w in room.walls}
+    return _cache[key]
 
 
 @app.get("/api/health")
@@ -56,17 +71,18 @@ def health():
 
 
 @app.get("/api/family-room")
-def family_room():
-    room = _room()
-    diagnoses = diagnose_family_room(room)
+def family_room(source: str = "hand_traced"):
+    room = _room(source)
+    diagnoses = _diagnoses(source, room)
     report = run_validation(list(room.walls), diagnoses=diagnoses)
-    solids = _solids(room)
+    solids = _solids(source, room)
     geometry_hash = compute_geometry_hash(list(room.walls), solids)
 
     east = next(w for w in room.walls if w.id == "LIVING_ROOM.EAST")
     tv_interval = tv_wall_interval(east)
 
-    return {
+    result = {
+        "source": source,
         "walls": [wall_to_dict(w) for w in room.walls],
         "tv_wall_interval": {
             "wall_id": east.id,
@@ -89,11 +105,23 @@ def family_room():
         "geometry_hash": geometry_hash,
     }
 
+    if source == "extracted":
+        # Diagnostic-only: how well each real dimension text matched its
+        # witness geometry (plan §17's dimensional-placement metric), so
+        # the UI can show match quality alongside the "unreviewed
+        # proposal" badge rather than just the final coordinates.
+        result["dimension_matches"] = [
+            {"text": m.text, "axis": m.axis, "error_in": round(m.error_in, 3)}
+            for m in room.matches
+        ]
+
+    return result
+
 
 @app.get("/api/family-room/mesh")
-def family_room_mesh():
-    room = _room()
-    solids = _solids(room)
+def family_room_mesh(source: str = "hand_traced"):
+    room = _room(source)
+    solids = _solids(source, room)
     result = {}
     for wall_id, solid in solids.items():
         mesh = solid.to_mesh()

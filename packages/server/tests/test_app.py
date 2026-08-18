@@ -79,3 +79,39 @@ def test_cors_restricted_to_dev_server_origin():
 
     r2 = client.get("/api/health", headers={"Origin": "https://evil.example.com"})
     assert "access-control-allow-origin" not in r2.headers
+
+
+def test_extracted_source_returns_proposed_walls_with_matches_and_hash():
+    r = client.get("/api/family-room?source=extracted")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["source"] == "extracted"
+    assert len(body["geometry_hash"]) == 64
+    assert all(w["provenance_state"] == "PROPOSED" for w in body["walls"])
+    assert body["dimension_matches"]
+    assert all("error_in" in m for m in body["dimension_matches"])
+
+
+def test_extracted_and_hand_traced_geometry_hashes_match():
+    """The Stage 1 gate, visible through the API: real extraction from the
+    PDF reproduces the exact same geometry hash as the Stage-0 hand-traced
+    model. The hash deliberately excludes provenance (see geometry.hashing's
+    wall_canonical_dict) so this is a genuine shape-identity result, not an
+    artifact of both sources happening to carry similar metadata."""
+    hand_traced = client.get("/api/family-room?source=hand_traced").json()
+    extracted = client.get("/api/family-room?source=extracted").json()
+    assert hand_traced["source"] == "hand_traced"
+    assert len(hand_traced["geometry_hash"]) == 64
+    assert hand_traced["geometry_hash"] == extracted["geometry_hash"]
+
+
+def test_extracted_mesh_endpoint_returns_nonempty_geometry():
+    r = client.get("/api/family-room/mesh?source=extracted")
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) == {"LIVING_ROOM.EAST", "LIVING_ROOM.SOUTH"}
+
+
+def test_unknown_source_is_400():
+    r = client.get("/api/family-room?source=bogus")
+    assert r.status_code == 400

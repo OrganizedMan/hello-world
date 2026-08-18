@@ -5,23 +5,31 @@ import { SourcePanel } from './components/SourcePanel'
 import { ThreeViewer } from './components/ThreeViewer'
 import { ValidationPanel } from './components/ValidationPanel'
 import { WallInspector } from './components/WallInspector'
-import type { FamilyRoomMeshResponse, FamilyRoomResponse, TiersResponse } from './types'
+import type { FamilyRoomMeshResponse, FamilyRoomResponse, FamilyRoomSource, TiersResponse } from './types'
+
+const SOURCES: { value: FamilyRoomSource; label: string }[] = [
+  { value: 'hand_traced', label: 'Hand-traced (Stage 0)' },
+  { value: 'extracted', label: 'Extracted from PDF (Stage 1)' },
+]
 
 export default function App() {
+  const [source, setSource] = useState<FamilyRoomSource>('hand_traced')
   const [room, setRoom] = useState<FamilyRoomResponse | null>(null)
   const [mesh, setMesh] = useState<FamilyRoomMeshResponse | null>(null)
   const [tiers, setTiers] = useState<TiersResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([api.familyRoom(), api.familyRoomMesh(), api.tiers()])
+    setRoom(null)
+    setMesh(null)
+    Promise.all([api.familyRoom(source), api.familyRoomMesh(source), api.tiers()])
       .then(([r, m, t]) => {
         setRoom(r)
         setMesh(m)
         setTiers(t)
       })
       .catch((e: Error) => setError(e.message))
-  }, [])
+  }, [source])
 
   if (error) {
     return (
@@ -49,6 +57,23 @@ export default function App() {
           PDF → deterministic 3D model. Every camera on this model reads the same geometry —{' '}
           <code>{room.geometry_hash.slice(0, 12)}</code>.
         </p>
+        <div className="source-toggle" data-testid="source-toggle">
+          {SOURCES.map((s) => (
+            <button
+              key={s.value}
+              className={s.value === source ? 'active' : ''}
+              data-testid={`source-toggle-${s.value}`}
+              onClick={() => setSource(s.value)}
+            >
+              {s.label}
+            </button>
+          ))}
+          {source === 'extracted' && (
+            <span className="unreviewed-badge" data-testid="unreviewed-badge">
+              unreviewed proposal — not yet approved by a human
+            </span>
+          )}
+        </div>
       </header>
       <main className="app-grid">
         <SourcePanel tiers={tiers} />
@@ -56,7 +81,7 @@ export default function App() {
           <h2>Deterministic 3D model</h2>
           <ThreeViewer mesh={mesh} />
         </div>
-        <WallInspector walls={room.walls} tvInterval={room.tv_wall_interval} />
+        <WallInspector walls={room.walls} tvInterval={room.tv_wall_interval} dimensionMatches={room.dimension_matches} />
         <ValidationPanel report={room.validation} geometryHash={room.geometry_hash} />
       </main>
     </div>

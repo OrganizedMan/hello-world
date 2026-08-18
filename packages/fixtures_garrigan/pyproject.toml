@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pdf3d-fixtures-garrigan"
 version = "0.1.0"
-description = "The Garrigan family room, hand-traced end to end (Stage 0 / Sprint 2 proof)"
+description = "The Garrigan family room, hand-traced end to end (Stage 0 / Sprint 2 proof), plus an extraction-sourced build (Stage 1)"
 requires-python = ">=3.11"
-dependencies = ["pdf3d-core-schema", "pdf3d-units", "pdf3d-constraints"]
+dependencies = ["pdf3d-core-schema", "pdf3d-units", "pdf3d-constraints", "pdf3d-ingest", "pdf3d-extract"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -137,6 +137,27 @@ def user_authored(created_by: str) -> Provenance:
     )
 
 
+def proposed(
+    basis: ProvenanceBasis, tolerance_nm: int, created_by: str,
+    confidence: float, source_refs: tuple[SourceRef, ...],
+) -> Provenance:
+    """Shorthand for the provenance of an unreviewed AI/extractor proposal
+    (plan §5.2's one-way valve: this state can never itself feed the
+    constraint program in the reviewed/authoritative pipeline — only
+    USER_CONFIRMED or USER_AUTHORED entities may. Building geometry
+    directly from PROPOSED constraints, as the Stage 1 extraction preview
+    does, is an explicitly labelled comparison/demo path, not the
+    reviewed product path)."""
+    return Provenance(
+        state=ProvenanceState.PROPOSED,
+        basis=basis,
+        tolerance_nm=tolerance_nm,
+        created_by=created_by,
+        confidence=confidence,
+        source_refs=source_refs,
+    )
+
+
 def user_confirmed(
     basis: ProvenanceBasis, tolerance_nm: int, created_by: str, source_refs: tuple[SourceRef, ...]
 ) -> Provenance:
