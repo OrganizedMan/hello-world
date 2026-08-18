@@ -16,7 +16,7 @@ who computes the pixels is a separate concern from whether they'd agree.
 """
 from __future__ import annotations
 
-from constraints import ConstraintStatus
+from pdf3d_constraints import ConstraintStatus
 from fixtures_garrigan import build_family_room, diagnose_family_room, tv_wall_interval
 from geometry import build_wall_solid, compute_geometry_hash
 from units import nm_to_ft_in

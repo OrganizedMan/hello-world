@@ -10,7 +10,7 @@ FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
 cleanup() {
   echo
-  echo "Stopping…"
+  echo "Stopping..."
   kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true
   wait "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true
 }

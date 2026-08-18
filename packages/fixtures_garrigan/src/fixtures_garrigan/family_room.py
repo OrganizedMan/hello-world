@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from constraints import ConstraintStatus, anchor_region_datums, build_systems, diagnose
+from pdf3d_constraints import ConstraintStatus, anchor_region_datums, build_systems, diagnose
 from core_schema import (
     DimensionConstraint,
     FeatureRef,

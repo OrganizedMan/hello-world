@@ -1,6 +1,6 @@
 import pytest
 
-from constraints import (
+from pdf3d_constraints import (
     ConstraintStatus,
     Row,
     ConstraintSystem,
@@ -25,7 +25,7 @@ def system(*rows: Row, axis="x") -> ConstraintSystem:
 
 def anchor(var, value_nm=0.0, label="anchor"):
     """A single-variable row pinning one variable to an absolute value —
-    what `constraints.anchor()` produces for a real FeatureRef, expressed
+    what `pdf3d_constraints.anchor()` produces for a real FeatureRef, expressed
     directly against the raw VariableKey tuples these low-level tests use.
     Every relative-only chain is genuinely UNDER_CONSTRAINED (global
     translation is free) until something anchors it; that is the solver

@@ -1,6 +1,6 @@
 import pytest
 
-from constraints import ConstraintStatus, Diagnosis, FloatingDirection
+from pdf3d_constraints import ConstraintStatus, Diagnosis, FloatingDirection
 from core_schema import (
     UNKNOWN,
     Opening,

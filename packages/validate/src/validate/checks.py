@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import networkx as nx
 
-from constraints import ConstraintStatus, Diagnosis
+from pdf3d_constraints import ConstraintStatus, Diagnosis
 from core_schema import UNKNOWN, ProvenanceState, WallSegment
 from core_schema.wall_topology import OpeningInterval, TopologyError, validate_wall_openings
 
@@ -119,7 +119,7 @@ def check_invention_audit(walls: list[WallSegment]) -> CheckResult:
 
 def check_constraint_diagnoses(diagnoses: list[Diagnosis]) -> tuple[CheckResult, ...]:
     """§12 checks 2+3: dimension chain closure and rank diagnosis, driven
-    directly by `constraints.diagnose()` rather than re-implemented here."""
+    directly by `pdf3d_constraints.diagnose()` rather than re-implemented here."""
     results = []
     for d in diagnoses:
         check_id = f"constraints_{d.axis}"

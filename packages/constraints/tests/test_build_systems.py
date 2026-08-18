@@ -1,6 +1,6 @@
 import pytest
 
-from constraints import ConstraintStatus, UnsupportedConstraintError, anchor, build_systems, diagnose
+from pdf3d_constraints import ConstraintStatus, UnsupportedConstraintError, anchor, build_systems, diagnose
 from core_schema import (
     AlignmentConstraint,
     DimensionConstraint,
