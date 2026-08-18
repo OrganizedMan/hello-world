@@ -334,6 +334,11 @@ class AlignmentConstraint:
     kind: str  # "collinear" | "equal" | "perpendicular" | "vertical_align"
     members: tuple[FeatureRef, ...]
     prov: Provenance
+    # Which scalar coordinate the members are constrained on — required to
+    # solve "collinear"/"equal" as linear rows (plan §8). Left unset for
+    # "perpendicular"/"vertical_align", which relate two axes and are not
+    # yet reduced to single linear rows by the Sprint 2 solver.
+    axis: str | None = None  # "x" | "y" | "z"
 
 
 @dataclass(frozen=True, slots=True)
