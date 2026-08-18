@@ -1,0 +1,240 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.app-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(320px, 1fr) auto;
+  gap: 1px;
+  background: var(--border);
+}
+
+.panel {
+  background: var(--bg-panel);
+  padding: 1rem 1.25rem;
+  overflow: auto;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.viewer-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.25rem 0;
+}
+
+.three-viewer {
+  flex: 1;
+  min-height: 260px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.source-panel img.source-image {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.tier-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tier-toggle button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.tier-toggle button.active {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+.tier-badge {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+
+.wall-inspector .wall-block {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.wall-inspector .wall-block:last-child {
+  border-bottom: none;
+}
+
+.wall-inspector h3 {
+  margin: 0 0 0.15rem;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+}
+
+.wall-meta {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 0 0 0.5rem;
+}
+
+.opening-sequence {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.opening-sequence .connects {
+  color: var(--text-dim);
+}
+
+.tv-callout {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(245, 158, 11, 0.12);
+  border-left: 3px solid var(--warn);
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.validation-panel .overall-status {
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  display: inline-block;
+  font-size: 0.9rem;
+}
+
+.overall-status.clear {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--pass);
+}
+
+.overall-status.blocking {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--block);
+}
+
+.check-list {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.check-row {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.badge {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  min-width: 3.5rem;
+  text-align: center;
+}
+
+.status-pass .badge {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--pass);
+}
+
+.status-warn .badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warn);
+}
+
+.status-block .badge {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--block);
+}
+
+.check-id {
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+
+.check-details {
+  flex-basis: 100%;
+  margin: 0.25rem 0 0 4rem;
+  padding: 0;
+  list-style: disc;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.geometry-hash {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+.geometry-hash .label {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  margin-bottom: 0.2rem;
+}
+
+.app-loading,
+.app-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 0.5rem;
+  color: var(--text-dim);
+}
+
+.app-error h1 {
+  color: var(--block);
+  font-size: 1.1rem;
+}
+
+@media (max-width: 900px) {
+  .app-grid {
+    grid-template-columns: 1fr;
+  }
+}

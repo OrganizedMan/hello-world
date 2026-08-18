@@ -1,0 +1,31 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1120;
+  --bg-panel: #111827;
+  --border: #1f2937;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --mono: ui-monospace, 'SF Mono', Consolas, monospace;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --pass: #22c55e;
+  --warn: #f59e0b;
+  --block: #ef4444;
+
+  font-family: var(--sans);
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+code {
+  font-family: var(--mono);
+}

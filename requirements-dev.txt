@@ -22,3 +22,6 @@ manifold3d>=3
 fastapi>=0.141
 uvicorn>=0.52
 httpx>=0.28  # test client only
+
+# Sprint 2: end-to-end UI smoke test (tests/test_ui_smoke.py)
+playwright>=1.55
