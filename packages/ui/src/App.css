@@ -50,10 +50,36 @@
 }
 
 .three-viewer {
+  position: relative;
   flex: 1;
   min-height: 260px;
   border-radius: 4px;
   overflow: hidden;
+}
+
+.viewer-preset-bar {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.35rem;
+  z-index: 1;
+}
+
+.viewer-preset-bar button {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+.viewer-preset-bar button:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
 }
 
 .source-panel img.source-image {
