@@ -5,10 +5,19 @@ from .solve import (
     FloatingDirection,
     diagnose,
 )
-from .system import ConstraintSystem, Row, UnsupportedConstraintError, VariableKey, anchor, build_systems
+from .system import (
+    ConstraintSystem,
+    Row,
+    UnsupportedConstraintError,
+    VariableKey,
+    anchor,
+    anchor_region_datums,
+    build_systems,
+)
 
 __all__ = [
-    "ConstraintSystem", "Row", "VariableKey", "UnsupportedConstraintError", "build_systems", "anchor",
+    "ConstraintSystem", "Row", "VariableKey", "UnsupportedConstraintError", "build_systems",
+    "anchor", "anchor_region_datums",
     "ConstraintStatus", "Diagnosis", "FloatingDirection", "diagnose",
     "DEFAULT_CONTRADICTION_THRESHOLD_NM",
 ]

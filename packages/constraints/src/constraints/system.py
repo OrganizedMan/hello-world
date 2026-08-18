@@ -74,6 +74,24 @@ def anchor(feature: FeatureRef, value_nm: int, label: str | None = None) -> Row:
     return Row(coeffs={_var(feature): 1.0}, rhs_nm=float(value_nm), weight=1.0, label=label or f"anchor:{feature}")
 
 
+def anchor_region_datums(system: ConstraintSystem) -> None:
+    """Pin every "datum" feature in `system` to 0, in place.
+
+    A region's datum is the origin of its calibrated coordinate system by
+    *definition* (plan §5.1: "RegionCS — per drawing region: real-world 2D
+    nm"), not a measured fact — so unlike every other anchor, this one
+    needs no citation and applies uniformly. Any DimensionConstraint
+    relating a wall face to a `FeatureRef(..., "datum")` (see
+    `anchor` above for the general, citation-requiring form) becomes
+    solvable this way without the caller needing to know which specific
+    datum feature was used.
+    """
+    for var in system.variables:
+        _, feature = var
+        if feature == "datum":
+            system.rows.append(Row(coeffs={var: 1.0}, rhs_nm=0.0, weight=1.0, label=f"region_datum:{var}"))
+
+
 def build_systems(
     dimension_constraints: list[DimensionConstraint],
     alignment_constraints: list[AlignmentConstraint],

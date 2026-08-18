@@ -99,12 +99,18 @@ def test_assertion_suite_runs_and_fails_cleanly():
         text=True,
         timeout=30,
     )
-    # It must exit non-zero (nothing is implemented yet) but never crash:
-    # a Python traceback means "fails cleanly" was violated.
+    # Still non-zero overall (most assertion files have no model to run
+    # against until Stage 2) but must never crash: a Python traceback
+    # means "fails cleanly" was violated. As of Sprint 2, some assertions
+    # against the Stage 0 family-room fixture genuinely pass — see
+    # tests/test_stage0_gate.py, which is where that behavior is actually
+    # proven; this test only guards against a crash and a total regression
+    # back to zero real passes.
     assert result.returncode == 1
     assert "Traceback" not in result.stderr
     assert "FAIL" in result.stdout
-    assert "passed, 25 failed, 25 total" in result.stdout
+    assert "25 total" in result.stdout
+    assert "0 passed" not in result.stdout, "Sprint 2's real assertion evaluators appear to have regressed"
 
 
 def test_import_boundary_check_runs_clean():
