@@ -460,17 +460,15 @@ Checks, each producing `pass | warn | block`:
 
 This is safe **only because Stage 0 makes raster documents usable without any of that automation.** A scanned plan can be calibrated and traced from day one; Stage 3 reduces the effort from about an hour a floor to minutes. Capability is universal from Stage 0; automation coverage is what grows by stage. If Stage 0 did not ship manual tracing over a page image, this swap would be indefensible.
 
-| Stage | Content | Gate to pass | Est. |
-|---|---|---|---|
-| **0** | **Plan-locked manual prototype.** Canonical schema, project store, page rasteriser, tier detector, calibration UI, **snap-and-trace wall/opening authoring over the page image with exact ft-in entry**, constraint solver + diagnostics, solid builder, validation report, scene lock, GLB export, Three.js viewer, Cycles driver. No automatic extraction whatsoever. | A user traces the family room from the rasterised A-1 page, and it builds, validates, locks, and renders from 8 cameras with one geometry hash. Topology assertion green. **The same run repeats on a deliberately degraded 150-dpi scan of A-1, proving the Tier C path.** | 6 wks |
-| **1** | Vector extraction seeding that same UI: paths, text, legend-driven colour map, region detection, auto-calibration, poché→centreline, opening detection, dimension association. | All 4 fixture sheets extract; ≥95% of dimensions auto-associated; extracted first floor matches the Stage-0 hand-traced model within 1 in. **Human effort on Tier A drops below 10 minutes per floor.** | 5 wks |
-| **2** (was 3) | Multistory registration, levels, sub-levels, stairs, sections, roof planes, dormers, sloped ceilings, low-storage zones. | Full 4-level Garrigan model builds; attic clear heights reproduce the section to ±1 in; all §17 metrics met. | 7 wks |
-| **3** (was 2) | Raster/OCR, symbol recognition, multimodal proposers, confidence calibration harness. | The degraded-scan fixture from the Stage-0 gate reaches Tier A topology accuracy with ≤2× the human corrections. | 6 wks |
-| **4** | PBR material pipeline, asset library, lighting presets, camera sets, batch rendering, optional generative finishing. | Client-presentable render set; geometry hash identical across all outputs. | 5 wks |
+| Stage | Content | Gate to pass |
+|---|---|---|
+| **0** | **Plan-locked manual prototype.** Canonical schema, project store, page rasteriser, tier detector, calibration UI, **snap-and-trace wall/opening authoring over the page image with exact ft-in entry**, constraint solver + diagnostics, solid builder, validation report, scene lock, GLB export, Three.js viewer, Cycles driver. No automatic extraction whatsoever. | A user traces the family room from the rasterised A-1 page, and it builds, validates, locks, and renders from 8 cameras with one geometry hash. Topology assertion green. **The same run repeats on a deliberately degraded 150-dpi scan of A-1, proving the Tier C path.** |
+| **1** | Vector extraction seeding that same UI: paths, text, legend-driven colour map, region detection, auto-calibration, poché→centreline, opening detection, dimension association. | All 4 fixture sheets extract; ≥95% of dimensions auto-associated; extracted first floor matches the Stage-0 hand-traced model within 1 in. **Human effort on Tier A drops below 10 minutes per floor.** |
+| **2** (was 3) | Multistory registration, levels, sub-levels, stairs, sections, roof planes, dormers, sloped ceilings, low-storage zones. | Full 4-level Garrigan model builds; attic clear heights reproduce the section to ±1 in; all §17 metrics met. |
+| **3** (was 2) | Raster/OCR, symbol recognition, multimodal proposers, confidence calibration harness. | The degraded-scan fixture from the Stage-0 gate reaches Tier A topology accuracy with ≤2× the human corrections. |
+| **4** | PBR material pipeline, asset library, lighting presets, camera sets, batch rendering, optional generative finishing. | Client-presentable render set; geometry hash identical across all outputs. |
 
-**Total to Stage 2 (a genuinely useful tool for this house): ~18 weeks.** Total through Stage 4: ~7 months.
-
-Stage 0 grew from 4 to 6 weeks because it now carries the real tracing surface, and Stage 1.5 is gone. Note what Stage 0 buys: **from week 6, the product handles any PDF anyone hands it** — slowly for scans, but correctly and with full validation. Every later stage is a speed improvement on a tool that already works, which is a far better risk position than an automation pipeline that is useless until it is accurate.
+**Sequencing, not scheduling.** These are gates, not a calendar: this is built by an agent working continuously against the fixture, not a human team on sprint cadence, so "weeks" is the wrong unit and has been dropped from the table. Stage *n* does not start until Stage *n-1*'s gate is green — that ordering is the actual control on effort, and it can compress hard when a gate is easy or stall on a genuinely hard one (roof reconstruction, R1, is the likeliest place to stall). Stage 0 is not optional and not shortenable: it is what makes every later stage's gate meaningful, because it is the only proof the geometry core is correct independent of extraction quality.
 
 ---
 
@@ -592,7 +590,7 @@ Ranked by expected damage × probability. Each carries an explicit stop-or-pivot
 
 **R3 — Dimension association in dense chains.** Sheet A-1 has stacked chains within ~14 pt of each other; my probe already showed two ambiguous matches.
 *Mitigation:* tick-glyph detection, chain grouping by collinearity, and explicit "unassociated" queue rather than a guess.
-**Stop/pivot:** if after two weeks the associator is below 95% on the four fixture sheets, ship manual chain assignment in the UI — it is a fast interaction — and stop investing in the automatic path.
+**Stop/pivot:** if the associator is still below 95% on the four fixture sheets after tick-glyph detection plus one round of tuning, ship manual chain assignment in the UI — it is a fast interaction — and stop investing in the automatic path.
 
 **R4 — Poché→centreline for non-orthogonal and curved walls.** This house has a curved bay and an angled entry; PDF flattens arcs to polylines.
 *Mitigation:* arc re-fitting with chord-error bound.
@@ -621,7 +619,7 @@ Ranked by expected damage × probability. Each carries an explicit stop-or-pivot
 
 ## 19. Estimated development time, operating costs and infrastructure
 
-**Time** (AI-agent development with a human reviewer in the loop): Stage 0 ≈ 6 wks · Stage 1 ≈ 5 wks · Stage 2 ≈ 7 wks · Stage 3 ≈ 6 wks · Stage 4 ≈ 5 wks. **~18 weeks to a genuinely useful tool for this house; ~7 months through visualisation.** A usable-but-manual tool exists at week 6.
+**Time.** Built by an agent (Claude Code) working directly against the fixture and its assertion suite, with a human reviewing and approving rather than hand-writing code. Effort is gate-driven, not calendar-driven (§14): Stage 0 is the long pole because it is the whole geometry core, and every later stage is bounded mainly by how many review cycles it takes to get its gate green against real drawings, not by writing volume. No week estimate is offered — the meaningful commitment is stage order, not duration.
 
 **Operating cost.** Local-first means marginal cost ≈ $0. Optional hosted multimodal proposals (Stage 3 only) run on the order of **$0.05–$0.30 per sheet** — negligible against the human time saved. There is no training, no fine-tuning, and no GPU cluster in this plan.
 
@@ -633,9 +631,9 @@ Ranked by expected damage × probability. Each carries an explicit stop-or-pivot
 
 ## 20. First two implementation sprints
 
-Both sprints are Stage 0. Neither builds any automatic extraction — that starts at Stage 1. The goal of these four weeks is a tool that can already turn *any* PDF into a validated, rendered model, slowly, by hand.
+Both sprints are Stage 0. Neither builds any automatic extraction — that starts at Stage 1. Their combined goal is a tool that can already turn *any* PDF into a validated, rendered model, slowly, by hand.
 
-### Sprint 1 (2 weeks) — The spine: units, schema, store, page images
+### Sprint 1 — The spine: units, schema, store, page images
 
 **Goal:** a project can be created from a PDF, its pages displayed at any zoom, and the test harness that will govern the whole project exists and is failing on purpose.
 
@@ -648,7 +646,7 @@ Both sprints are Stage 0. Neither builds any automatic extraction — that start
 
 **Done when:** all five sheets open and display; tier detection correctly reports Tier A for the originals and Tier C for the degraded raster; the units test suite is exhaustive; the assertion suite runs and fails cleanly with readable output.
 
-### Sprint 2 (2 weeks) — Calibrate, trace, solve, and the topology assertion
+### Sprint 2 — Calibrate, trace, solve, and the topology assertion
 
 **Goal:** a human can produce the family room by hand, from the page image alone, and the mandatory regression test passes on that hand-traced geometry.
 
@@ -667,7 +665,7 @@ Both sprints are Stage 0. Neither builds any automatic extraction — that start
 1. **Commercial intent.** Will this ever ship closed-source? This decides the PyMuPDF question (§18 R5) and must be answered in Sprint 1, not later.
 2. **Can you supply five to ten PDF sets from other sources?** This is now the highest-leverage question in the document (§18 R2). The Garrigan set is the best-case input; I have no evidence about the distribution of everything else, and that distribution decides how much of the roadmap after Stage 0 is worth building. Old scans, permit-office downloads, and contractor emails are more useful here than clean architect exports.
 3. **Which option is "the" design?** Sheet A-2 carries "Proposed - Second floor OP#B" and the second PDF is an entire alternate attic option set. The system will always ask, but the fixture needs a canonical answer to test against.
-4. **Attic in or out of the target model?** The attic drives the highest-risk workstream (R1). If it is out, the timeline shortens by roughly 4 weeks.
+4. **Attic in or out of the target model?** The attic drives the highest-risk workstream (R1). If it is out, Stage 2 shrinks substantially and Stage 1 becomes the practical finish line.
 5. **Is the deck in scope?** The new deck appears on A-1 and affects the mudroom door and exterior massing.
 6. **Render intent.** Client-presentation photoreal, or design-study model views? This sets Stage 4's weight, not the architecture.
 7. **Hosted-model opt-in.** Stage 3 only, but worth deciding the default posture now.
@@ -692,7 +690,7 @@ Both sprints are Stage 0. Neither builds any automatic extraction — that start
 
 **Why this experiment:** it exercises every layer of the architecture — extraction, calibration, association, constraint solving, solid construction, hashing, and both renderers — on the smallest possible geometry, and it produces a direct, checkable answer to "would this have caught the error that started this project?"
 
-**Stop criterion:** if the deterministic path cannot reproduce those two walls' labelled dimensions to ≤1 in within three weeks, the *automatic* vector-extraction premise is wrong for this drawing style. There is no alternative input format to retreat to, so the pivot is to make Stage 0's tracing surface the primary path and treat extraction as an accelerator that must earn its place — measured against the tracing baseline, feature by feature.
+**Stop criterion:** if the deterministic path cannot reproduce those two walls' labelled dimensions to ≤1 in after tick-glyph detection is implemented and tuned, the *automatic* vector-extraction premise is wrong for this drawing style. There is no alternative input format to retreat to, so the pivot is to make Stage 0's tracing surface the primary path and treat extraction as an accelerator that must earn its place — measured against the tracing baseline, feature by feature.
 
 **Run the PoC twice: once on the native vector page, once on a 150-dpi raster of the same page traced by hand.** Both must produce a model that passes the same assertions. If the hand-traced run passes and the extracted run does not, that is a clean result rather than a failure — it says the floor is solid and the automation needs work. If the hand-traced run fails, the problem is in the geometry core and nothing downstream matters until it is fixed.
 
