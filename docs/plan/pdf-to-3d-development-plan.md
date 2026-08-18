@@ -1,6 +1,6 @@
 # Development Plan: PDF Floor Plans → Deterministic Dimensioned 3D Model → Unlimited Renders
 
-> **Status:** approved plan · 2026-08-18 · no implementation started
+> **Status:** approved plan · revised 2026-08-18 · no implementation started
 > **Fixture:** Garrigan, 261 Grove Street, Montclair NJ — *Design Options Set 08.13.26* (sheets A-0…A-3, A-3 OP#B)
 > **Scope of this document:** architecture and roadmap only. No production code.
 
@@ -13,6 +13,7 @@ This plan specifies a system where that class of error is **structurally impossi
 **What I did before planning.** I rendered and read every page of both PDFs at high resolution *and* probed their vector structure programmatically. Findings materially changed the recommended staging (§14) and de-risked the core feasibility question (§2). The evidence is in Appendix A — read it, because several conclusions in this plan depend on it and several of them contradict the assumptions in the brief.
 
 **Decisions already taken** (recorded here so they are not relitigated):
+- *Input format:* **PDF is the product's input. Full stop.** Not DWG, not DXF, not IFC, not a BIM export. The tool must work from the document a homeowner or contractor actually has in hand, and it may not assume cooperation from whoever authored the drawings. Every fallback in this plan therefore resolves to the product's own tools, never to a better source file.
 - *Platform:* local-first hybrid — Python geometry/extraction core plus a TypeScript/Three.js browser UI over localhost, packageable as a desktop app later. Drawings never leave the machine without an explicit per-project opt-in.
 - *This milestone:* architecture and roadmap only; implementation begins at Sprint 1 (§20).
 
@@ -42,7 +43,17 @@ Build **a provenance-carrying, human-validated vector-plan reconstructor**, not 
 | Review UI | React + TypeScript + Three.js + pdf.js underlay | |
 | AI proposals (Stage 2+) | Claude multimodal API, or a local VLM in strict-privacy mode | Proposer only. Every proposal must carry a citation and snap to extracted geometry. |
 
-**The single most important recommendation in this document:** before investing in raster/OCR interpretation, *ask the architect for the DWG, DXF, or IFC.* This project's drawings came out of a BIM tool. The PDF is a lossy print of a model that already exists. Ingesting DXF via `ezdxf` (MIT) eliminates roughly 60% of the hard problems in §6–§7. PDF ingest remains necessary — it is what clients actually have — but a DXF/IFC lane should be a first-class, documented input path, not an afterthought.
+**The single most important consequence of PDF-only input:** the product has no escape hatch, so **the manual authoring surface is the product's floor, not its fallback.** Every hard extraction problem in this document — dense dimension chains, curved walls, unreadable scans, roof planes — resolves to the same place: a user calibrating scale and drawing the element by hand, with snapping and exact feet-and-inches, over the page image. That surface must therefore be genuinely good in Stage 0, before any automation exists, because it is the thing that guarantees the product always works. Automation then reduces how often the user touches it; it never becomes a precondition for the product functioning.
+
+**Capability tiers, declared at import.** A PDF is not one input format, it is three, and the product must say which one it is looking at and what that costs the user:
+
+| Tier | What it is | What the product does | Expected human effort |
+|---|---|---|---|
+| **A** | Native vector with structured semantics — colour-coded poché, live text, plotted from a BIM/CAD tool. *The Garrigan set is Tier A.* | Full automatic extraction; user reviews and approves | Minutes per floor |
+| **B** | Native vector, flat semantics — geometry present but no colour/layer coding, text exploded to outlines, or an unfamiliar office convention | Automatic geometry, manual semantics: user assigns wall phases, confirms openings | Tens of minutes per floor |
+| **C** | Raster — scanned, photographed, or image-only export. No vector geometry to recover | Calibrate + trace over the page image with snapping; automated proposals arrive in Stage 3 | Roughly an hour per floor |
+
+Tier is detected on import (path count, text-span count, image coverage) and shown to the user with an honest effort estimate *before* they invest time. **All three tiers are usable from Stage 0**, because all three bottom out in the same manual authoring surface. This is the "fail informatively" principle applied at the front door: the product never silently does a bad job on a scan, and it never refuses one either.
 
 ---
 
@@ -64,13 +75,14 @@ Build **a provenance-carrying, human-validated vector-plan reconstructor**, not 
 - Design-option handling. **Required, not optional** — sheet A-2 carries a third region, "Proposed - Second floor OP#B", and the attic PDF is an entire alternate option set (`A-3 OP#B`).
 - Multistory vertical registration by 2-point corner/chimney matching.
 - Stair reconstruction from riser/tread notes ("3 RISERS / 7" / 2 TREADS / 12"").
-- Roof-plane reconstruction from pitch annotations plus section cuts — **highest-risk item in the project** (§18 R3).
+- Roof-plane reconstruction from pitch annotations plus section cuts — **highest-risk item in the project** (§18 R1).
 
 ### Not feasible — stated plainly
 
 - **Unattended conversion of arbitrary architectural sets.** No. Human confirmation is a permanent architectural feature, not a temporary crutch.
 - **Construction-grade output.** This produces a *design-communication* model. Where a wall is not explicitly dimensioned, it is measured off linework: a 0.5 pt line at 1/4" scale is ~0.33 in real-world, so un-dimensioned geometry carries a **±1/2 in** honest band and can never be marked construction-grade.
-- **Geometry from raster scans without review.** A vision model can propose a wall. It cannot guarantee one. This will be stated in the UI.
+- **Automatic geometry from raster scans.** A vision model can propose a wall; it cannot guarantee one. Scans are fully *supported* — the user calibrates and traces them, and the resulting model is exactly as trustworthy as any other, because it went through the same constraint solve and validation. What is not feasible is doing it *for* them without review, and the UI will say so.
+- **Any input format other than PDF.** Not a technical limit — a product decision (§1). DWG, DXF and IFC ingest are permanently out of scope.
 - **Framing, structure, MEP, or code compliance.** Out of scope, permanently.
 - **Direct `.rvt` read/write.** No open format exists; only IFC interchange or the Windows Revit API. Out of scope.
 - **Hand-drawn or redlined markup.** Out of scope.
@@ -80,7 +92,7 @@ Build **a provenance-carrying, human-validated vector-plan reconstructor**, not 
 
 ## 3. Proposed user workflow
 
-1. **Import** PDF (or DXF/IFC via the alternate lane). Pages are rasterised for display and parsed for vectors.
+1. **Import** PDF. Pages are rasterised for display and parsed for vectors. The document's **capability tier** (§1) is detected and shown with an honest effort estimate before the user commits time.
 2. **Region detection.** System proposes drawing regions per sheet with detected titles ("Proposed - First Floor", "1/4" = 1'-0""). User confirms, merges, or deletes. Photos, 3D thumbnails, legends, and title blocks are auto-rejected and shown as rejected.
 3. **Role assignment.** For each region, user assigns: `discipline=plan|section|elevation|axon`, `level`, `variant = existing | proposed | option:<name>`. **The system never guesses which option is "the" proposal.**
 4. **Calibration.** System proposes scale from (a) title-block note, (b) regression over matched dimension strings, (c) graphic scale bar if present. It shows all three and their disagreement. User picks or draws a calibration dimension.
@@ -101,8 +113,10 @@ Build **a provenance-carrying, human-validated vector-plan reconstructor**, not 
 ```mermaid
 flowchart TB
     subgraph INGEST["Ingest — deterministic"]
-        PDF[PDF / DXF / IFC] --> EX[Extractor<br/>PyMuPDF paths + spans]
-        EX --> OBS[(Observation Store<br/>immutable, hashed)]
+        PDF[PDF — the only input] --> TIER[Tier detector<br/>A vector · B flat · C raster]
+        TIER --> EX[Extractor<br/>PyMuPDF paths + spans]
+        TIER --> RAS[Page rasteriser<br/>always, for display + tracing]
+        EX & RAS --> OBS[(Observation Store<br/>immutable, hashed)]
     end
 
     subgraph INTERP["Interpretation — probabilistic · AI allowed ONLY here"]
@@ -115,7 +129,8 @@ flowchart TB
         RD & CAL & WD & DIM & SYM & VLM --> PROP[(Proposal Store<br/>confidence + citation)]
     end
 
-    PROP --> REVIEW["Review UI<br/>approve · edit · reject · mark Unknown"]
+    PROP --> REVIEW["Review + Authoring UI<br/>approve · edit · reject · mark Unknown<br/><b>· trace from scratch ·</b>"]
+    OBS ==>|"Tier C / any failure:<br/>manual trace over page image"| REVIEW
     REVIEW --> FACTS[(Approved Fact Store<br/>state + basis + provenance)]
 
     subgraph DET["Deterministic geometry — NO AI"]
@@ -409,9 +424,11 @@ Checks, each producing `pass | warn | block`:
 
 ## 13. MVP scope and explicit exclusions
 
-**In scope for MVP (Stage 0 + Stage 1 merged — see §14):**
+**In scope for MVP (see §14):**
 
-- Vector PDF ingest; multi-region sheets; existing/proposed/option variants.
+- PDF ingest of all three capability tiers, with tier declared at import.
+- **Manual calibrate-and-trace authoring over any page image** — the Tier C path, and the universal fallback.
+- Automatic vector extraction for Tier A/B; multi-region sheets; existing/proposed/option variants.
 - Calibration, wall/opening extraction, dimension association, constraint solve with diagnostics.
 - Single- and multi-floor plan reconstruction with vertical registration.
 - Ceiling heights from plan tags; floor levels from section chains where present.
@@ -423,36 +440,37 @@ Checks, each producing `pass | warn | block`:
 
 **Explicitly excluded from MVP:**
 
-- Raster/scanned sheets and OCR (Stage 2).
-- Roofs, dormers, sloped ceilings (Stage 3) — the attic is deliberately *not* MVP.
+- *Automatic* interpretation of raster sheets — OCR, symbol recognition, multimodal proposals (Stage 3). Manual tracing of raster sheets **is** in scope from Stage 0; only the automation is deferred.
+- Roofs, dormers, sloped ceilings (Stage 2) — the attic is deliberately *not* MVP.
 - Curved and non-orthogonal walls beyond user-authored arcs.
 - IFC and OBJ export (GLB only at MVP).
 - Furniture libraries, PBR material library, generative decor (Stage 4).
 - Elevations as a geometry source (annotation cross-check only).
 - Multi-user, cloud sync, accounts.
 - Any commercial drawing convention not present in the fixture: grid bubbles, keynote legends, phasing beyond existing/new/demo, curtain wall.
-- DWG/DXF/IFC ingest — designed for, but built in Stage 1.5.
+- **DWG, DXF, IFC and native BIM ingest — permanently out of scope.** The product's premise is that it works from the PDF the user already has. An import path that depends on obtaining files from whoever authored the drawings solves a different, easier problem, and building it would quietly relieve pressure on the PDF pipeline that must carry the product.
 
 ---
 
 ## 14. Milestones and stage gates
 
-**I am challenging two things in the proposed staging, on the evidence in Appendix A.**
+**Stage 0 stands as the brief originally specified it.** An earlier draft of this plan argued for collapsing the manual tracing prototype into vector extraction, on the grounds that the fixture is native vector and extraction is cheaper. That argument was wrong, and PDF-only input is what makes it wrong: with no DWG/DXF/IFC lane, there is no second source of geometry, so the manual calibrate-and-trace surface is the only thing standing between the product and total failure on a Tier B or Tier C document. It is the floor of the product and it must be built first, exactly as the brief said — *"a fast, assisted tracing and validation system rather than a magical one-click converter."*
 
-**Challenge 1 — collapse Stage 0 into Stage 1.** The brief proposes a manual tracing prototype first. But this fixture is native vector with colour-coded poché, and my probe recovered dimensions to sub-inch accuracy with a trivial heuristic. Building a from-scratch tracing tool would be building the *harder* input path first. **Revised Stage 0** keeps everything valuable about the original — the deterministic geometry engine, the render architecture, the validation system, exact numeric editing — but seeds the canvas from vector extraction and reduces the manual tool to *correction and authoring*. The architectural principle the brief cares about (deterministic modelling before ambitious automation) is fully preserved; only the redundant UI work is cut.
+**One change to staging still stands: swap Stages 2 and 3.** Automatic raster *interpretation* — OCR, symbol recognition, multimodal proposals — should come after multistory/section/roof reasoning, for two reasons. The fixture needs none of it, and the project's real value and real risk both sit in the attic: roof planes, dormers, and the collision between existing roof, second-floor addition, and attic expansion.
 
-**Challenge 2 — swap Stages 2 and 3.** Raster/OCR should come *after* multistory/section/roof reasoning. The fixture needs no OCR at all, and the project's actual value and actual risk both live in the attic: roof planes, dormers, and the collision between existing roof, second-floor addition, and attic expansion. Doing OCR first would spend the risky early months on a capability this project does not yet need.
+This is safe **only because Stage 0 makes raster documents usable without any of that automation.** A scanned plan can be calibrated and traced from day one; Stage 3 reduces the effort from about an hour a floor to minutes. Capability is universal from Stage 0; automation coverage is what grows by stage. If Stage 0 did not ship manual tracing over a page image, this swap would be indefensible.
 
 | Stage | Content | Gate to pass | Est. |
 |---|---|---|---|
-| **0** | Canonical schema, project store, constraint solver + diagnostics, solid builder, validation report, scene lock, GLB export, Three.js viewer, Cycles driver, correction UI. Geometry seeded by a hand-authored fixture, not by extraction. | Hand-authored family-room walls build, validate, lock, and render from 8 cameras with one geometry hash. Topology assertion green. | 4 wks |
-| **1** | Vector extraction: paths, text, legend-driven colour map, region detection, calibration, poché→centreline, opening detection, dimension association. | All 4 fixture sheets extract; ≥95% of dimensions auto-associated; extracted first floor matches the hand-authored Stage-0 model within 1 in. | 5 wks |
-| **1.5** | DXF/IFC alternate ingest lane. | A DXF of the same house produces an equivalent model. *(Gate skippable if no DXF is obtainable.)* | 2 wks |
+| **0** | **Plan-locked manual prototype.** Canonical schema, project store, page rasteriser, tier detector, calibration UI, **snap-and-trace wall/opening authoring over the page image with exact ft-in entry**, constraint solver + diagnostics, solid builder, validation report, scene lock, GLB export, Three.js viewer, Cycles driver. No automatic extraction whatsoever. | A user traces the family room from the rasterised A-1 page, and it builds, validates, locks, and renders from 8 cameras with one geometry hash. Topology assertion green. **The same run repeats on a deliberately degraded 150-dpi scan of A-1, proving the Tier C path.** | 6 wks |
+| **1** | Vector extraction seeding that same UI: paths, text, legend-driven colour map, region detection, auto-calibration, poché→centreline, opening detection, dimension association. | All 4 fixture sheets extract; ≥95% of dimensions auto-associated; extracted first floor matches the Stage-0 hand-traced model within 1 in. **Human effort on Tier A drops below 10 minutes per floor.** | 5 wks |
 | **2** (was 3) | Multistory registration, levels, sub-levels, stairs, sections, roof planes, dormers, sloped ceilings, low-storage zones. | Full 4-level Garrigan model builds; attic clear heights reproduce the section to ±1 in; all §17 metrics met. | 7 wks |
-| **3** (was 2) | Raster/OCR, symbol recognition, multimodal proposers, confidence calibration harness. | A scanned/print-to-image version of the Garrigan set reaches the same topology accuracy with ≤2× the human corrections. | 6 wks |
+| **3** (was 2) | Raster/OCR, symbol recognition, multimodal proposers, confidence calibration harness. | The degraded-scan fixture from the Stage-0 gate reaches Tier A topology accuracy with ≤2× the human corrections. | 6 wks |
 | **4** | PBR material pipeline, asset library, lighting presets, camera sets, batch rendering, optional generative finishing. | Client-presentable render set; geometry hash identical across all outputs. | 5 wks |
 
-**Total to Stage 2 (a genuinely useful tool for this house): ~16 weeks.** Total through Stage 4: ~7 months.
+**Total to Stage 2 (a genuinely useful tool for this house): ~18 weeks.** Total through Stage 4: ~7 months.
+
+Stage 0 grew from 4 to 6 weeks because it now carries the real tracing surface, and Stage 1.5 is gone. Note what Stage 0 buys: **from week 6, the product handles any PDF anyone hands it** — slowly for scans, but correctly and with full validation. Every later stage is a speed improvement on a tool that already works, which is a far better risk position than an automation pipeline that is useless until it is accurate.
 
 ---
 
@@ -464,6 +482,7 @@ Checks, each producing `pass | warn | block`:
 ├─ packages/
 │  ├─ core-schema/                  # JSON Schema + generated TS & Python types (single source of truth)
 │  ├─ units/                        # int64 nm, ft-in parse/format, fraction handling
+│  ├─ ingest/             [py]      # PDF open, page rasteriser, tier detector, backend interface
 │  ├─ extract/            [py]      # PyMuPDF harvest, colour map, legend parser, text classifier
 │  ├─ regions/            [py]      # region segmentation, title-bubble parsing, calibration
 │  ├─ walls/              [py]      # poché→centreline, junctions, opening detection
@@ -476,11 +495,12 @@ Checks, each producing `pass | warn | block`:
 │  ├─ propose/            [py]      # AI proposers; strict Proposal-only output contract
 │  ├─ store/              [py]      # SQLite project file, versioning, approval-script log
 │  ├─ server/             [py]      # localhost FastAPI; no external network by default
+│  ├─ author/             [ts]      # calibrate, snap-and-trace, exact ft-in entry — the product's floor
 │  ├─ ui/                 [ts]      # React + pdf.js + Three.js; overlay, review queue, inspectors
 │  └─ viewer/             [ts]      # embeddable Three.js scene loader + hash verifier
 ├─ fixtures/
 │  └─ garrigan-261-grove/
-│     ├─ source/                    # the two PDFs, sha256-pinned
+│     ├─ source/                    # the two PDFs, sha256-pinned, + the 150-dpi Tier C raster of A-1
 │     ├─ golden/                    # expected regions, calibration, walls, openings, levels
 │     ├─ approval-script.jsonl      # replayable human decisions
 │     ├─ assertions/                # topology + dimension assertions (see §16)
@@ -548,7 +568,10 @@ Additional assertion sets: basement (8'-9" vs 6'-9" ceilings, 3-riser transition
 | **Rendering fidelity** | identical `geometry_hash` across all cameras and both renderers | **100%, binary** | 100% |
 | | SSIM vs golden per camera | ≥ 0.98 | — |
 | **Confidence calibration** | ECE over proposals; plus a hard rule | ECE ≤ 0.10; **no bin ≥0.9 confidence may have <0.9 empirical accuracy** | ECE ≤ 0.05 |
-| **Human correction required** | edits per 100 extracted elements; minutes to a validated floor | ≤ 15 edits/100; ≤ 30 min/floor | ≤ 5; ≤ 10 min |
+| **Human effort — Tier A** | edits per 100 extracted elements; minutes to a validated floor | ≤ 15 edits/100; ≤ 10 min/floor | ≤ 5; ≤ 5 min |
+| **Human effort — Tier B** | minutes to a validated floor | ≤ 30 min/floor | ≤ 15 min |
+| **Human effort — Tier C** | minutes to a validated floor, traced by hand | ≤ 60 min/floor | ≤ 25 min |
+| **Accuracy parity across tiers** | topology and dimensional accuracy of a Tier C hand-traced floor vs the same floor from Tier A | **identical — same solver, same validation, same gate** | identical |
 | **Invention rate** | entities lacking a non-user `SourceRef` and not `USER_AUTHORED` | **0, enforced as a build failure** | 0 |
 
 ---
@@ -557,42 +580,48 @@ Additional assertion sets: basement (8'-9" vs 6'-9" ceilings, 3-riser transition
 
 Ranked by expected damage × probability. Each carries an explicit stop-or-pivot criterion.
 
+**Every pivot below resolves to the Stage-0 manual authoring surface.** With PDF as the only input there is no better source file to fall back to, so "the user does it by hand, accurately, with snapping and exact dimensions" is the universal safety net. This is why Stage 0 is non-negotiable and why its scope grew (§14): the quality of that surface sets the floor on every risk in this section.
+
 **R1 — Roof and dormer reconstruction (highest).** Three sections, two pitches, an existing roof colliding with a second-floor addition and a possible attic expansion. Plane-solving from partial information is genuinely hard and this is where the project's value concentrates.
 *Mitigation:* treat section-stated clear heights as assertions, not inputs; build a dedicated roof editor where the user authors planes from eave + pitch + ridge.
 **Stop/pivot:** if by the end of Stage 2 the reconstructed attic clear-height profile cannot reproduce the section to ±1 in, **drop automatic roof solving entirely** and ship the manual roof editor as the only path. Do not iterate on heuristics past that point.
 
-**R2 — Dimension association in dense chains.** Sheet A-1 has stacked chains within ~14 pt of each other; my probe already showed two ambiguous matches.
+**R2 — Real-world PDFs are worse than the fixture (new #2 under PDF-only input).** The Garrigan set is Tier A: native vector, colour-coded poché, live text, one architect's consistent convention. A product taking arbitrary PDFs will meet flattened vector exports with no colour coding, text converted to outlines, phone photographs of paper, mixed scales on one sheet, and offices whose legend means something entirely different. With no DWG/DXF/IFC lane, **there is nothing else to fall back on.**
+*Mitigation:* the capability-tier model (§1), declared honestly at import; legend-driven rather than hardcoded colour semantics (§6 step 3), so a new office convention is learned from its own legend; and the Stage-0 tracing surface, which works at any tier.
+**Stop/pivot:** acquire five PDF sets from other sources before Stage 1 ends and measure the tier distribution. **If fewer than half are Tier A, stop investing in vector extraction depth and redirect that effort into making tracing faster** — better snapping, dimension-driven input, keyboard-first flows. A tool that traces a scan in fifteen minutes beats one that perfectly parses the 30% of documents that happen to be well-formed.
+
+**R3 — Dimension association in dense chains.** Sheet A-1 has stacked chains within ~14 pt of each other; my probe already showed two ambiguous matches.
 *Mitigation:* tick-glyph detection, chain grouping by collinearity, and explicit "unassociated" queue rather than a guess.
 **Stop/pivot:** if after two weeks the associator is below 95% on the four fixture sheets, ship manual chain assignment in the UI — it is a fast interaction — and stop investing in the automatic path.
 
-**R3 — Poché→centreline for non-orthogonal and curved walls.** This house has a curved bay and an angled entry; PDF flattens arcs to polylines.
+**R4 — Poché→centreline for non-orthogonal and curved walls.** This house has a curved bay and an angled entry; PDF flattens arcs to polylines.
 *Mitigation:* arc re-fitting with chord-error bound.
 **Stop/pivot:** if chord error exceeds 1 in, curved walls become user-authored arcs only, permanently.
 
-**R4 — PyMuPDF licensing.** AGPL-3.0 or a commercial Artifex licence.
+**R5 — PyMuPDF licensing.** AGPL-3.0 or a commercial Artifex licence.
 *Mitigation:* isolate all PyMuPDF calls behind a single `extract/backend` interface from day one so a `pdfium`/`pdfminer.six` backend can be substituted.
 **Stop/pivot:** decide at Sprint 1 whether this ships closed-source. If yes, budget the commercial licence or the backend swap *then*, not after 5 modules depend on it.
 
-**R5 — Cross-region and cross-sheet registration.** Regions crop differently and may be at different scales; A-0's title block says "As indicated," meaning per-region scale.
+**R6 — Cross-region and cross-sheet registration.** Regions crop differently and may be at different scales; A-0's title block says "As indicated," meaning per-region scale.
 *Mitigation:* per-region calibration is already in the model; 2-point user registration as the fallback. Not a stop-level risk.
 
-**R6 — Render determinism drift.** Blender/Cycles output varies across versions and GPUs.
+**R7 — Render determinism drift.** Blender/Cycles output varies across versions and GPUs.
 *Mitigation:* pin the Blender version, fix the seed, hash *geometry* rather than pixels, and use SSIM tolerances for images. Renders are never authoritative.
 
-**R7 — Scope creep into BIM authoring.** The gravitational pull toward "just add walls-by-drawing, then schedules, then…" is strong and fatal.
+**R8 — Scope creep into BIM authoring.** The gravitational pull toward "just add walls-by-drawing, then schedules, then…" is strong and fatal.
 *Mitigation:* the exclusion list in §13 is a contract. Every addition must cite a failing fixture assertion.
 
-**R8 — The beautiful-but-wrong temptation.** The strongest pressure on this project will be to ship a pretty render before validation works, because pretty renders are what get shown to people.
+**R9 — The beautiful-but-wrong temptation.** The strongest pressure on this project will be to ship a pretty render before validation works, because pretty renders are what get shown to people.
 *Mitigation:* build the validation report *before* the renderer (Stage 0 gate order is deliberate); render unknowns as visibly unresolved; stamp every image with the geometry hash. **A model that fails validation cannot be rendered in the product at all.**
 
-**R9 — Confidence miscalibration in Stage 3 proposers.** An overconfident proposer poisons the review queue's triage and quietly reintroduces the exact failure this project exists to prevent.
+**R10 — Confidence miscalibration in Stage 3 proposers.** An overconfident proposer poisons the review queue's triage and quietly reintroduces the exact failure this project exists to prevent.
 *Mitigation:* the hard calibration rule in §17; auto-approval ships **off** and is enabled per-class only after the calibration gate passes.
 
 ---
 
 ## 19. Estimated development time, operating costs and infrastructure
 
-**Time** (AI-agent development with a human reviewer in the loop): Stage 0 ≈ 4 wks · Stage 1 ≈ 5 wks · Stage 1.5 ≈ 2 wks · Stage 2 ≈ 7 wks · Stage 3 ≈ 6 wks · Stage 4 ≈ 5 wks. **~16 weeks to a genuinely useful tool for this house; ~7 months through visualisation.**
+**Time** (AI-agent development with a human reviewer in the loop): Stage 0 ≈ 6 wks · Stage 1 ≈ 5 wks · Stage 2 ≈ 7 wks · Stage 3 ≈ 6 wks · Stage 4 ≈ 5 wks. **~18 weeks to a genuinely useful tool for this house; ~7 months through visualisation.** A usable-but-manual tool exists at week 6.
 
 **Operating cost.** Local-first means marginal cost ≈ $0. Optional hosted multimodal proposals (Stage 3 only) run on the order of **$0.05–$0.30 per sheet** — negligible against the human time saved. There is no training, no fine-tuning, and no GPU cluster in this plan.
 
@@ -604,37 +633,39 @@ Ranked by expected damage × probability. Each carries an explicit stop-or-pivot
 
 ## 20. First two implementation sprints
 
-### Sprint 1 (2 weeks) — Observation layer and the fixture harness
+Both sprints are Stage 0. Neither builds any automatic extraction — that starts at Stage 1. The goal of these four weeks is a tool that can already turn *any* PDF into a validated, rendered model, slowly, by hand.
 
-**Goal:** the source documents become queryable, hashed, provenance-bearing data, and the test harness that will govern the whole project exists.
+### Sprint 1 (2 weeks) — The spine: units, schema, store, page images
+
+**Goal:** a project can be created from a PDF, its pages displayed at any zoom, and the test harness that will govern the whole project exists and is failing on purpose.
 
 1. `core-schema` — JSON Schemas for every entity in §5, with generated Python and TypeScript types. Single source of truth.
-2. `units` — int64 nanometres; exact ft-in and fraction parse/format; property-based round-trip tests.
-3. `extract` — PyMuPDF harvest behind a swappable backend interface: paths with fill/stroke/width/dashes, text spans with bbox/size/font/colour/direction, stable `path_uid`s, white-mask suppression, split-span reassembly.
+2. `units` — int64 nanometres; exact ft-in and fraction parse/format (`8' 7"`, `8'-7 1/2"`); property-based round-trip tests. **Nothing else can be trusted until this is exact**, so it ships first.
+3. `ingest` — PDF open, page rasterisation at multiple zooms, **tier detection** (path count, span count, image coverage) with the honest effort estimate from §1. PyMuPDF behind a swappable backend interface from the first commit (§18 R5).
 4. `store` — SQLite project file, content-addressed source documents, approval-script log.
-5. `fixtures/garrigan-261-grove` — both PDFs pinned by sha256; golden extraction snapshots for all 5 sheets; the assertion files from §16 written out **now**, failing, as the project's north star.
-6. CLI `tools/extract` and the import-boundary lint rule from §15.
+5. `fixtures/garrigan-261-grove` — both PDFs pinned by sha256; **plus a deliberately degraded 150-dpi raster of sheet A-1 as the Tier C fixture**; the assertion files from §16 written out **now**, failing, as the project's north star.
+6. The import-boundary lint rule from §15.
 
-**Done when:** `tools/extract` reproduces byte-identical output across two machines, and the golden snapshots cover every path and span on all five sheets.
+**Done when:** all five sheets open and display; tier detection correctly reports Tier A for the originals and Tier C for the degraded raster; the units test suite is exhaustive; the assertion suite runs and fails cleanly with readable output.
 
-### Sprint 2 (2 weeks) — Calibration, dimension association, and the topology assertion
+### Sprint 2 (2 weeks) — Calibrate, trace, solve, and the topology assertion
 
-**Goal:** turn observations into the specific facts that the mandatory regression test needs.
+**Goal:** a human can produce the family room by hand, from the page image alone, and the mandatory regression test passes on that hand-traced geometry.
 
-1. `regions` — legend parser that binds fill/stroke colours to the existing/new/demolished taxonomy from the sheet's own legend; region segmentation anchored on title bubbles; title/scale-note parsing.
-2. `regions/calibration` — regression of labelled dimensions against measured tick spans; report `in_per_pt`, residual %, and disagreement with the title-block note.
-3. `dimensions` — **tick-glyph detection** (the constant-overshoot lesson from Appendix A is the core requirement here), chain segmentation, dimension↔feature association, and an explicit unassociated queue.
-4. `walls` — poché polygon → centreline + thickness for axis-aligned walls; junction resolution; gap-based opening detection with parametric `t_start`/`t_end`.
-5. First green assertions: island 8'-7" × 4'-3"; the `3'-1" | 5'-0" | 3'-1"` south-wall chain; and the ordered east-wall sequence `window → solid("60\" TV") → unframed(MUDROOM)`.
+1. `ui/calibrate` — pick two points, type the real distance, get a `RegionCS` transform with its residual. Works identically on vector and raster pages, because it only ever uses the page image.
+2. `ui/trace` — wall authoring with snapping (to page linework where vectors exist, to a grid and to other walls always), exact ft-in entry, thickness, and opening placement as parametric intervals along the wall. **The wall inspector from §11 ships here**, showing the ordered opening list with running dimensions.
+3. `constraints` — system assembly, sparse LSQ, rank/nullspace diagnostics; the over-/under-/contradictory taxonomy from §8 surfaced in the UI.
+4. `geometry` + `validate` — extrusion, manifold3d opening subtraction, the §12 rule set including the invention audit, and `geometry_hash`.
+5. First green assertions, **on hand-traced geometry**: island 8'-7" × 4'-3"; the `3'-1"` / `5'-0"` / `3'-1"` south-wall chain; and the ordered east-wall sequence `window → solid("60\" TV") → unframed(MUDROOM)`.
 
-**Done when:** ≥95% of dimension strings on all four main-set sheets are auto-associated, and the family-room topology assertion passes on extracted (not hand-authored) geometry.
+**Done when:** the family room, traced by hand from the rasterised A-1 page in under 20 minutes, builds, validates, locks, and passes every topology assertion — **and the same is true when traced from the degraded 150-dpi fixture.** That second run is what proves the product has a floor.
 
 ---
 
 ## 21. Decisions that require user input
 
-1. **Commercial intent.** Will this ever ship closed-source? This decides the PyMuPDF question (§18 R4) and must be answered in Sprint 1, not later.
-2. **Can we get the DWG/DXF/IFC from Courtney Rombough A.I.A.?** This is the highest-leverage question in the document. A DXF would remove most of §6.
+1. **Commercial intent.** Will this ever ship closed-source? This decides the PyMuPDF question (§18 R5) and must be answered in Sprint 1, not later.
+2. **Can you supply five to ten PDF sets from other sources?** This is now the highest-leverage question in the document (§18 R2). The Garrigan set is the best-case input; I have no evidence about the distribution of everything else, and that distribution decides how much of the roadmap after Stage 0 is worth building. Old scans, permit-office downloads, and contractor emails are more useful here than clean architect exports.
 3. **Which option is "the" design?** Sheet A-2 carries "Proposed - Second floor OP#B" and the second PDF is an entire alternate attic option set. The system will always ask, but the fixture needs a canonical answer to test against.
 4. **Attic in or out of the target model?** The attic drives the highest-risk workstream (R1). If it is out, the timeline shortens by roughly 4 weeks.
 5. **Is the deck in scope?** The new deck appears on A-1 and affects the mudroom door and exterior massing.
@@ -661,7 +692,9 @@ Ranked by expected damage × probability. Each carries an explicit stop-or-pivot
 
 **Why this experiment:** it exercises every layer of the architecture — extraction, calibration, association, constraint solving, solid construction, hashing, and both renderers — on the smallest possible geometry, and it produces a direct, checkable answer to "would this have caught the error that started this project?"
 
-**Stop criterion:** if the deterministic path cannot reproduce those two walls' labelled dimensions to ≤1 in within three weeks, the vector-extraction premise is wrong for this drawing style. Pivot to DXF/IFC ingest as the only supported input and re-scope.
+**Stop criterion:** if the deterministic path cannot reproduce those two walls' labelled dimensions to ≤1 in within three weeks, the *automatic* vector-extraction premise is wrong for this drawing style. There is no alternative input format to retreat to, so the pivot is to make Stage 0's tracing surface the primary path and treat extraction as an accelerator that must earn its place — measured against the tracing baseline, feature by feature.
+
+**Run the PoC twice: once on the native vector page, once on a 150-dpi raster of the same page traced by hand.** Both must produce a model that passes the same assertions. If the hand-traced run passes and the extracted run does not, that is a clean result rather than a failure — it says the floor is solid and the automation needs work. If the hand-traced run fails, the problem is in the geometry core and nothing downstream matters until it is fixed.
 
 ---
 
@@ -742,7 +775,7 @@ Both PDFs are single-sheet-per-page, 36″×24″ (2592×1728 pt) **fully vector
 | 12 | Tick detection + dimension association | **High** | Critical | 1 |
 | 13 | Poché → centreline + junctions | Med | Critical | 1 |
 | 14 | Opening detection + parametric placement | Med | Critical | 1 |
-| 15 | DXF/IFC ingest lane | Low | **High** | 1.5 |
+| 15 | Tier detector + honest effort estimate at import | Low | High | 0 |
 | 16 | Multistory registration | Med | High | 2 |
 | 17 | Levels, sub-levels, stairs | Med | High | 2 |
 | 18 | Section parsing + datum reconciliation | Med | High | 2 |
@@ -757,9 +790,9 @@ Both PDFs are single-sheet-per-page, 36″×24″ (2592×1728 pt) **fully vector
 
 ## Appendix C — Build vs buy
 
-**Adopt:** PyMuPDF *(licence caveat)* · shapely · networkx · SciPy · manifold3d · IfcOpenShell · ezdxf · Blender/Cycles · Three.js · pdf.js · planegcs *(contingent)* · a hosted multimodal API *(Stage 3, optional)*.
+**Adopt:** PyMuPDF *(licence caveat)* · shapely · networkx · SciPy · manifold3d · IfcOpenShell *(export only)* · Blender/Cycles · Three.js · pdf.js · planegcs *(contingent)* · a hosted multimodal API *(Stage 3, optional)*.
 
-**Build:** drawing-region detector · legend-driven colour taxonomy · dimension-chain associator · poché→centreline extractor · constraint assembly + rank diagnostics · canonical schema and provenance system · review/correction UI · validation report · scene-lock pipeline · fixture assertion harness.
+**Build:** the calibrate-and-trace authoring surface *(the product's floor — build it first and build it well)* · PDF tier detector · drawing-region detector · legend-driven colour taxonomy · dimension-chain associator · poché→centreline extractor · constraint assembly + rank diagnostics · canonical schema and provenance system · review UI · validation report · scene-lock pipeline · fixture assertion harness.
 
 **Do not build:** a general 2D geometric constraint solver · a raytracer · a mesh boolean kernel · an IFC parser · an OCR engine.
 
@@ -773,7 +806,7 @@ Every quantitative statement in Appendix A was measured, not estimated, and each
 
 | Claim | How to reproduce |
 |---|---|
-| Page counts (1 and 4), sheet sizes, vector-vs-raster triage | `doc.page_count`, `page.rect`, `len(page.get_drawings())`, `len(page.get_images())` |
+| Page counts (1 and 4), sheet sizes, vector-vs-raster tier | `doc.page_count`, `page.rect`, `len(page.get_drawings())`, `len(page.get_images())` |
 | Fill/stroke colour taxonomy; absence of OCG layers and dash arrays | `doc.get_ocgs()`; histogram `g['fill']`, `g['color']`, `g['width']`, `g['dashes']` over `page.get_drawings()` |
 | Demolition dash segment lengths (median 3.5–6.0 in) | filter paths where `g['color'] == (1,0,0)`; measure segment lengths × 48/72 |
 | Text span inventory: 209 spans on A-1, two directions, font/size/colour distribution | `page.get_text("dict")` → blocks → lines → spans |
@@ -782,5 +815,7 @@ Every quantitative statement in Appendix A was measured, not estimated, and each
 | East-wall / south-wall topology | the `60" TV` span at `[1962.59, 725.62, 1972.35, 751.15]`; the wall poché run terminating north of the mudroom; the `3'-1"` / `5'-0"` / `3'-1"` chain on the south wall |
 
 The overshoot constant (~6.1 in real-world, ~3 in per end) is an artefact of *this* plotting style and must be re-derived per document set, not hardcoded — which is precisely why §6 step 12 specifies binding dimensions to tick glyphs rather than to line endpoints.
+
+**A caution about this appendix.** Every measurement here comes from one architect's Tier A output. It is strong evidence that automatic extraction is achievable *for documents like these*, and no evidence at all about the rest of the population (§18 R2). Treat Appendix A as the argument for building Stage 1, never as an argument for skipping Stage 0.
 
 **Acceptance criteria for the work this document describes** are in §17, and the stage gates that release each milestone are in §14.
