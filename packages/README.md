@@ -2,7 +2,7 @@
 
 The tool described in [`docs/plan/pdf-to-3d-development-plan.md`](../docs/plan/pdf-to-3d-development-plan.md): PDF floor plans → a deterministic, validated 3D model. This directory is the implementation; it lives alongside an unrelated app (ZeroBudget, at the repo root) in the same repo.
 
-**What's here today (Stage 0 / Sprint 2):** the family room from the Garrigan fixture, hand-traced, solved by a real constraint solver, built into validated solid geometry, hashed, and served to a browser UI that shows it next to the source PDF page. No PDF extraction yet (Stage 1) — the walls are typed in, exactly like a human would with the calibrate-and-trace UI this stands in for.
+**What's here today:** Stage 0 (Sprint 2) — the family room from the Garrigan fixture, hand-traced, solved by a real constraint solver, built into validated solid geometry, hashed, and served to a browser UI that shows it next to the source PDF page. Plus the start of Stage 1 — the `extract` package pulls real wall/opening dimensions straight out of the native-vector PDF (path harvest, colour taxonomy, dimension-string classification, tick-to-tick matching) and reproduces the Stage-0 hand-traced family room's dimensions to within 0.1 in, directly from sheet A-1. Extraction isn't wired into the live product/server yet — that's the next slice — but it runs, is tested against the real fixture PDFs, and its regression tests are in `packages/extract/tests`.
 
 ## Run it
 
@@ -33,7 +33,8 @@ Then open **http://127.0.0.1:5173/**. You should see the source PDF page, a live
 |---|---|
 | `units` | Exact int64-nanometre feet-inches/fraction parsing |
 | `core_schema` | The canonical entities (plan §5) — the topology invariant that makes the reported render failure unrepresentable lives here |
-| `ingest` | PDF open/rasterize + capability-tier detection (Tier A/B/C, plan §1) |
+| `ingest` | PDF open/rasterize + capability-tier detection (Tier A/B/C, plan §1); also the raw path/text harvest API used by `extract` |
+| `extract` | Stage 1: colour taxonomy, dimension-string classification, tick-to-tick dimension matching (plan §6) |
 | `store` | The project `.g3d` SQLite file |
 | `constraints` | The linear solver + well/under/over/contradictory diagnosis (plan §8) |
 | `geometry` | manifold3d solid construction + the deterministic geometry hash |

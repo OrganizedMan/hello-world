@@ -11,7 +11,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-for pkg in units core_schema ingest store constraints geometry validate fixtures_garrigan server; do
+for pkg in units core_schema ingest extract store constraints geometry validate fixtures_garrigan server; do
   echo "Installing packages/$pkg..."
   pip install -e "packages/$pkg"
 done

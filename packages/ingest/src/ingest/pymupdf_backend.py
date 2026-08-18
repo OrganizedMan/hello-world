@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pymupdf
 
-from .backend import PageSignals, PdfBackend, PdfHandle
+from .backend import PageSignals, PdfBackend, PdfHandle, RawPath, RawTextSpan
 
 
 class PyMuPdfHandle(PdfHandle):
@@ -61,8 +61,94 @@ class PyMuPdfHandle(PdfHandle):
         pix = page.get_pixmap(dpi=dpi)
         return pix.tobytes("png")
 
+    def raw_paths(self, page_index: int) -> list[RawPath]:
+        page = self._doc[page_index]
+        out: list[RawPath] = []
+        for draw_index, d in enumerate(page.get_drawings()):
+            points = _flatten_path_items(d["items"])
+            rect = d["rect"]
+            out.append(RawPath(
+                page_index=page_index,
+                draw_index=draw_index,
+                kind={"f": "fill", "s": "stroke", "fs": "fill+stroke"}[d["type"]],
+                fill_rgb=d["fill"],
+                stroke_rgb=d["color"],
+                width_pt=d["width"],
+                dashes=d["dashes"],
+                closed=bool(d["closePath"]),
+                rect=(rect.x0, rect.y0, rect.x1, rect.y1),
+                points=points,
+            ))
+        return out
+
+    def raw_text_spans(self, page_index: int) -> list[RawTextSpan]:
+        page = self._doc[page_index]
+        out: list[RawTextSpan] = []
+        for block in page.get_text("dict")["blocks"]:
+            if block["type"] != 0:
+                continue
+            for line in block["lines"]:
+                for span in line["spans"]:
+                    out.append(RawTextSpan(
+                        page_index=page_index,
+                        text=span["text"],
+                        bbox=tuple(span["bbox"]),
+                        size_pt=span["size"],
+                        color_rgb=_int_to_rgb(span["color"]),
+                        font=span["font"],
+                        direction=tuple(line["dir"]),
+                    ))
+        return out
+
     def close(self) -> None:
         self._doc.close()
+
+
+def _int_to_rgb(color: int) -> tuple[float, float, float]:
+    """PyMuPDF packs text-span colour as a single 0xRRGGBB int, unlike
+    drawing fill/stroke colour which is already an (r, g, b) float tuple."""
+    r = ((color >> 16) & 0xFF) / 255.0
+    g = ((color >> 8) & 0xFF) / 255.0
+    b = (color & 0xFF) / 255.0
+    return (r, g, b)
+
+
+def _flatten_path_items(items: list) -> tuple[tuple[float, float], ...]:
+    """Reduce a drawing's item list to an ordered polyline/polygon of
+    vertices. This fixture's paths are entirely straight segments
+    (Appendix A: "no beziers survive"); curves and rects are still handled
+    so the extractor does not silently drop geometry on a different
+    document set."""
+    points: list[tuple[float, float]] = []
+
+    def add(pt) -> None:
+        p = (pt.x, pt.y)
+        if not points or points[-1] != p:
+            points.append(p)
+
+    for item in items:
+        op = item[0]
+        if op == "l":
+            add(item[1])
+            add(item[2])
+        elif op == "re":
+            rect = item[1]
+            add(pymupdf.Point(rect.x0, rect.y0))
+            add(pymupdf.Point(rect.x1, rect.y0))
+            add(pymupdf.Point(rect.x1, rect.y1))
+            add(pymupdf.Point(rect.x0, rect.y1))
+            add(pymupdf.Point(rect.x0, rect.y0))
+        elif op == "qu":
+            quad = item[1]
+            for pt in (quad.ul, quad.ur, quad.lr, quad.ll):
+                add(pt)
+        elif op == "c":
+            # Bezier: keep the anchor points, drop the control points —
+            # good enough for wall/dimension-line geometry, which never
+            # uses curves in this fixture.
+            add(item[1])
+            add(item[4])
+    return tuple(points)
 
 
 class PyMuPdfBackend(PdfBackend):
