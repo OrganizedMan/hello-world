@@ -16,31 +16,23 @@ who computes the pixels is a separate concern from whether they'd agree.
 """
 from __future__ import annotations
 
-from constraints import ConstraintStatus, anchor_region_datums, build_systems, diagnose
-from fixtures_garrigan import build_family_room, tv_wall_interval
+from constraints import ConstraintStatus
+from fixtures_garrigan import build_family_room, diagnose_family_room, tv_wall_interval
 from geometry import build_wall_solid, compute_geometry_hash
 from units import nm_to_ft_in
 from validate import CheckStatus, run_validation
 
-
-def _diagnoses(dimension_constraints):
-    """Re-derive diagnoses independently from the constraints the fixture
-    returns — deliberately not reusing family_room.py's internal solve —
-    so this proves the returned DimensionConstraints are self-sufficient:
-    anyone downstream (validation, the review UI) gets the same answer."""
-    systems = build_systems(dimension_constraints, [])
-    results = []
-    for system in systems.values():
-        if not system.rows:
-            continue
-        anchor_region_datums(system)
-        results.append(diagnose(system))
-    return results
+# diagnose_family_room() independently rebuilds and re-solves the
+# constraint system from room.dimension_constraints (it does not reuse
+# family_room.py's internal solve), which is what proves those returned
+# DimensionConstraints are self-sufficient: anyone downstream (validation,
+# the API, the review UI) gets the same answer using the one correct,
+# shared implementation rather than each hand-rolling its own.
 
 
 def test_family_room_chain_solves_well_constrained():
     room = build_family_room()
-    for d in _diagnoses(room.dimension_constraints):
+    for d in diagnose_family_room(room):
         assert d.status in (ConstraintStatus.WELL_CONSTRAINED, ConstraintStatus.OVER_CONSTRAINED_CONSISTENT)
 
 
@@ -75,7 +67,7 @@ def test_the_reported_failure_is_unrepresentable_by_construction():
 
 def test_validation_report_is_not_blocking():
     room = build_family_room()
-    diagnoses = _diagnoses(room.dimension_constraints)
+    diagnoses = diagnose_family_room(room)
     report = run_validation(list(room.walls), diagnoses=diagnoses)
     assert not report.is_blocking, report.summary()
     # every check that ran should have an opinion; nothing silently absent
@@ -84,7 +76,7 @@ def test_validation_report_is_not_blocking():
 
 def test_build_validate_lock_end_to_end():
     room = build_family_room()
-    diagnoses = _diagnoses(room.dimension_constraints)
+    diagnoses = diagnose_family_room(room)
     report = run_validation(list(room.walls), diagnoses=diagnoses)
     assert not report.is_blocking, report.summary()
 

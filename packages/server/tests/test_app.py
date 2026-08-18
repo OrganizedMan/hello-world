@@ -1,0 +1,81 @@
+from fastapi.testclient import TestClient
+
+from server import app
+
+client = TestClient(app)
+
+
+def test_health():
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
+
+
+def test_family_room_returns_not_blocking_validation_and_hash():
+    r = client.get("/api/family-room")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["validation"]["is_blocking"] is False
+    assert len(body["geometry_hash"]) == 64
+    wall_ids = {w["id"] for w in body["walls"]}
+    assert wall_ids == {"LIVING_ROOM.EAST", "LIVING_ROOM.SOUTH"}
+
+
+def test_family_room_east_wall_topology_in_api_response():
+    body = client.get("/api/family-room").json()
+    east = next(w for w in body["walls"] if w["id"] == "LIVING_ROOM.EAST")
+    assert [o["kind"] for o in east["openings"]] == ["window", "unframed"]
+    assert east["openings"][1]["connects"] == ["LIVING_ROOM", "MUDROOM"]
+
+
+def test_family_room_south_wall_has_single_5ft_opening():
+    body = client.get("/api/family-room").json()
+    south = next(w for w in body["walls"] if w["id"] == "LIVING_ROOM.SOUTH")
+    assert len(south["openings"]) == 1
+    assert south["openings"][0]["width"]["display"] == "5'"
+
+
+def test_geometry_hash_is_stable_across_requests():
+    h1 = client.get("/api/family-room").json()["geometry_hash"]
+    h2 = client.get("/api/family-room").json()["geometry_hash"]
+    assert h1 == h2
+
+
+def test_mesh_endpoint_returns_nonempty_geometry_for_both_walls():
+    r = client.get("/api/family-room/mesh")
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) == {"LIVING_ROOM.EAST", "LIVING_ROOM.SOUTH"}
+    for wall_id, mesh in body.items():
+        assert len(mesh["vertices"]) > 0
+        assert len(mesh["triangles"]) > 0
+        assert len(mesh["vertices"][0]) == 3
+
+
+def test_tiers_endpoint_reports_a_for_originals_and_c_for_degraded():
+    r = client.get("/api/tiers")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["a1"]["tier"] == "A"
+    assert body["attic"]["tier"] == "A"
+    assert body["degraded"]["tier"] == "C"
+
+
+def test_source_image_returns_png():
+    r = client.get("/api/source-image/a1")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+    assert r.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_source_image_unknown_key_is_404():
+    r = client.get("/api/source-image/nope")
+    assert r.status_code == 404
+
+
+def test_cors_restricted_to_dev_server_origin():
+    r = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
+    assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+    r2 = client.get("/api/health", headers={"Origin": "https://evil.example.com"})
+    assert "access-control-allow-origin" not in r2.headers

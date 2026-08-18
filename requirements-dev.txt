@@ -17,3 +17,8 @@ scipy>=1.17
 shapely>=2.1
 networkx>=3.6
 manifold3d>=3
+
+# Sprint 2: localhost API for the review UI (plan §15 `server`)
+fastapi>=0.141
+uvicorn>=0.52
+httpx>=0.28  # test client only

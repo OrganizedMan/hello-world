@@ -190,6 +190,25 @@ def build_family_room() -> HandTracedFamilyRoom:
     return HandTracedFamilyRoom(walls=(east, south), dimension_constraints=tuple(y_dims + x_dims))
 
 
+def diagnose_family_room(room: HandTracedFamilyRoom) -> list:
+    """Independently re-derive the constraint diagnoses for `room` — the
+    single correct way to do this, so every consumer (the validation
+    report, the API, tests) gets identical results instead of each
+    hand-rolling build_systems()+diagnose() and risking forgetting
+    anchor_region_datums(), which happened twice already while building
+    this module (see test_stage0_gate.py's _diagnoses and the server's
+    first draft — both silently reported a well-constrained system as
+    UNDER_CONSTRAINED before this function existed)."""
+    systems = build_systems(room.dimension_constraints, [])
+    results = []
+    for system in systems.values():
+        if not system.rows:
+            continue
+        anchor_region_datums(system)
+        results.append(diagnose(system))
+    return results
+
+
 def tv_wall_interval(east_wall: WallSegment) -> tuple[int, int]:
     """The solid wall interval the "60\" TV" annotation belongs to: the
     gap between `window` and `to_mudroom` on LIVING_ROOM.EAST. Asserts it
