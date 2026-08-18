@@ -8,6 +8,20 @@ cd "$(dirname "$0")/.."
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
+# Fail fast with a clear message on a stale install (e.g. a git pull that
+# added a new package) instead of letting uvicorn's reloader crash-loop
+# silently in the background while vite spews proxy-timeout errors at
+# every request.
+if ! PYTHONPATH="packages/server/src" python3 -c "import server" 2>/tmp/pdf3d_import_check.log; then
+  echo
+  echo "Backend failed to import 'server' -- your installed packages are probably out of date."
+  echo "Run ./tools/install_dev.sh first, then re-run this script."
+  echo
+  echo "Import error:"
+  cat /tmp/pdf3d_import_check.log
+  exit 1
+fi
+
 cleanup() {
   echo
   echo "Stopping..."
