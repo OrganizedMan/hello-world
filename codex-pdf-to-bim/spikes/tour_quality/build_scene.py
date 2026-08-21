@@ -23,6 +23,10 @@ from typing import Any
 
 import bpy
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
 from blender_builders import (
     add_area_light,
     add_camera,
@@ -44,7 +48,6 @@ from blender_builders import (
 )
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
 STAGE_ROOT = SCRIPT_DIR.parents[1]
 PROVENANCE_PATH = SCRIPT_DIR / "assets" / "provenance.json"
 GLB_NAME = "hearthview-kitchen-family.glb"
@@ -199,6 +202,13 @@ def _validate_authoring_inputs(assets_dir: Path) -> dict[str, Any]:
     return provenance
 
 
+def _set_eevee_engine(render: Any) -> None:
+    try:
+        render.engine = "BLENDER_EEVEE_NEXT"
+    except TypeError:
+        render.engine = "BLENDER_EEVEE"
+
+
 def _configure_scene(environment_path: Path) -> bpy.types.Scene:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
@@ -207,7 +217,7 @@ def _configure_scene(environment_path: Path) -> bpy.types.Scene:
     scene["canonical_geometry"] = False
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.length_unit = "METERS"
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    _set_eevee_engine(scene.render)
     scene.render.resolution_x = 1920
     scene.render.resolution_y = 1080
     scene.render.resolution_percentage = 100
@@ -222,7 +232,7 @@ def _configure_scene(environment_path: Path) -> bpy.types.Scene:
         "look",
         ("AgX - Medium High Contrast", "AgX - Medium High Contrast (Punchy)", "Medium High Contrast"),
     )
-    scene.view_settings.exposure = 1.0
+    scene.view_settings.exposure = 0.35
     _set_if_present(scene.render, "use_high_quality_normals", True)
     if hasattr(scene, "eevee"):
         _set_if_present(scene.eevee, "taa_samples", 96)
@@ -231,6 +241,7 @@ def _configure_scene(environment_path: Path) -> bpy.types.Scene:
         _set_if_present(scene.eevee, "gtao_distance", 3.0)
         _set_if_present(scene.eevee, "gtao_factor", 1.15)
         _set_if_present(scene.eevee, "use_raytracing", True)
+        _set_if_present(scene.eevee, "shadow_pool_size", "1024")
 
     world = bpy.data.worlds.new("HV_WORLD")
     world.use_nodes = True
@@ -919,9 +930,9 @@ def _build_lighting_and_cameras(
 
     hero = add_camera(
         "HV_CAMERA_HERO",
-        position=(0.76, 4.22, 1.66),
-        target=(5.15, 1.92, 1.02),
-        lens_mm=38.0,
+        position=(0.72, 4.38, 1.68),
+        target=(5.00, 1.92, 1.02),
+        lens_mm=34.0,
         parent=navigation_root,
     )
     preset_lenses = {"kitchen_overview": 39.0, "walk_start": 40.0, "overhead": 42.0}
