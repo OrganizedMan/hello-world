@@ -72,6 +72,26 @@ def test_island_dimension_change_is_blocking() -> None:
         mint_token(model, report)
 
 
+def test_island_clearance_drift_is_blocking() -> None:
+    model = approved_a1_fixture()
+    assert model.island is not None
+    shifted = model.island.model_copy(update={"x_ticks": 69 * TICKS_PER_INCH})
+
+    report = validate(model.model_copy(update={"island": shifted}))
+
+    assert any(issue.code == "ISLAND_CLEARANCE_MISMATCH" for issue in report.issues)
+
+
+def test_global_south_wall_location_drift_is_blocking() -> None:
+    model = approved_a1_fixture()
+    shifted = model.wall("family_south").model_copy(update={"origin_y_ticks": 0})
+    walls = tuple(shifted if wall.id == shifted.id else wall for wall in model.walls)
+
+    report = validate(model.model_copy(update={"walls": walls}))
+
+    assert any(issue.code == "SOUTH_WALL_LOCATION_MISMATCH" for issue in report.issues)
+
+
 def test_homeowner_confirmed_island_correction_is_allowed() -> None:
     model = approved_a1_fixture()
     assert model.island is not None

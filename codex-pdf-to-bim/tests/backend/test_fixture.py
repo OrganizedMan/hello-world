@@ -1,4 +1,5 @@
 from hearthview.fixture import build_a1_fixture, build_a1_review_queue
+from hearthview.a1_spatial import build_a1_spatial_model
 from hearthview.units import TICKS_PER_INCH
 
 
@@ -44,3 +45,27 @@ def test_fixture_json_round_trip_preserves_exact_ticks() -> None:
     rebuilt = type(model).model_validate_json(model.model_dump_json())
 
     assert rebuilt == model
+
+
+def test_fixture_is_an_exact_projection_of_canonical_spatial_geometry() -> None:
+    spatial = build_a1_spatial_model()
+    model = build_a1_fixture()
+
+    for spatial_wall in spatial.walls:
+        wall = model.wall(spatial_wall.id)
+        assert (wall.origin_x_ticks, wall.origin_y_ticks) == spatial_wall.origin
+        assert wall.length_ticks == spatial_wall.length_ticks
+        assert [
+            (child.kind, child.start_ticks, child.end_ticks)
+            for child in wall.ordered_children
+        ] == [
+            (segment.kind, segment.start_ticks, segment.end_ticks)
+            for segment in spatial_wall.segments
+        ]
+
+    assert model.wall("family_south").origin_y_ticks == 191 * TICKS_PER_INCH
+    assert model.island is not None
+    assert (model.island.x_ticks, model.island.y_ticks) == (
+        68 * TICKS_PER_INCH,
+        68 * TICKS_PER_INCH,
+    )

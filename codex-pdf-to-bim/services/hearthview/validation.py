@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 from typing import Literal
 
+from hearthview.a1_spatial import build_a1_spatial_model
 from hearthview.canonical import canonical_hash
 from hearthview.fixture import build_a1_review_queue
 from hearthview.models import FrozenModel, ProjectModel, ReviewState
@@ -126,6 +127,7 @@ def _wall_issues(model: ProjectModel) -> list[ValidationIssue]:
 
 def _fixture_topology_issues(model: ProjectModel) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
+    spatial = build_a1_spatial_model()
     try:
         east = model.wall("family_east")
         south = model.wall("family_south")
@@ -158,6 +160,33 @@ def _fixture_topology_issues(model: ProjectModel) -> list[ValidationIssue]:
                     solid_zone.id,
                 )
             )
+    expected_east = spatial.wall("family_east")
+    actual_east = tuple(
+        (child.kind, child.start_ticks, child.end_ticks) for child in east.ordered_children
+    )
+    canonical_east = tuple(
+        (segment.kind, segment.start_ticks, segment.end_ticks)
+        for segment in expected_east.segments
+    )
+    if (
+        east.origin_x_ticks,
+        east.origin_y_ticks,
+        east.length_ticks,
+        actual_east,
+    ) != (
+        expected_east.origin_x_ticks,
+        expected_east.origin_y_ticks,
+        expected_east.length_ticks,
+        canonical_east,
+    ):
+        issues.append(
+            _issue(
+                "EAST_WALL_LOCATION_MISMATCH",
+                "The east living-room wall no longer matches its reviewed A-1 location.",
+                "Restore the canonical east wall and its window, TV zone, and mudroom opening.",
+                east.id,
+            )
+        )
     expected_south = (
         ("SOLID", 0, 37),
         ("UNFRAMED_OPENING", 37, 97),
@@ -173,6 +202,24 @@ def _fixture_topology_issues(model: ProjectModel) -> list[ValidationIssue]:
                 "SOUTH_WALL_DIMENSION_MISMATCH",
                 "The opening wall must be 3 feet 1 inch, 5 feet, then 3 feet 1 inch.",
                 "Restore the three printed A-1 dimensions.",
+                south.id,
+            )
+        )
+    canonical_south = spatial.wall("family_south")
+    if (
+        south.origin_x_ticks,
+        south.origin_y_ticks,
+        south.length_ticks,
+    ) != (
+        canonical_south.origin_x_ticks,
+        canonical_south.origin_y_ticks,
+        canonical_south.length_ticks,
+    ):
+        issues.append(
+            _issue(
+                "SOUTH_WALL_LOCATION_MISMATCH",
+                "The opening to the existing living room is no longer in its A-1 location.",
+                "Restore the canonical south boundary location.",
                 south.id,
             )
         )
@@ -226,6 +273,16 @@ def _island_issues(model: ProjectModel) -> list[ValidationIssue]:
                 "ISLAND_SIZE_MISMATCH",
                 "The kitchen island width and depth must be greater than zero.",
                 "Return to Review and enter the confirmed island dimensions.",
+                "kitchen_island",
+            )
+        ]
+    expected = build_a1_spatial_model().island
+    if (model.island.x_ticks, model.island.y_ticks) != (expected.x_ticks, expected.y_ticks):
+        return [
+            _issue(
+                "ISLAND_CLEARANCE_MISMATCH",
+                "The kitchen island no longer has the printed A-1 clearances.",
+                "Restore the 42-inch north and west clearances and 72-inch south transition.",
                 "kitchen_island",
             )
         ]
