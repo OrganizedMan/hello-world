@@ -335,6 +335,8 @@ def build_scene_contract(spatial: A1SpatialModel | None = None) -> SceneContract
         regions=regions,
         openings=wall_openings,
     )
+    context_center_x = round(max(region.max_x for region in regions) / 2, 4)
+    context_center_y = round(max(region.max_y for region in regions) / 2, 4)
     geometry_payload = {
         "adapter": "hearthview-tour-adapter/v2",
         "canonical": spatial.canonical_payload(),
@@ -378,8 +380,8 @@ def build_scene_contract(spatial: A1SpatialModel | None = None) -> SceneContract
             CameraPreset("walk_start", (4.15, envelope_depth - 0.65, EYE_HEIGHT_METERS), (5.20, 2.10, EYE_HEIGHT_METERS)),
             CameraPreset(
                 "overhead",
-                (span / 2, envelope_depth / 2, 8.0),
-                (span / 2, envelope_depth / 2, 0.0),
+                (context_center_x, context_center_y, 11.5),
+                (context_center_x, context_center_y, 0.0),
                 (0.0, -1.0, 0.0),
             ),
         ),

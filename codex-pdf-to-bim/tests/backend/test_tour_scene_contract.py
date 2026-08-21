@@ -36,6 +36,13 @@ def test_tour_contract_is_derived_from_the_canonical_a1_model() -> None:
         "mudroom_context",
         "existing_living_context",
     }
+    overhead = next(
+        camera for camera in contract.camera_presets if camera.name == "overhead"
+    )
+    region_max_x = max(region.max_x for region in contract.orientation.regions)
+    region_max_y = max(region.max_y for region in contract.orientation.regions)
+    assert overhead.target[:2] == (round(region_max_x / 2, 4), round(region_max_y / 2, 4))
+    assert overhead.position[2] >= 10.5
 
 
 def test_east_and_south_openings_use_canonical_global_stations() -> None:

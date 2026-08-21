@@ -7,7 +7,13 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import sys
 from typing import Any
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+for _import_root in (_REPO_ROOT, _REPO_ROOT / "services"):
+    if str(_import_root) not in sys.path:
+        sys.path.insert(0, str(_import_root))
 
 import trimesh
 

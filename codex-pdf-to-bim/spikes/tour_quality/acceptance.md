@@ -3,27 +3,29 @@
 **Run date:** 2026-08-21
 **Route:** `/tour-spike`
 **Artifact label:** Quality spike · visual staging
-**Canonical geometry:** No
+**Canonical source alignment:** Yes; the display mesh remains visual staging
 
 ## Gate results
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Geometry | Pass | The independent artifact validator accepted the printed dimensions, required scene nodes, walkable metadata, barriers, camera presets, hashes, and payload. |
-| Realism | Pass for the spike | The 1920 × 1080 poster and browser scene were inspected at desktop size. Materials load, the layout and openings read clearly, the browser lighting is balanced, and the overhead view removes the ceiling instead of clipping through it. |
-| Navigation | Pass | Orbit, a clearance-safe Move here landing, person-height Walk, Escape and Exit walk recovery, Overhead, and Reset were exercised in the real browser. The focused navigation suite and Playwright acceptance also pass. |
-| Performance | Pass on the target local Mac | The 24,604,690-byte payload became usable in 8,770 ms in the in-app hardware browser at 1280 × 720, below the 45 MB and 10-second targets. |
+| Geometry | Machine pass; homeowner review pending | The independent validator accepted the canonical model/geometry hashes, printed dimensions, actual GLB floor and island bounds, wall openings, walkable metadata, barriers, cameras, and payload. The north-up overhead view now includes the mudroom and existing-living context needed to compare the transitions with A-1. |
+| Realism | Previous spike pass; homeowner review pending | The regenerated 1920 × 1080 poster and browser scene load without missing materials. The user must still approve the rebuilt spatial reading and visual balance. |
+| Navigation | Pass | Orbit, Move here, person-height Walk, recovery, Overhead, and Reset pass the fresh Playwright homeowner journey in 13.8 seconds. |
+| Performance | Payload pass | The 24,630,985-byte payload is below the 45 MB target. The prior scene became usable in 8,770 ms on the target Mac; a fresh subjective load check remains part of homeowner testing. |
 
 ## Artifact evidence
 
-- GLB: 22,967,336 bytes, SHA-256 `2294ec797f90ece51e92e46625d1954468b447f691b831ca2e2e464eb42c3b18`
+- Canonical model: SHA-256 `a7b695f5ba7099e07c0af714e9c98b18446e4918525521469c870a77193328f6`
+- Derived geometry: SHA-256 `eafe8a0af126b56885a526597b15fe7c63184ff0790e9b9420204d6850e7395b`
+- GLB: 22,995,428 bytes, SHA-256 `b5a343c87d9b6d1714ad7ec1e4f8e18c1de8f8b69115435ec1dc0c37f57eba78`
 - Environment: 1,332,398 bytes, SHA-256 `3c5a3b5efba3de62a845bf21fe7cb88e9657845ea5cf2b90a0158717f19aedfd`
-- Poster: 297,876 bytes, SHA-256 `30adb65a5acd2dfdde9e31e0206a866e80b82c14950ba71bf17cd192de818d8f`
-- Scene: 110,264 triangles, 305 mesh objects, 30 materials, 26 images
+- Poster: 293,020 bytes, SHA-256 `0eb6f0fc962fb4e9657838f9b597e887357bbbfa596ff7426e909eb841fc2036`
+- Scene: 111,792 triangles and 315 mesh objects
 
-The final browser pass covered a 1280 × 720 desktop viewport and a 390 × 844 compact viewport. No application console errors occurred. Three.js emits one upstream `THREE.Clock` deprecation warning through React Three Fiber; it does not affect interaction or output.
+The final browser pass covered a desktop viewport and visually confirmed that the north-up map matches the overhead render. Three.js emits one upstream `THREE.Clock` deprecation warning through React Three Fiber; it does not affect interaction or output.
 
-The Playwright acceptance passes in headless Chromium. Its software WebGL run takes about 1.2 minutes and is not used as the target-Mac performance measurement.
+The Playwright acceptance passes in headless Chromium in 13.8 seconds. It is not used as the target-Mac performance measurement.
 
 ## Reproduction
 
@@ -40,8 +42,6 @@ HEARTHVIEW_E2E_WEB_PORT=50178 \
 npm run test:e2e -- tests/e2e/tour-spike.spec.ts
 ```
 
-The approved overview image is delivered outside the repository as `outputs/hearthview-tour-spike-overview.png`.
-
 ## Trust boundary and known staging
 
-The envelope, openings, island placement, printed dimensions, walkable region, and barriers are the measured spike claims. Cabinetry detail, hardware, finishes, furniture, decor, and undimensioned offsets remain provisional visual staging. The display GLB is not a canonical HearthView geometry artifact and is not suitable for permits, construction, or field verification.
+The envelope, openings, island placement, printed dimensions, walkable region, and barriers are derived from the canonical A-1 spatial model and are the measured spike claims. Cabinetry detail, hardware, finishes, furniture, decor, and undimensioned offsets remain provisional visual staging. The display GLB carries canonical source hashes for traceability but is not itself a permit, construction, or field-verification artifact.

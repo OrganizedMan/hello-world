@@ -29,5 +29,8 @@ describe("TourOrientationMap", () => {
     expect(screen.getByText("N")).toBeVisible();
     expect(container.querySelectorAll("[data-tour-region]")).toHaveLength(3);
     expect(container.querySelectorAll("[data-tour-opening]")).toHaveLength(2);
+    const kitchen = container.querySelector('[data-tour-region="kitchen"] rect');
+    const family = container.querySelector('[data-tour-region="family_room"] rect');
+    expect(Number(family?.getAttribute("x"))).toBeLessThan(Number(kitchen?.getAttribute("x")));
   });
 });

@@ -3,8 +3,11 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
+import subprocess
+import sys
 from typing import Callable
 
 import pytest
@@ -29,6 +32,21 @@ SCENE_NODES = [
     "HV_ISLAND_STRUCTURE",
     "HV_WALKABLE",
 ]
+
+
+def test_validator_cli_loads_from_a_clean_python_environment() -> None:
+    repo = Path(__file__).parents[2]
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    result = subprocess.run(
+        [sys.executable, "-m", "spikes.tour_quality.validate_artifact", "--help"],
+        cwd=repo,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def _sha256(path: Path) -> str:
@@ -220,7 +238,7 @@ def _literal_manifest() -> dict[str, object]:
             "camera_presets": [
                 {"name": "kitchen_overview", "position": [0.70, 1.65, -4.3014], "target": [4.3434, 0.90, -3.0226], "up": [0.0, 1.0, -0.0]},
                 {"name": "walk_start", "position": [4.15, 1.65, -4.2014], "target": [5.20, 1.65, -2.10], "up": [0.0, 1.0, -0.0]},
-                {"name": "overhead", "position": [4.5847, 8.0, -2.4257], "target": [4.5847, 0.0, -2.4257], "up": [0.0, 0.0, 1.0]},
+                {"name": "overhead", "position": [5.4991, 11.5, -3.3401], "target": [5.4991, 0.0, -3.3401], "up": [0.0, 0.0, 1.0]},
             ],
         },
         "scene_nodes": deepcopy(SCENE_NODES),

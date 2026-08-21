@@ -267,13 +267,13 @@
     {
       "name": "overhead",
       "position": [
-        4.5847,
-        2.4257,
-        8.0
+        5.4991,
+        3.3401,
+        11.5
       ],
       "target": [
-        4.5847,
-        2.4257,
+        5.4991,
+        3.3401,
         0.0
       ],
       "up": [
@@ -397,17 +397,17 @@
     "poster": "poster.webp",
     "environment": "environment.hdr",
     "sha256": {
-      "glb": "33bdfee1b618086ad7785ccb221de6c57b655b44880639e8a105aca9f736531e",
-      "poster": "adabc83de253b8156545939b1249d0680819f7d9f7960567d7c7976346c09cb5",
+      "glb": "b5a343c87d9b6d1714ad7ec1e4f8e18c1de8f8b69115435ec1dc0c37f57eba78",
+      "poster": "0eb6f0fc962fb4e9657838f9b597e887357bbbfa596ff7426e909eb841fc2036",
       "environment": "3c5a3b5efba3de62a845bf21fe7cb88e9657845ea5cf2b90a0158717f19aedfd"
     },
     "bytes": {
       "glb": 22995428,
-      "poster": 292938,
+      "poster": 293020,
       "environment": 1332398,
-      "manifest": 10137
+      "manifest": 10139
     },
-    "total_browser_bytes": 24630901
+    "total_browser_bytes": 24630985
   },
   "runtime": {
     "coordinate_rule": "three_x=source_x;three_y=source_z;three_z=-source_y",
@@ -488,14 +488,14 @@
       {
         "name": "overhead",
         "position": [
-          4.5847,
-          8.0,
-          -2.4257
+          5.4991,
+          11.5,
+          -3.3401
         ],
         "target": [
-          4.5847,
+          5.4991,
           0.0,
-          -2.4257
+          -3.3401
         ],
         "up": [
           0.0,
