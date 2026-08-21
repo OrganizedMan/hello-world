@@ -29,6 +29,7 @@ REPO = Path(__file__).resolve().parents[1]
 PUBLIC = REPO / "apps/web/public/tour-spike"
 STILLS = REPO / "work/checkpoint-kitchen-family"
 CAMERAS = ("PLAN", "AXONOMETRIC", "KITCHEN", "LIVING_ROOM")
+SPEC = REPO / "spikes/tour_quality/a1_kitchen_scene_spec.json"
 DEFAULT_BLENDER = Path("/Applications/Blender.app/Contents/MacOS/Blender")
 GLB_NAME = "hearthview-kitchen-family.glb"
 
@@ -68,6 +69,11 @@ def main() -> int:
     parser.add_argument("--width", type=int, default=1600)
     parser.add_argument("--height", type=int, default=1000)
     parser.add_argument("--skip-build", action="store_true", help="Only re-render stills.")
+    parser.add_argument(
+        "--spike",
+        action="store_true",
+        help="Build the original hand-transcribed spike instead of the A-1 traced scene.",
+    )
     args = parser.parse_args()
 
     if not args.blender.is_file():
@@ -88,20 +94,24 @@ def main() -> int:
         )
     print(f"assets ok: {len(expected)} files present in {args.assets}")
 
+    if not args.spike and not SPEC.is_file():
+        raise SystemExit(f"traced scene spec is missing: {SPEC}")
+    mode = "hand-built spike" if args.spike else "A-1 traced scene"
+    print(f"building: {mode}")
+
     logs = STILLS / "logs"
     if not args.skip_build:
         PUBLIC.mkdir(parents=True, exist_ok=True)
-        _run(
-            "1/3 build_scene.py",
-            [
-                str(args.blender), "--background", "--factory-startup",
-                "--python", str(REPO / "spikes/tour_quality/build_scene.py"), "--",
-                "--repo", str(REPO),
-                "--assets", str(args.assets),
-                "--output-dir", str(PUBLIC),
-            ],
-            logs / "build_scene.log",
-        )
+        command = [
+            str(args.blender), "--background", "--factory-startup",
+            "--python", str(REPO / "spikes/tour_quality/build_scene.py"), "--",
+            "--repo", str(REPO),
+            "--assets", str(args.assets),
+            "--output-dir", str(PUBLIC),
+        ]
+        if not args.spike:
+            command += ["--spec", str(SPEC)]
+        _run("1/3 build_scene.py", command, logs / "build_scene.log")
 
     glb = PUBLIC / GLB_NAME
     manifest = PUBLIC / "manifest.json"
@@ -109,16 +119,15 @@ def main() -> int:
         if not required.exists():
             raise SystemExit(f"Expected artifact missing after build: {required}")
 
-    _run(
-        "2/3 validate_artifact",
-        [
-            sys.executable, "-m", "spikes.tour_quality.validate_artifact",
-            "--glb", str(glb),
-            "--manifest", str(manifest),
-            "--public-dir", str(PUBLIC),
-        ],
-        logs / "validate_artifact.log",
-    )
+    validate = [
+        sys.executable, "-m", "spikes.tour_quality.validate_artifact",
+        "--glb", str(glb),
+        "--manifest", str(manifest),
+        "--public-dir", str(PUBLIC),
+    ]
+    if not args.spike:
+        validate += ["--spec", str(SPEC)]
+    _run("2/3 validate_artifact", validate, logs / "validate_artifact.log")
 
     STILLS.mkdir(parents=True, exist_ok=True)
     for index, camera in enumerate(CAMERAS, start=1):

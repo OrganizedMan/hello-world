@@ -85,10 +85,13 @@ def test_contract_loader_adds_the_services_package_for_blender(monkeypatch) -> N
         if name == "hearthview" or name.startswith("hearthview."):
             monkeypatch.delitem(sys.modules, name, raising=False)
 
-    contract, _module = loaded["_load_contract"](repo)
+    contract, _module, spec = loaded["_load_contract"](repo, None)
 
     assert contract.canonical_model_hash
     assert services in sys.path
+    # Without --spec the loader must still yield the hand-built spike contract.
+    assert spec is None
+    assert contract.schema == "hearthview-tour-spike/v1"
 
 
 def test_validator_subprocess_receives_repo_service_paths(monkeypatch, tmp_path) -> None:

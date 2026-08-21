@@ -20,13 +20,8 @@ import trimesh
 from spikes.tour_quality.scene_contract import (
     DIMENSION_TOLERANCE_METERS,
     EYE_HEIGHT_METERS,
-    ISLAND_DEPTH_METERS,
-    ISLAND_WIDTH_METERS,
-    ROOM_DEPTH_METERS,
-    SCENE_LABEL,
-    SCHEMA,
-    SPAN_METERS,
     build_scene_contract,
+    build_scene_contract_from_spec,
 )
 
 
@@ -42,32 +37,45 @@ REQUIRED_SCENE_NODES = (
     "HV_ISLAND_STRUCTURE",
     "HV_WALKABLE",
 )
-_EXPECTED_CONTRACT = build_scene_contract()
-EXPECTED_WALKABLE = {
-    "min_x": min(point[0] for point in _EXPECTED_CONTRACT.walkable_polygon),
-    "max_x": max(point[0] for point in _EXPECTED_CONTRACT.walkable_polygon),
-    "min_z": -max(point[1] for point in _EXPECTED_CONTRACT.walkable_polygon),
-    "max_z": -min(point[1] for point in _EXPECTED_CONTRACT.walkable_polygon),
-}
-EXPECTED_BARRIERS = tuple(
-    {
-        "name": rectangle.name,
-        "min_x": rectangle.min_x,
-        "max_x": rectangle.max_x,
-        "min_z": -rectangle.max_y,
-        "max_z": -rectangle.min_y,
+def _expected_walkable(contract) -> dict[str, float]:
+    return {
+        "min_x": min(point[0] for point in contract.walkable_polygon),
+        "max_x": max(point[0] for point in contract.walkable_polygon),
+        "min_z": -max(point[1] for point in contract.walkable_polygon),
+        "max_z": -min(point[1] for point in contract.walkable_polygon),
     }
-    for rectangle in _EXPECTED_CONTRACT.collision_rectangles
-)
-EXPECTED_CAMERAS = tuple(
-    {
-        "name": camera.name,
-        "position": [camera.position[0], camera.position[2], -camera.position[1]],
-        "target": [camera.target[0], camera.target[2], -camera.target[1]],
-        "up": [camera.up[0], camera.up[2], -camera.up[1]],
-    }
-    for camera in _EXPECTED_CONTRACT.camera_presets
-)
+
+
+def _expected_barriers(contract) -> tuple[dict[str, Any], ...]:
+    return tuple(
+        {
+            "name": rectangle.name,
+            "min_x": rectangle.min_x,
+            "max_x": rectangle.max_x,
+            "min_z": -rectangle.max_y,
+            "max_z": -rectangle.min_y,
+        }
+        for rectangle in contract.collision_rectangles
+    )
+
+
+def _expected_cameras(contract) -> tuple[dict[str, Any], ...]:
+    return tuple(
+        {
+            "name": camera.name,
+            "position": [camera.position[0], camera.position[2], -camera.position[1]],
+            "target": [camera.target[0], camera.target[2], -camera.target[1]],
+            "up": [camera.up[0], camera.up[2], -camera.up[1]],
+        }
+        for camera in contract.camera_presets
+    )
+
+
+def _printed(contract, name: str, fallback: float) -> float:
+    for item in contract.printed_dimensions:
+        if item.name == name:
+            return item.meters
+    return fallback
 
 
 def _sha256(path: Path) -> str:
@@ -99,10 +107,10 @@ def _same_number(actual: object, expected: float) -> bool:
     return isinstance(actual, (int, float)) and not isinstance(actual, bool) and abs(float(actual) - expected) <= DIMENSION_TOLERANCE_METERS
 
 
-def _validate_dimensions(manifest: dict[str, Any], errors: list[str]) -> None:
+def _validate_dimensions(manifest: dict[str, Any], errors: list[str], contract) -> None:
     expected = {
         item.name: (item.meters, item.source)
-        for item in build_scene_contract().printed_dimensions
+        for item in contract.printed_dimensions
     }
     raw_dimensions = manifest.get("printed_dimensions")
     if not isinstance(raw_dimensions, list):
@@ -160,7 +168,7 @@ def _validate_named_records(
                 errors.append(f"runtime {label} {name}.{key} is outside 0.003 m tolerance")
 
 
-def _validate_runtime(manifest: dict[str, Any], errors: list[str]) -> None:
+def _validate_runtime(manifest: dict[str, Any], errors: list[str], contract) -> None:
     runtime = manifest.get("runtime")
     if not isinstance(runtime, dict):
         errors.append("runtime navigation metadata must be present")
@@ -174,11 +182,13 @@ def _validate_runtime(manifest: dict[str, Any], errors: list[str]) -> None:
     if not isinstance(walkable, dict):
         errors.append("runtime walkable metadata must be present")
     else:
-        for key, expected in EXPECTED_WALKABLE.items():
+        for key, expected in _expected_walkable(contract).items():
             if not _same_number(walkable.get(key), expected):
                 errors.append(f"runtime walkable.{key} is outside 0.003 m tolerance")
-    _validate_named_records(runtime.get("barriers"), EXPECTED_BARRIERS, "barriers", errors)
-    _validate_named_records(runtime.get("camera_presets"), EXPECTED_CAMERAS, "camera_presets", errors)
+    _validate_named_records(runtime.get("barriers"), _expected_barriers(contract), "barriers", errors)
+    _validate_named_records(
+        runtime.get("camera_presets"), _expected_cameras(contract), "camera_presets", errors
+    )
 
 
 def _validate_glb_resources(
@@ -213,7 +223,10 @@ def _named_world_bounds(scene: trimesh.Scene, node_name: str) -> tuple[list[floa
     return mesh.bounds[0].tolist(), mesh.bounds[1].tolist()
 
 
-def _validate_actual_geometry(glb_path: Path, errors: list[str]) -> None:
+def _validate_actual_geometry(glb_path: Path, errors: list[str], contract) -> None:
+    span = _printed(contract, "span_interior", _printed(contract, "span", 0.0))
+    depth = _printed(contract, "depth_east_interior", _printed(contract, "room_depth", 0.0))
+    island = contract.island_footprint
     try:
         loaded = trimesh.load(glb_path, force="scene", process=False)
         scene = loaded if isinstance(loaded, trimesh.Scene) else trimesh.Scene(loaded)
@@ -228,11 +241,11 @@ def _validate_actual_geometry(glb_path: Path, errors: list[str]) -> None:
         lower, upper = floor_bounds
         checks = (
             ("HV_FLOOR min X", lower[0], 0.0),
-            ("HV_FLOOR max X", upper[0], SPAN_METERS),
-            ("HV_FLOOR min Z", lower[2], -ROOM_DEPTH_METERS),
+            ("HV_FLOOR max X", upper[0], span),
+            ("HV_FLOOR min Z", lower[2], -depth),
             ("HV_FLOOR max Z", upper[2], 0.0),
-            ("HV_FLOOR X span", upper[0] - lower[0], SPAN_METERS),
-            ("HV_FLOOR depth", upper[2] - lower[2], ROOM_DEPTH_METERS),
+            ("HV_FLOOR X span", upper[0] - lower[0], span),
+            ("HV_FLOOR depth", upper[2] - lower[2], depth),
         )
         for label, actual, expected in checks:
             if not _same_number(actual, expected):
@@ -244,12 +257,12 @@ def _validate_actual_geometry(glb_path: Path, errors: list[str]) -> None:
     else:
         lower, upper = island_bounds
         checks = (
-            ("HV_ISLAND_STRUCTURE min X", lower[0], 1.7272),
-            ("HV_ISLAND_STRUCTURE max X", upper[0], 4.3434),
-            ("HV_ISLAND_STRUCTURE min Z", lower[2], -3.0226),
-            ("HV_ISLAND_STRUCTURE max Z", upper[2], -1.7272),
-            ("HV_ISLAND_STRUCTURE width", upper[0] - lower[0], ISLAND_WIDTH_METERS),
-            ("HV_ISLAND_STRUCTURE depth", upper[2] - lower[2], ISLAND_DEPTH_METERS),
+            ("HV_ISLAND_STRUCTURE min X", lower[0], island.min_x),
+            ("HV_ISLAND_STRUCTURE max X", upper[0], island.max_x),
+            ("HV_ISLAND_STRUCTURE min Z", lower[2], -island.max_y),
+            ("HV_ISLAND_STRUCTURE max Z", upper[2], -island.min_y),
+            ("HV_ISLAND_STRUCTURE width", upper[0] - lower[0], island.width),
+            ("HV_ISLAND_STRUCTURE depth", upper[2] - lower[2], island.depth),
         )
         for label, actual, expected in checks:
             if not _same_number(actual, expected):
@@ -261,6 +274,7 @@ def validate_artifact(
     manifest_path: Path,
     *,
     public_dir: Path | None = None,
+    expected_contract=None,
 ) -> tuple[str, ...]:
     """Return every actionable GLB/manifest/payload validation error."""
     glb_path = Path(glb_path)
@@ -277,13 +291,16 @@ def validate_artifact(
     if not isinstance(manifest, dict):
         return ("manifest root must be an object",)
 
-    if manifest.get("schema") != SCHEMA:
-        errors.append(f"schema must be {SCHEMA!r}")
-    if manifest.get("label") != SCENE_LABEL:
-        errors.append(f"label must be {SCENE_LABEL!r}")
-    if manifest.get("canonical_geometry") is not False:
-        errors.append("canonical_geometry must be false for visual staging")
-    expected_contract = build_scene_contract()
+    if expected_contract is None:
+        expected_contract = build_scene_contract()
+    if manifest.get("schema") != expected_contract.schema:
+        errors.append(f"schema must be {expected_contract.schema!r}")
+    if manifest.get("label") != expected_contract.label:
+        errors.append(f"label must be {expected_contract.label!r}")
+    if manifest.get("canonical_geometry") is not expected_contract.canonical_geometry:
+        errors.append(
+            f"canonical_geometry must be {expected_contract.canonical_geometry}"
+        )
     expected_categories = list(expected_contract.provisional_categories)
     if manifest.get("canonical_model_hash") != expected_contract.canonical_model_hash:
         errors.append("canonical model hash must match the current A-1 spatial model")
@@ -291,8 +308,8 @@ def validate_artifact(
         errors.append("canonical geometry hash must match the current A-1 tour projection")
     if manifest.get("provisional_categories") != expected_categories:
         errors.append("provisional_categories must name exactly the six visual-staging categories")
-    _validate_dimensions(manifest, errors)
-    _validate_runtime(manifest, errors)
+    _validate_dimensions(manifest, errors, expected_contract)
+    _validate_runtime(manifest, errors, expected_contract)
 
     scene_nodes = manifest.get("scene_nodes")
     if not isinstance(scene_nodes, list):
@@ -365,12 +382,14 @@ def validate_artifact(
             if not isinstance(asset_metadata, dict):
                 errors.append("GLB asset extras must contain visual-staging metadata")
             else:
-                if asset_metadata.get("label") != SCENE_LABEL:
-                    errors.append(f"GLB asset label must be {SCENE_LABEL!r}")
-                if asset_metadata.get("canonical_geometry") is not False:
-                    errors.append("GLB asset canonical_geometry must be false")
+                if asset_metadata.get("label") != expected_contract.label:
+                    errors.append(f"GLB asset label must be {expected_contract.label!r}")
+                if asset_metadata.get("canonical_geometry") is not expected_contract.canonical_geometry:
+                    errors.append(
+                        f"GLB asset canonical_geometry must be {expected_contract.canonical_geometry}"
+                    )
                 if asset_metadata.get("provisional_categories") != expected_categories:
-                    errors.append("GLB asset must name exactly the six provisional categories")
+                    errors.append("GLB asset must name exactly the declared provisional categories")
                 if asset_metadata.get("canonical_model_hash") != manifest.get(
                     "canonical_model_hash"
                 ):
@@ -380,7 +399,7 @@ def validate_artifact(
                 ):
                     errors.append("GLB canonical geometry hash must match the manifest")
             _validate_glb_resources(gltf, glb_path, errors)
-        _validate_actual_geometry(glb_path, errors)
+        _validate_actual_geometry(glb_path, errors, expected_contract)
     return tuple(errors)
 
 
@@ -394,8 +413,19 @@ def main() -> int:
     parser.add_argument("--glb", type=Path, default=default_public / "hearthview-kitchen-family.glb")
     parser.add_argument("--manifest", type=Path, default=default_public / "manifest.json")
     parser.add_argument("--public-dir", type=Path, default=default_public)
+    parser.add_argument(
+        "--spec",
+        type=Path,
+        default=None,
+        help="Validate against a traced A-1 scene spec instead of the spike contract.",
+    )
     args = parser.parse_args()
-    errors = validate_artifact(args.glb, args.manifest, public_dir=args.public_dir)
+    expected = None
+    if args.spec is not None:
+        expected = build_scene_contract_from_spec(json.loads(args.spec.read_text(encoding="utf-8")))
+    errors = validate_artifact(
+        args.glb, args.manifest, public_dir=args.public_dir, expected_contract=expected
+    )
     if errors:
         for error in errors:
             print(error)
