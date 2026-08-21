@@ -10,6 +10,7 @@ const ReviewPage = lazy(() => import("../features/review/ReviewPage").then((modu
 const ModelPage = lazy(() => import("../features/model/ModelPage").then((module) => ({ default: module.ModelPage })));
 const RenderPage = lazy(() => import("../features/render/RenderPage").then((module) => ({ default: module.RenderPage })));
 const ReportPage = lazy(() => import("../features/report/ReportPage").then((module) => ({ default: module.ReportPage })));
+const TourPage = lazy(() => import("../features/tour/TourPage").then((module) => ({ default: module.TourPage })));
 
 
 export function App() {
@@ -24,6 +25,7 @@ export function App() {
             <Route path="/projects/:projectId/model" element={<ModelPage />} />
             <Route path="/projects/:projectId/render" element={<RenderPage />} />
             <Route path="/projects/:projectId/report" element={<ReportPage />} />
+            <Route path="/tour-spike" element={<TourPage />} />
             <Route path="*" element={<HomePage />} />
           </Routes>
         </Suspense>

@@ -272,7 +272,80 @@ h2 { margin: 4px 0 0; font-size: clamp(32px, 4vw, 46px); }
 .report-checks li::before { content: "✓"; color: var(--sage); font-weight: 800; }
 .report-checks li span { color: var(--muted); font-size: 11px; line-height: 1.45; }
 .report-disclaimer { margin-top: 18px; padding: 13px 15px; border-left: 3px solid var(--amber); background: #f3eee4; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+.tour-page { flex: 1; width: min(1580px, 100%); margin: 0 auto; padding: 38px clamp(20px, 3.5vw, 58px) 64px; }
+.tour-page--message { min-height: 620px; display: grid; place-items: center; }
+.tour-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 390px); gap: 34px; align-items: end; margin-bottom: 25px; }
+.tour-header > div { max-width: 880px; }
+.tour-header h1 { max-width: 850px; margin: 0; font-size: clamp(39px, 4.6vw, 64px); line-height: 1.02; }
+.tour-header > div > p:last-child { max-width: 700px; margin: 15px 0 0; color: var(--muted); font-size: 16px; line-height: 1.55; }
+.tour-trust-note { display: grid; gap: 7px; padding: 15px 17px; border: 1px solid #dfcda8; border-radius: 13px; background: #fff8e9; }
+.tour-trust-note strong { color: #72572d; font-size: 12px; letter-spacing: .025em; }
+.tour-trust-note span { color: #6e675b; font-size: 12px; line-height: 1.5; }
+.tour-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 17px; align-items: stretch; }
+.tour-stage { position: relative; min-width: 0; min-height: 680px; overflow: hidden; border: 1px solid #beb8ad; border-radius: 22px; background: #282a26; box-shadow: 0 24px 64px rgb(48 45 38 / 15%); }
+.tour-viewer, .tour-viewer canvas { width: 100%; height: 100%; min-height: 680px; display: block; }
+.tour-viewer__gesture { position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); max-width: calc(100% - 34px); padding: 9px 14px; border: 1px solid rgb(255 255 255 / 48%); border-radius: 99px; background: rgb(38 43 38 / 80%); color: white; backdrop-filter: blur(8px); font-size: 11px; font-weight: 700; text-align: center; white-space: nowrap; }
+.tour-stage__loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 30px; background: #d9d1c3 url("/tour-spike/poster.webp") center / cover no-repeat; color: white; text-align: center; }
+.tour-stage__loading::before { content: ""; position: absolute; inset: 0; background: rgb(37 40 35 / 52%); }
+.tour-stage__loading > * { position: relative; z-index: 1; }
+.tour-stage__loading strong { font: 600 clamp(24px, 3vw, 36px) "Iowan Old Style", Georgia, serif; }
+.tour-stage__loading span { font-size: 12px; font-weight: 800; }
+.tour-stage__loading progress { width: min(320px, 65vw); height: 7px; border: 0; accent-color: #f5d59a; }
+.tour-mode-status { position: absolute; z-index: 2; left: 16px; bottom: 15px; max-width: calc(100% - 32px); padding: 9px 12px; border: 1px solid rgb(255 255 255 / 40%); border-radius: 10px; background: rgb(251 250 246 / 88%); color: #3d463e; backdrop-filter: blur(8px); font-size: 11px; font-weight: 700; }
+.tour-panel { display: flex; flex-direction: column; gap: 18px; padding: 21px; border: 1px solid var(--line); border-radius: 22px; background: var(--paper); box-shadow: 0 18px 48px rgb(55 58 49 / 8%); }
+.tour-panel__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.tour-panel__heading > div { display: grid; gap: 3px; }
+.tour-panel__heading > div > span { color: var(--terracotta); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.tour-panel__heading h2 { margin: 0; font-size: 30px; }
+.tour-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tour-controls button { min-height: 70px; padding: 10px 11px; display: grid; grid-template-columns: 30px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 7px; border: 1px solid #d4d1c8; border-radius: 11px; background: white; color: var(--ink); cursor: pointer; text-align: left; }
+.tour-controls button:hover { border-color: #9eaa9d; background: #f7f9f5; }
+.tour-controls button > span { grid-row: 1 / 3; width: 29px; height: 29px; display: grid; place-items: center; border-radius: 8px; background: #eceee9; color: var(--sage-dark); font-size: 17px; }
+.tour-controls button strong { align-self: end; font-size: 12px; }
+.tour-controls button small { align-self: start; overflow: hidden; color: var(--muted); font-size: 9px; line-height: 1.25; text-overflow: ellipsis; }
+.tour-controls button.is-active { border-color: var(--sage-dark); background: var(--sage-dark); color: white; box-shadow: 0 8px 20px rgb(67 82 71 / 19%); }
+.tour-controls button.is-active > span { background: rgb(255 255 255 / 13%); color: white; }
+.tour-controls button.is-active small { color: #dfe7dc; }
+.tour-controls .tour-controls__exit { grid-column: 1 / -1; border-color: #d9b19f; background: #fff4ee; color: #74442f; }
+.tour-controls .tour-controls__exit > span { background: #f5dfd5; color: #8a4d34; }
+.tour-guide { padding: 14px 15px; border-left: 3px solid var(--amber); border-radius: 5px 11px 11px 5px; background: #fff8e9; }
+.tour-guide strong { color: #675432; font-size: 12px; }
+.tour-guide p { margin: 6px 0 0; color: #6f685c; font-size: 11px; line-height: 1.55; }
+.tour-guide kbd { padding: 2px 5px; border: 1px solid #d4c6aa; border-bottom-width: 2px; border-radius: 4px; background: white; color: #554d40; font: 700 9px/1.3 ui-monospace, monospace; }
+.tour-orientation { display: grid; gap: 8px; }
+.tour-orientation__heading { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.tour-orientation__heading span { color: var(--sage-dark); font-weight: 800; }
+.tour-map { position: relative; height: 112px; overflow: hidden; border: 1px solid #d6d3c9; border-radius: 11px; background: #ebe8df; color: #6b7169; font-size: 9px; font-weight: 800; }
+.tour-map::before { content: ""; position: absolute; inset: 9px; border: 7px solid #d4c9b8; border-bottom-color: transparent; background: linear-gradient(90deg, #e3dacb 0 49%, #d9e0d7 49%); }
+.tour-map__kitchen { position: absolute; z-index: 1; left: 18px; top: 17px; }
+.tour-map__island { position: absolute; z-index: 1; left: 34%; top: 51%; padding: 4px 13px; background: #f7f2e9; border: 1px solid #cfc4b3; }
+.tour-map__living { position: absolute; z-index: 1; right: 19px; bottom: 19px; }
+.tour-map__north { position: absolute; z-index: 1; right: 17px; top: 15px; color: var(--sage-dark); font-size: 18px; }
+.tour-local-note { margin: auto 2px 0; display: flex; gap: 7px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.tour-local-note span { color: var(--sage); }
+.tour-loading, .tour-error { width: min(580px, calc(100% - 34px)); display: grid; justify-items: center; padding: 42px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); box-shadow: var(--shadow); text-align: center; }
+.tour-loading__mark { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 15px; background: var(--sage-dark); color: white; font: 600 31px/1 "Iowan Old Style", Georgia, serif; }
+.tour-loading h1, .tour-error h1 { margin: 18px 0 2px; font-size: clamp(32px, 5vw, 48px); }
+.tour-loading p, .tour-error p:not(.eyebrow) { margin: 8px 0 22px; color: var(--muted); line-height: 1.55; }
+.tour-loading progress { width: min(330px, 70vw); accent-color: var(--sage); }
 .app-footer { padding: 18px clamp(20px, 4vw, 64px); display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); background: #efebe2; color: #787b75; font-size: 11px; }
+
+@media (max-width: 1180px) {
+  .tour-workspace { grid-template-columns: 1fr; }
+  .tour-panel { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(380px, 1.2fr); align-items: start; }
+  .tour-panel__heading, .tour-local-note { grid-column: 1 / -1; }
+  .tour-controls { grid-row: span 2; grid-template-columns: repeat(3, 1fr); }
+  .tour-guide, .tour-orientation { align-self: stretch; }
+}
+@media (max-width: 760px) {
+  .tour-page { padding-inline: 14px; padding-top: 26px; }
+  .tour-header { grid-template-columns: 1fr; gap: 18px; }
+  .tour-stage, .tour-viewer, .tour-viewer canvas { min-height: 560px; }
+  .tour-panel { display: flex; }
+  .tour-controls { grid-template-columns: 1fr 1fr; }
+  .tour-viewer__gesture { bottom: 66px; white-space: normal; }
+}
 
 @media (max-width: 880px) {
   .hero { grid-template-columns: 1fr; padding-top: 70px; }
