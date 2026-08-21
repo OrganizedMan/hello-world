@@ -1,7 +1,7 @@
-import { BoxGeometry, DirectionalLight, Mesh, MeshStandardMaterial, Scene } from "three";
-import { describe, expect, it } from "vitest";
+import { BoxGeometry, DirectionalLight, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "three";
+import { describe, expect, it, vi } from "vitest";
 
-import { frameLoopForMode, prepareTourSceneForBrowser, setOverheadVisibility } from "./TourViewer";
+import { applyCameraPreset, frameLoopForMode, prepareTourSceneForBrowser, setOverheadVisibility } from "./TourViewer";
 
 
 describe("TourViewer browser scene preparation", () => {
@@ -44,5 +44,23 @@ describe("TourViewer browser scene preparation", () => {
 
     setOverheadVisibility(scene, false);
     expect(ceiling.visible).toBe(true);
+  });
+
+  it("applies the north-up vector before aiming an overhead camera", () => {
+    const camera = new PerspectiveCamera();
+    let upAtLookAt: [number, number, number] | undefined;
+    vi.spyOn(camera, "lookAt").mockImplementation(() => {
+      upAtLookAt = camera.up.toArray();
+    });
+
+    applyCameraPreset(camera, {
+      name: "overhead",
+      position: [4.5847, 8, -2.4257],
+      target: [4.5847, 0, -2.4257],
+      up: [0, 0, 1],
+    });
+
+    expect(camera.position.toArray()).toEqual([4.5847, 8, -2.4257]);
+    expect(upAtLookAt).toEqual([0, 0, 1]);
   });
 });

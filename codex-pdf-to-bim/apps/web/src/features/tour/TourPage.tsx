@@ -1,66 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { z } from "zod";
 
 import { HelpTooltip } from "../../components/HelpTooltip";
+import { TourOrientationMap } from "./TourOrientationMap";
 import { TourViewer, type TourMode, type TourPresetName } from "./TourViewer";
+import { parseTourManifest, type TourManifest } from "./tourManifest";
 
-
-const vector3Schema = z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]);
-const cameraPresetSchema = z.object({
-  name: z.enum(["kitchen_overview", "walk_start", "overhead"]),
-  position: vector3Schema,
-  target: vector3Schema,
-});
-
-const manifestSchema = z.object({
-  schema: z.literal("hearthview-tour-spike/v1"),
-  label: z.literal("Quality spike · visual staging"),
-  canonical_geometry: z.literal(false),
-  provisional_categories: z.array(z.string()).superRefine((categories, context) => {
-    for (const required of ["cabinetry_detail", "hardware", "finishes", "furniture", "decor", "undimensioned_offsets"]) {
-      if (!categories.includes(required)) {
-        context.addIssue({ code: "custom", message: `missing provisional category: ${required}` });
-      }
-    }
-  }),
-  artifact: z.object({
-    glb: z.literal("hearthview-kitchen-family.glb"),
-    poster: z.literal("poster.webp"),
-    environment: z.literal("environment.hdr"),
-    total_browser_bytes: z.number().int().positive().max(45_000_000),
-  }),
-  runtime: z.object({
-    eye_height_meters: z.literal(1.65),
-    walkable: z.object({
-      min_x: z.number().finite(),
-      max_x: z.number().finite(),
-      min_z: z.number().finite(),
-      max_z: z.number().finite(),
-    }),
-    barriers: z.array(z.object({
-      name: z.string().min(1),
-      min_x: z.number().finite(),
-      max_x: z.number().finite(),
-      min_z: z.number().finite(),
-      max_z: z.number().finite(),
-    })),
-    camera_presets: z.array(cameraPresetSchema).superRefine((presets, context) => {
-      for (const required of ["kitchen_overview", "walk_start", "overhead"] as const) {
-        if (!presets.some((preset) => preset.name === required)) {
-          context.addIssue({ code: "custom", message: `missing camera preset: ${required}` });
-        }
-      }
-    }),
-  }),
-}).passthrough();
-
-
-export type TourManifest = z.infer<typeof manifestSchema>;
-
-
-export function parseTourManifest(value: unknown): TourManifest {
-  return manifestSchema.parse(value);
-}
+export { parseTourManifest, type TourManifest } from "./tourManifest";
 
 
 const modeDescriptions: Record<TourMode, string> = {
@@ -214,12 +159,7 @@ export function TourPage() {
 
           <div className="tour-orientation" aria-label="Room orientation map">
             <div className="tour-orientation__heading"><strong>Room orientation</strong><span>N</span></div>
-            <div className="tour-map" aria-hidden="true">
-              <span className="tour-map__kitchen">Kitchen</span>
-              <span className="tour-map__island">Island</span>
-              <span className="tour-map__living">Family room</span>
-              <span className="tour-map__north">↑</span>
-            </div>
+            <TourOrientationMap orientation={manifest.orientation} island={manifest.island_footprint} />
           </div>
 
           <p className="tour-local-note"><span aria-hidden="true">◆</span> This detailed room stays on this Mac after the assets are prepared.</p>

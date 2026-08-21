@@ -17,6 +17,10 @@ test("homeowner can move, walk, recover, and frame the quality-spike room", asyn
   test.info().annotations.push({ type: "headless-load-ms", description: String(usableAfterMs) });
 
   await expect(page.getByText("Quality spike · visual staging")).toBeVisible();
+  await expect(page.getByRole("img", { name: /North-up plan/ })).toBeVisible();
+  await expect(page.locator('[data-tour-opening="family_east_window"]')).toHaveCount(1);
+  await expect(page.locator('[data-tour-opening="mudroom_opening"]')).toHaveCount(1);
+  await expect(page.locator('[data-tour-opening="south_living_opening"]')).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Orbit" })).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "Move here" }).click({ force: true });

@@ -3,6 +3,7 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber"
 import { AdaptiveDpr, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import {
   ACESFilmicToneMapping,
+  Camera,
   Euler,
   Mesh,
   Object3D,
@@ -11,7 +12,7 @@ import {
   Vector3,
 } from "three";
 
-import type { TourManifest } from "./TourPage";
+import type { TourCameraPreset, TourManifest } from "./tourManifest";
 import {
   cameraPositionForFloor,
   isWalkablePlacement,
@@ -27,6 +28,13 @@ export type TourPresetName = "kitchen_overview" | "walk_start" | "overhead";
 
 export function frameLoopForMode(mode: TourMode): "always" | "demand" {
   return mode === "walk" ? "always" : "demand";
+}
+
+
+export function applyCameraPreset(camera: Camera, preset: TourCameraPreset): void {
+  camera.position.set(...preset.position);
+  camera.up.set(...preset.up);
+  camera.lookAt(new Vector3(...preset.target));
 }
 
 type TourViewerProps = {
@@ -141,9 +149,7 @@ function TourExperience({
   useEffect(() => {
     const cameraPreset = presets.get(preset);
     if (!cameraPreset) return;
-    camera.position.set(...cameraPreset.position);
-    camera.lookAt(new Vector3(...cameraPreset.target));
-    camera.updateProjectionMatrix();
+    applyCameraPreset(camera, cameraPreset);
     setOrbitTarget([...cameraPreset.target]);
   }, [camera, preset, presets, viewRevision]);
 
@@ -156,9 +162,7 @@ function TourExperience({
 
     const walkStart = presets.get("walk_start");
     if (!walkStart) return;
-    camera.position.set(...walkStart.position);
-    camera.lookAt(new Vector3(...walkStart.target));
-    camera.updateProjectionMatrix();
+    applyCameraPreset(camera, walkStart);
   }, [camera, gl.domElement, mode, presets]);
 
   useEffect(() => {
