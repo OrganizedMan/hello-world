@@ -1,0 +1,20 @@
+{
+  "name": "hearthview",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "uv run python scripts/dev.py",
+    "dev:web": "npm --workspace apps/web run dev",
+    "test": "npm run test:api && npm run test:web",
+    "test:api": "uv run pytest tests/backend -q",
+    "test:web": "npm --workspace apps/web test -- --run",
+    "build": "npm --workspace apps/web run build",
+    "doctor": "uv run python scripts/doctor.py",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

@@ -1,0 +1,414 @@
+{
+  "$defs": {
+    "FixedObject": {
+      "additionalProperties": false,
+      "properties": {
+        "end_ticks": {
+          "title": "End Ticks",
+          "type": "string"
+        },
+        "host_wall_id": {
+          "title": "Host Wall Id",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "TV",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source_ref_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ref Ids",
+          "type": "array"
+        },
+        "start_ticks": {
+          "title": "Start Ticks",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "host_wall_id",
+        "start_ticks",
+        "end_ticks",
+        "source_ref_ids"
+      ],
+      "title": "FixedObject",
+      "type": "object"
+    },
+    "Island": {
+      "additionalProperties": false,
+      "properties": {
+        "depth_ticks": {
+          "title": "Depth Ticks",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "source_ref_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ref Ids",
+          "type": "array"
+        },
+        "width_ticks": {
+          "title": "Width Ticks",
+          "type": "string"
+        },
+        "x_ticks": {
+          "title": "X Ticks",
+          "type": "string"
+        },
+        "y_ticks": {
+          "title": "Y Ticks",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "width_ticks",
+        "depth_ticks",
+        "x_ticks",
+        "y_ticks",
+        "source_ref_ids"
+      ],
+      "title": "Island",
+      "type": "object"
+    },
+    "ReviewDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "title": "Item Id",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/ReviewState",
+          "default": "UNREVIEWED"
+        }
+      },
+      "required": [
+        "item_id"
+      ],
+      "title": "ReviewDecision",
+      "type": "object"
+    },
+    "ReviewState": {
+      "enum": [
+        "UNREVIEWED",
+        "APPROVED",
+        "EDITED_APPROVED",
+        "REJECTED",
+        "CONFLICT"
+      ],
+      "title": "ReviewState",
+      "type": "string"
+    },
+    "SourceDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "page_count": {
+          "minimum": 1,
+          "title": "Page Count",
+          "type": "integer"
+        },
+        "profile": {
+          "enum": [
+            "GARRIGAN_A1",
+            "UNSUPPORTED"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "display_name",
+        "sha256",
+        "page_count",
+        "profile"
+      ],
+      "title": "SourceDocument",
+      "type": "object"
+    },
+    "SourceReference": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "page_number": {
+          "minimum": 1,
+          "title": "Page Number",
+          "type": "integer"
+        },
+        "pdf_polygon": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Pdf Polygon",
+          "type": "array"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_id",
+        "page_number",
+        "pdf_polygon",
+        "rationale"
+      ],
+      "title": "SourceReference",
+      "type": "object"
+    },
+    "Wall": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "enum": [
+            "X",
+            "Y"
+          ],
+          "title": "Axis",
+          "type": "string"
+        },
+        "height_ticks": {
+          "title": "Height Ticks",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "length_ticks": {
+          "title": "Length Ticks",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "ordered_children": {
+          "items": {
+            "$ref": "#/$defs/WallChild"
+          },
+          "title": "Ordered Children",
+          "type": "array"
+        },
+        "origin_x_ticks": {
+          "title": "Origin X Ticks",
+          "type": "string"
+        },
+        "origin_y_ticks": {
+          "title": "Origin Y Ticks",
+          "type": "string"
+        },
+        "source_ref_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ref Ids",
+          "type": "array"
+        },
+        "thickness_ticks": {
+          "title": "Thickness Ticks",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "axis",
+        "origin_x_ticks",
+        "origin_y_ticks",
+        "length_ticks",
+        "thickness_ticks",
+        "height_ticks",
+        "ordered_children",
+        "source_ref_ids"
+      ],
+      "title": "Wall",
+      "type": "object"
+    },
+    "WallChild": {
+      "additionalProperties": false,
+      "properties": {
+        "connects_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Connects To"
+        },
+        "end_ticks": {
+          "title": "End Ticks",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "WINDOW",
+            "SOLID_MOUNT_ZONE",
+            "UNFRAMED_OPENING",
+            "SOLID"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "source_ref_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ref Ids",
+          "type": "array"
+        },
+        "start_ticks": {
+          "title": "Start Ticks",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "start_ticks",
+        "end_ticks",
+        "source_ref_ids"
+      ],
+      "title": "WallChild",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "fixed_objects": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/FixedObject"
+      },
+      "title": "Fixed Objects",
+      "type": "array"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "island": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Island"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "level_height_ticks": {
+      "default": "102400",
+      "title": "Level Height Ticks",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "review_decisions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ReviewDecision"
+      },
+      "title": "Review Decisions",
+      "type": "array"
+    },
+    "revision": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "default": "0.1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_documents": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SourceDocument"
+      },
+      "title": "Source Documents",
+      "type": "array"
+    },
+    "source_references": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SourceReference"
+      },
+      "title": "Source References",
+      "type": "array"
+    },
+    "walls": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Wall"
+      },
+      "title": "Walls",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ],
+  "title": "ProjectModel",
+  "type": "object"
+}
