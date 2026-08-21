@@ -1,0 +1,90 @@
+"""Massing tests: what the drawing measures vs. what the model assumes.
+
+Like the extraction tests these need the real sheet, supplied via
+``HEARTHVIEW_A1_PDF``.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pytest
+
+from hearthview.a1_extract import POINTS_PER_FOOT, extract_a1
+from hearthview.a1_massing import (
+    ASSUMED_DOOR_HEAD_INCHES,
+    A1MassingError,
+    build_a1_massing,
+    parse_ceiling_height,
+)
+from hearthview.units import TICKS_PER_INCH
+
+_SOURCE = os.environ.get("HEARTHVIEW_A1_PDF")
+pytestmark = pytest.mark.skipif(
+    not (_SOURCE and Path(_SOURCE).is_file()),
+    reason="Set HEARTHVIEW_A1_PDF to the Garrigan A-1 drawing to run massing tests.",
+)
+
+
+@pytest.fixture(scope="module")
+def massing():
+    return build_a1_massing(extract_a1(Path(_SOURCE)))
+
+
+def test_ceiling_height_is_read_from_the_printed_note(massing) -> None:
+    """A-1 prints CLG HT - 8' 5" on every labelled room."""
+    assert massing.ceiling.provenance == "dimension_verified"
+    assert massing.ceiling.inches == pytest.approx(8 * 12 + 5)
+
+
+def test_a_missing_ceiling_note_is_refused_not_guessed() -> None:
+    with pytest.raises(A1MassingError):
+        parse_ceiling_height(())
+
+
+def test_no_solid_rises_above_the_printed_ceiling(massing) -> None:
+    ceiling_ticks = int(round(massing.ceiling.inches * TICKS_PER_INCH))
+
+    assert massing.primitives
+    assert all(p.z1_ticks <= ceiling_ticks for p in massing.primitives)
+    assert all(p.z0_ticks >= 0 for p in massing.primitives)
+
+
+def test_assumed_heights_are_flagged_and_are_the_minority(massing) -> None:
+    """Sills and lintels rest on convention; walls rest on the printed note."""
+    assert massing.assumed_primitive_ids
+    assert all(
+        pid.startswith(("sill.", "lintel.")) for pid in massing.assumed_primitive_ids
+    )
+    assert massing.verified_fraction > 0.5
+
+
+def test_lintels_sit_at_the_assumed_head_height(massing) -> None:
+    head_ticks = int(round(ASSUMED_DOOR_HEAD_INCHES * TICKS_PER_INCH))
+    lintels = [p for p in massing.primitives if p.element_id.startswith("lintel.")]
+
+    assert lintels
+    assert all(p.z0_ticks == head_ticks for p in lintels)
+
+
+def test_plan_extents_survive_the_extrusion(massing) -> None:
+    """The model footprint must match the traced plan, not drift from it."""
+    extraction = extract_a1(Path(_SOURCE))
+    plan_width = (extraction.footprint.x1 - extraction.footprint.x0) / POINTS_PER_FOOT
+    plan_depth = (extraction.footprint.y1 - extraction.footprint.y0) / POINTS_PER_FOOT
+
+    model_width = max(p.x1_ticks for p in massing.primitives) / TICKS_PER_INCH / 12
+    model_depth = max(p.y1_ticks for p in massing.primitives) / TICKS_PER_INCH / 12
+
+    assert model_width == pytest.approx(plan_width, abs=0.05)
+    assert model_depth == pytest.approx(plan_depth, abs=0.05)
+
+
+def test_openings_are_classified_and_doors_have_swings(massing) -> None:
+    kinds = {o.kind for o in massing.openings}
+
+    assert kinds <= {"door", "window", "cased_opening"}
+    assert any(o.kind == "door" for o in massing.openings)
+    # Every window must sit on the building's perimeter.
+    assert all(o.on_exterior for o in massing.openings if o.kind == "window")

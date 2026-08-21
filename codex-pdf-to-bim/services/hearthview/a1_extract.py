@@ -21,6 +21,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from typing import Iterable, Literal, Sequence
 
 import pymupdf as fitz
@@ -48,6 +49,10 @@ FILL_PAPER = "#FFFFFF"
 WALL_MIN_INCHES = 3.0
 WALL_MAX_INCHES = 21.0
 _SUBPATH_EPSILON = 0.05
+_HEIGHT_TEXT = re.compile(r"(\d+)'\s*-?\s*(\d+)?\s*\"")
+# A bare 6'-3" only counts as a ceiling height when it sits beside a LOW
+# CEILING note; on its own it is one of the sheet's many plan dimensions.
+_LOW_ZONE_RADIUS = 45.0
 
 
 class A1ExtractError(ValueError):
@@ -84,6 +89,20 @@ class Label:
 
 
 @dataclass(frozen=True)
+class CeilingNote:
+    """A printed ceiling height, in inches.
+
+    ``kind`` separates a room's `CLG HT - 8' 5"` from the bare heights that
+    annotate the LOW CEILING zone by the stair.
+    """
+
+    text: str
+    inches: float
+    bounds: PdfRect
+    kind: Literal["room", "low_zone"]
+
+
+@dataclass(frozen=True)
 class A1Extraction:
     page_number: int
     page_width_points: float
@@ -93,6 +112,7 @@ class A1Extraction:
     shapes: tuple[Shape, ...]
     openings: tuple[Opening, ...]
     labels: tuple[Label, ...]
+    ceiling_notes: tuple[CeilingNote, ...] = field(default=())
     stair_treads: tuple[tuple[Point, Point], ...] = field(default=())
 
     def layer(self, name: LayerName) -> tuple[Shape, ...]:
@@ -371,6 +391,9 @@ def extract_a1(path: Path, *, page_number: int = 2) -> A1Extraction:
         openings = _find_openings(walls)
 
         labels: list[Label] = []
+        ceiling_notes: list[CeilingNote] = []
+        low_zones: list[fitz.Rect] = []
+        candidates: list[tuple[str, fitz.Rect]] = []
         for block in page.get_text("dict")["blocks"]:
             if block["type"] != 0:
                 continue
@@ -379,6 +402,26 @@ def extract_a1(path: Path, *, page_number: int = 2) -> A1Extraction:
                     text = span["text"].strip()
                     bbox = fitz.Rect(span["bbox"])
                     if not _contains(view, bbox):
+                        continue
+                    upper = text.upper()
+                    if "CLG" in upper or "CEILING" in upper:
+                        match = _HEIGHT_TEXT.search(text)
+                        if match:
+                            feet = int(match.group(1))
+                            inches = int(match.group(2) or 0)
+                            ceiling_notes.append(
+                                CeilingNote(
+                                    text,
+                                    feet * 12 + inches,
+                                    PdfRect(bbox.x0, bbox.y0, bbox.x1, bbox.y1),
+                                    "room",
+                                )
+                            )
+                        if "LOW" in upper:
+                            low_zones.append(bbox)
+                        continue
+                    if _HEIGHT_TEXT.fullmatch(text):
+                        candidates.append((text, bbox))
                         continue
                     if (
                         span["font"] in ("Arial-BoldMT", "ArialMT")
@@ -391,6 +434,31 @@ def extract_a1(path: Path, *, page_number: int = 2) -> A1Extraction:
                             Label(text, PdfRect(bbox.x0, bbox.y0, bbox.x1, bbox.y1))
                         )
 
+        # Bare heights next to a LOW CEILING note describe that zone.
+        for text, bbox in candidates:
+            for zone in low_zones:
+                near = fitz.Rect(
+                    zone.x0 - _LOW_ZONE_RADIUS,
+                    zone.y0 - _LOW_ZONE_RADIUS,
+                    zone.x1 + _LOW_ZONE_RADIUS,
+                    zone.y1 + _LOW_ZONE_RADIUS,
+                )
+                if near.intersects(bbox):
+                    match = _HEIGHT_TEXT.search(text)
+                    feet = int(match.group(1))
+                    inches = int(match.group(2) or 0)
+                    if feet * 12 + inches < 60:
+                        break  # a plan dimension that merely sits nearby
+                    ceiling_notes.append(
+                        CeilingNote(
+                            text,
+                            feet * 12 + inches,
+                            PdfRect(bbox.x0, bbox.y0, bbox.x1, bbox.y1),
+                            "low_zone",
+                        )
+                    )
+                    break
+
         treads = _stair_treads(Path(path), page_number, view)
         return A1Extraction(
             page_number=page_number,
@@ -401,6 +469,7 @@ def extract_a1(path: Path, *, page_number: int = 2) -> A1Extraction:
             shapes=tuple(shapes),
             openings=tuple(openings),
             labels=tuple(labels),
+            ceiling_notes=tuple(ceiling_notes),
             stair_treads=tuple(treads),
         )
     finally:
