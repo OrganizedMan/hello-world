@@ -34,6 +34,44 @@ class SourceResponse(ApiModel):
     page_count: int
 
 
+class PdfRectResponse(ApiModel):
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+
+
+class TraceGeometryResponse(ApiModel):
+    points: tuple[tuple[float, float], ...]
+    closed: bool
+
+
+class TraceRecordResponse(ApiModel):
+    id: str
+    kind: str
+    room: str
+    provenance: str
+    geometry: TraceGeometryResponse
+    source_page: int
+    dimension_labels: tuple[str, ...]
+
+
+class TraceSummaryResponse(ApiModel):
+    verified: int
+    traced: int
+    ambiguous: int
+
+
+class A1TraceResponse(ApiModel):
+    page_number: int
+    page_width_points: float
+    page_height_points: float
+    proposed_crop: PdfRectResponse
+    records: tuple[TraceRecordResponse, ...]
+    summary: TraceSummaryResponse
+    approval_blocked: bool
+
+
 class ReviewItemResponse(ApiModel):
     id: str
     title: str

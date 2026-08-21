@@ -68,6 +68,63 @@ def test_evidence_preview_is_project_bound_crop(
     assert preview.content.startswith(b"\x89PNG")
 
 
+def test_a1_trace_returns_source_matched_geometry(
+    client: TestClient,
+    four_page_pdf: bytes,
+) -> None:
+    project_id = create_project(client)
+    source = client.post(
+        f"/api/projects/{project_id}/sources",
+        files={"file": ("garrigan.pdf", four_page_pdf, "application/pdf")},
+    ).json()
+
+    response = client.get(
+        f"/api/projects/{project_id}/sources/{source['id']}/a1-trace"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["page_number"] == 2
+    assert payload["summary"]["verified"] > 0
+
+
+def test_a1_trace_preview_is_a_png_crop(
+    client: TestClient,
+    four_page_pdf: bytes,
+) -> None:
+    project_id = create_project(client)
+    source = client.post(
+        f"/api/projects/{project_id}/sources",
+        files={"file": ("garrigan.pdf", four_page_pdf, "application/pdf")},
+    ).json()
+
+    response = client.get(
+        f"/api/projects/{project_id}/sources/{source['id']}/a1-trace/preview?max_width=1600"
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content.startswith(b"\x89PNG")
+
+
+def test_a1_trace_rejects_unsupported_source(
+    client: TestClient,
+    one_page_pdf: bytes,
+) -> None:
+    project_id = create_project(client)
+    source = client.post(
+        f"/api/projects/{project_id}/sources",
+        files={"file": ("other-plan.pdf", one_page_pdf, "application/pdf")},
+    ).json()
+
+    response = client.get(
+        f"/api/projects/{project_id}/sources/{source['id']}/a1-trace"
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "UNSUPPORTED_A1_TRACE_SOURCE"
+
+
 def test_malformed_pdf_has_plain_language_recovery(client: TestClient) -> None:
     project_id = create_project(client)
 

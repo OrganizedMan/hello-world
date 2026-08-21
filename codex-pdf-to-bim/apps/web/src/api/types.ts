@@ -83,6 +83,44 @@ export interface ProjectCreate {
   readonly name: string;
 }
 
+export interface PdfRectResponse {
+  readonly x0: number;
+  readonly y0: number;
+  readonly x1: number;
+  readonly y1: number;
+}
+
+export interface TraceGeometryResponse {
+  readonly points: ReadonlyArray<readonly [number, number]>;
+  readonly closed: boolean;
+}
+
+export interface TraceRecordResponse {
+  readonly id: string;
+  readonly kind: string;
+  readonly room: string;
+  readonly provenance: string;
+  readonly geometry: TraceGeometryResponse;
+  readonly source_page: number;
+  readonly dimension_labels: ReadonlyArray<string>;
+}
+
+export interface TraceSummaryResponse {
+  readonly verified: number;
+  readonly traced: number;
+  readonly ambiguous: number;
+}
+
+export interface A1TraceResponse {
+  readonly page_number: number;
+  readonly page_width_points: number;
+  readonly page_height_points: number;
+  readonly proposed_crop: PdfRectResponse;
+  readonly records: ReadonlyArray<TraceRecordResponse>;
+  readonly summary: TraceSummaryResponse;
+  readonly approval_blocked: boolean;
+}
+
 export interface ProjectResponse {
   readonly id: string;
   readonly name: string;

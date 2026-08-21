@@ -18,6 +18,7 @@ if str(API_ROOT) not in sys.path:
 from hearthview.models import ProjectModel  # noqa: E402
 from hearthview_api.api_models import (  # noqa: E402
     BlenderCapabilityResponse,
+    A1TraceResponse,
     CompileRequest,
     GeometryResponse,
     ProjectCreate,
@@ -91,6 +92,7 @@ def render_typescript() -> str:
     domain_schema = ProjectModel.model_json_schema(mode="serialization")
     boundary_models = (
         ProjectCreate,
+        A1TraceResponse,
         ProjectResponse,
         SourceResponse,
         ReviewItemResponse,

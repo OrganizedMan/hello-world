@@ -3,15 +3,21 @@ from pathlib import Path
 from fastapi import APIRouter, File, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 
+from hearthview.a1_trace import build_a1_trace, trace_summary
 from hearthview.fixture import build_a1_review_queue
-from hearthview.ingest import PdfIngestError, inspect_pdf, render_page, render_region
+from hearthview.ingest import PdfIngestError, inspect_pdf, render_page, render_rect, render_region
 from hearthview.storage import ArtifactTooLarge
 
 from hearthview_api.api_models import (
     ProjectCreate,
     ProjectResponse,
+    A1TraceResponse,
+    PdfRectResponse,
     ReviewItemResponse,
     SourceResponse,
+    TraceGeometryResponse,
+    TraceRecordResponse,
+    TraceSummaryResponse,
 )
 from hearthview_api.errors import DomainError
 
@@ -25,6 +31,44 @@ def _not_found(kind: str) -> DomainError:
         code=f"{kind.upper()}_NOT_FOUND",
         message=f"HearthView could not find this {kind}.",
         action="Return to the project home and choose an available item.",
+    )
+
+
+def _a1_trace_for_source(source: object, request: Request):
+    if getattr(source, "sha256", None) != request.app.state.config.supported_source_sha256:
+        raise DomainError(
+            status_code=422,
+            code="UNSUPPORTED_A1_TRACE_SOURCE",
+            message="This trace only supports the approved Garrigan A-1 source.",
+            action="Return to Plans and select the Garrigan PDF used for this review.",
+        )
+    return build_a1_trace()
+
+
+def _trace_response(trace: object) -> A1TraceResponse:
+    summary = trace_summary(trace)
+    return A1TraceResponse(
+        page_number=trace.page_number,
+        page_width_points=trace.page_width_points,
+        page_height_points=trace.page_height_points,
+        proposed_crop=PdfRectResponse(**trace.proposed_crop.__dict__),
+        records=tuple(
+            TraceRecordResponse(
+                id=record.id,
+                kind=record.kind,
+                room=record.room,
+                provenance=record.provenance,
+                geometry=TraceGeometryResponse(
+                    points=record.geometry.points,
+                    closed=record.geometry.closed,
+                ),
+                source_page=record.source_page,
+                dimension_labels=record.dimension_labels,
+            )
+            for record in trace.records
+        ),
+        summary=TraceSummaryResponse(**summary.__dict__),
+        approval_blocked=summary.ambiguous > 0,
     )
 
 
@@ -160,6 +204,47 @@ def source_preview(
             code="PAGE_PREVIEW_FAILED",
             message="HearthView could not preview this page.",
             action="Choose another page or re-import the PDF.",
+        ) from error
+    return Response(content=content, media_type="image/png")
+
+
+@router.get(
+    "/projects/{project_id}/sources/{source_id}/a1-trace",
+    response_model=A1TraceResponse,
+)
+def a1_trace(project_id: str, source_id: str, request: Request) -> A1TraceResponse:
+    try:
+        source = request.app.state.repository.get_source(project_id, source_id)
+    except KeyError as error:
+        raise _not_found("source") from error
+    return _trace_response(_a1_trace_for_source(source, request))
+
+
+@router.get("/projects/{project_id}/sources/{source_id}/a1-trace/preview")
+def a1_trace_preview(
+    project_id: str,
+    source_id: str,
+    request: Request,
+    max_width: int = Query(default=1600, ge=320, le=2048),
+) -> Response:
+    try:
+        source = request.app.state.repository.get_source(project_id, source_id)
+    except KeyError as error:
+        raise _not_found("source") from error
+    trace = _a1_trace_for_source(source, request)
+    try:
+        content = render_rect(
+            request.app.state.artifact_store.resolve(source.sha256),
+            page_number=trace.page_number,
+            rect=trace.proposed_crop,
+            max_width=max_width,
+        )
+    except PdfIngestError as error:
+        raise DomainError(
+            status_code=422,
+            code="A1_TRACE_PREVIEW_FAILED",
+            message="HearthView could not preview the proposed A-1 plan.",
+            action="Return to Plans and re-import the approved Garrigan PDF.",
         ) from error
     return Response(content=content, media_type="image/png")
 

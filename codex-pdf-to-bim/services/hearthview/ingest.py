@@ -7,6 +7,8 @@ import pymupdf as fitz
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
+from hearthview.a1_trace import PdfRect
+
 
 class PdfIngestError(ValueError):
     """Raised when a source PDF cannot be safely inspected or rendered."""
@@ -102,5 +104,42 @@ def render_region(
         if isinstance(error, PdfIngestError):
             raise
         raise PdfIngestError("The source region could not be rendered.") from error
+    finally:
+        document.close()
+
+
+def render_rect(path: Path, *, page_number: int, rect: PdfRect, max_width: int) -> bytes:
+    """Render an original-PDF-coordinate crop without evidence-preview scaling."""
+    if not 320 <= max_width <= 2048:
+        raise PdfIngestError("Preview width must be between 320 and 2048 pixels.")
+    try:
+        document = fitz.open(path)
+    except (RuntimeError, ValueError) as error:
+        raise PdfIngestError("The PDF could not be rendered.") from error
+    try:
+        if not 1 <= page_number <= document.page_count:
+            raise PdfIngestError(
+                f"Page {page_number} is not available in this {document.page_count}-page PDF."
+            )
+        page = document.load_page(page_number - 1)
+        x_scale = page.rect.width / 2592.0
+        y_scale = page.rect.height / 1728.24
+        clip = fitz.Rect(
+            rect.x0 * x_scale,
+            rect.y0 * y_scale,
+            rect.x1 * x_scale,
+            rect.y1 * y_scale,
+        )
+        if clip.is_empty or clip.width <= 1 or clip.height <= 1:
+            raise PdfIngestError("The A-1 proposed-plan crop is not available.")
+        scale = max_width / clip.width
+        pixmap = page.get_pixmap(
+            matrix=fitz.Matrix(scale, scale), clip=clip, alpha=False
+        )
+        return pixmap.tobytes("png")
+    except (RuntimeError, ValueError) as error:
+        if isinstance(error, PdfIngestError):
+            raise
+        raise PdfIngestError("The A-1 proposed-plan crop could not be rendered.") from error
     finally:
         document.close()
