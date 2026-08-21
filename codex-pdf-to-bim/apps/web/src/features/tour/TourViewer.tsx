@@ -24,6 +24,11 @@ import {
 export type TourMode = "orbit" | "move" | "walk";
 export type TourPresetName = "kitchen_overview" | "walk_start" | "overhead";
 
+
+export function frameLoopForMode(mode: TourMode): "always" | "demand" {
+  return mode === "walk" ? "always" : "demand";
+}
+
 type TourViewerProps = {
   manifest: TourManifest;
   mode: TourMode;
@@ -317,6 +322,7 @@ export function TourViewer(props: TourViewerProps) {
           aria-label="Interactive tour of the proposed kitchen and family room"
           camera={{ fov: 52, near: 0.05, far: 120, position: initialPosition }}
           dpr={[1, 1.75]}
+          frameloop={frameLoopForMode(props.mode)}
           gl={{ antialias: true, outputColorSpace: SRGBColorSpace, toneMapping: ACESFilmicToneMapping }}
           onCreated={({ gl }) => {
             gl.toneMappingExposure = 0.7;

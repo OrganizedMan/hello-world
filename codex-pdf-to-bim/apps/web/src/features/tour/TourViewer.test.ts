@@ -1,10 +1,16 @@
 import { BoxGeometry, DirectionalLight, Mesh, MeshStandardMaterial, Scene } from "three";
 import { describe, expect, it } from "vitest";
 
-import { prepareTourSceneForBrowser, setOverheadVisibility } from "./TourViewer";
+import { frameLoopForMode, prepareTourSceneForBrowser, setOverheadVisibility } from "./TourViewer";
 
 
 describe("TourViewer browser scene preparation", () => {
+  it("renders continuously only while walking", () => {
+    expect(frameLoopForMode("orbit")).toBe("demand");
+    expect(frameLoopForMode("move")).toBe("demand");
+    expect(frameLoopForMode("walk")).toBe("always");
+  });
+
   it("keeps authored geometry but disables Blender lights that would double-light the room", () => {
     const source = new Scene();
     const light = new DirectionalLight("white", 1200);
