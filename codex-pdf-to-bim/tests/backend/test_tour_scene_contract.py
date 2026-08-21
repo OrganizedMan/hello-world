@@ -5,11 +5,101 @@ import json
 
 import pytest
 
+from hearthview.a1_spatial import build_a1_spatial_model
+from hearthview.units import TICKS_PER_INCH
+
 
 def scene_contract_module():
     from spikes.tour_quality import scene_contract
 
     return scene_contract
+
+
+def meters(ticks: int) -> float:
+    return round((ticks / TICKS_PER_INCH) * 0.0254, 4)
+
+
+def test_tour_contract_is_derived_from_the_canonical_a1_model() -> None:
+    module = scene_contract_module()
+    spatial = build_a1_spatial_model()
+    contract = module.build_scene_contract()
+    manifest = contract.to_manifest()
+
+    assert contract.canonical_model_hash == spatial.canonical_hash()
+    assert manifest["canonical_model_hash"] == spatial.canonical_hash()
+    assert manifest["canonical_geometry_hash"]
+    assert manifest["orientation"]["north_vector"] == [0, -1]
+    assert manifest["orientation"]["north_up"] is True
+    assert {region["name"] for region in manifest["orientation"]["regions"]} >= {
+        "kitchen",
+        "family_room",
+        "mudroom_context",
+        "existing_living_context",
+    }
+
+
+def test_east_and_south_openings_use_canonical_global_stations() -> None:
+    module = scene_contract_module()
+    spatial = build_a1_spatial_model()
+    openings = {
+        opening.name: opening.footprint
+        for opening in module.build_scene_contract().wall_openings
+    }
+    east = spatial.wall("family_east")
+    south = spatial.wall("family_south")
+
+    east_window = east.segments[0]
+    mudroom = east.segments[2]
+    south_opening = south.segments[1]
+    assert (openings["family_east_window"].min_y, openings["family_east_window"].max_y) == (
+        meters(east_window.start_ticks),
+        meters(east_window.end_ticks),
+    )
+    assert (openings["mudroom_opening"].min_y, openings["mudroom_opening"].max_y) == (
+        meters(mudroom.start_ticks),
+        meters(mudroom.end_ticks),
+    )
+    assert (openings["south_living_opening"].min_x, openings["south_living_opening"].max_x) == (
+        meters(south.origin_x_ticks + south_opening.start_ticks),
+        meters(south.origin_x_ticks + south_opening.end_ticks),
+    )
+    assert openings["mudroom_opening"].min_y != 0.45
+    assert openings["south_living_opening"].min_x != 4.6736
+
+
+@pytest.mark.parametrize(
+    ("opening_name", "field", "old_spike_value"),
+    [
+        ("mudroom_opening", "min_y", 0.45),
+        ("south_living_opening", "min_x", 4.6736),
+    ],
+)
+def test_validation_rejects_the_old_hand_authored_opening_positions(
+    opening_name: str, field: str, old_spike_value: float
+) -> None:
+    module = scene_contract_module()
+    contract = module.build_scene_contract()
+    openings = tuple(
+        replace(opening, footprint=replace(opening.footprint, **{field: old_spike_value}))
+        if opening.name == opening_name
+        else opening
+        for opening in contract.wall_openings
+    )
+
+    errors = module.validate_scene_contract(replace(contract, wall_openings=openings))
+
+    assert any(opening_name in error and "canonical" in error for error in errors)
+
+
+def test_validation_rejects_a_stale_canonical_geometry_hash() -> None:
+    module = scene_contract_module()
+    contract = module.build_scene_contract()
+
+    errors = module.validate_scene_contract(
+        replace(contract, canonical_geometry_hash="0" * 64)
+    )
+
+    assert "canonical geometry hash must match the A-1 tour projection" in errors
 
 
 def test_manifest_exposes_the_hand_derived_printed_dimensions_in_meters() -> None:
@@ -50,6 +140,7 @@ def test_manifest_is_json_safe_and_preserves_contract_order() -> None:
     assert [item["name"] for item in manifest["wall_openings"]] == [
         "kitchen_window_group",
         "deck_door_group",
+        "family_east_window",
         "mudroom_opening",
         "south_living_opening",
     ]
@@ -135,6 +226,7 @@ def test_validation_rejects_missing_required_scene_objects(
     [
         "kitchen_window_group",
         "deck_door_group",
+        "family_east_window",
         "mudroom_opening",
         "south_living_opening",
     ],
@@ -252,7 +344,10 @@ def test_validation_uses_the_actual_named_counter_face(
         ("north_sink_wall", ("tower", "sink", "dishwasher", "trash", "tower")),
         ("west_wall", ("range", "upper_cabinets", "upper_cabinets", "refrigerator")),
         ("north_glazing", ("deck_door_group", "kitchen_window_group")),
-        ("east_south_transitions", ("tv_wall", "mudroom_opening", "south_living_opening")),
+        (
+            "east_south_transitions",
+            ("tv_wall", "mudroom_opening", "south_living_opening"),
+        ),
     ],
 )
 def test_validation_rejects_wrong_a1_cabinet_opening_and_transition_order(
