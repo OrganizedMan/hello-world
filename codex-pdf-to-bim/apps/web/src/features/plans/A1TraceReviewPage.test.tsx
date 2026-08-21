@@ -31,6 +31,6 @@ describe("A1TraceReviewPage", () => {
 
     expect(screen.getByText("Trace approval: pending")).toBeVisible();
     expect(screen.getByText("Position follows visible A-1 linework; no printed offset is claimed.")).toBeVisible();
-    expect(screen.getByLabelText("A-1 proposed-plan trace")).toBeVisible();
+    expect(screen.getByAltText("Vector linework extracted directly from the A-1 source PDF")).toBeVisible();
   });
 });

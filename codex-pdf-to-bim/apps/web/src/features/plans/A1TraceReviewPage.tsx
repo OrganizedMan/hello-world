@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { api, ApiError } from "../../api/client";
 import type { A1TraceResponse, TraceRecordResponse } from "../../api/types";
-import { A1TraceCanvas, type ProvenanceFilter, type TraceMode } from "./A1TraceCanvas";
+import type { ProvenanceFilter, TraceMode } from "./A1TraceCanvas";
 import { provenanceLabel, traceRecordLabel } from "./a1Trace";
 
 
@@ -45,6 +45,7 @@ export function A1TraceReviewPage({ projectId: projectIdProp, sourceId: sourceId
 
   const records = useMemo(() => trace?.records.filter((record) => filter === "all" || record.provenance === filter) ?? [], [filter, trace]);
   const previewUrl = `/api/projects/${projectId}/sources/${sourceId}/a1-trace/preview?max_width=2048`;
+  const vectorUrl = `/api/projects/${projectId}/sources/${sourceId}/a1-trace/vector.svg`;
 
   if (error) {
     return <main className="workspace-page"><div className="page-message inline-error" role="alert"><strong>{error.message}</strong><span>{error.action}</span></div></main>;
@@ -68,9 +69,9 @@ export function A1TraceReviewPage({ projectId: projectIdProp, sourceId: sourceId
           <div className="a1-trace-toolbar" aria-label="Trace view controls">
             {(["pdf", "trace", "overlay"] as const).map((item) => <button key={item} type="button" className={mode === item ? "is-active" : ""} onClick={() => setMode(item)}>{item === "pdf" ? "PDF" : item === "trace" ? "Trace" : "Overlay"}</button>)}
           </div>
-          <div className="a1-trace-frame">
-            {mode !== "trace" ? <img src={previewUrl} alt="A-1 proposed first-floor plan crop" /> : null}
-            <A1TraceCanvas trace={trace} mode={mode} provenanceFilter={filter} selectedId={selected?.id ?? null} onSelect={setSelected} />
+          <div className={`a1-trace-frame a1-trace-frame--${mode}`}>
+            {mode !== "trace" ? <img className="a1-source-plan" src={previewUrl} alt="A-1 proposed first-floor plan crop" /> : null}
+            {mode !== "pdf" ? <img className={`a1-vector-trace a1-vector-trace--${mode}`} src={vectorUrl} alt="Vector linework extracted directly from the A-1 source PDF" /> : null}
           </div>
         </div>
         <aside className="a1-trace-panel">

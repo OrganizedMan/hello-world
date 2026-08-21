@@ -107,6 +107,26 @@ def test_a1_trace_preview_is_a_png_crop(
     assert response.content.startswith(b"\x89PNG")
 
 
+def test_a1_trace_vector_is_source_extracted_svg(
+    client: TestClient,
+    four_page_pdf: bytes,
+) -> None:
+    project_id = create_project(client)
+    source = client.post(
+        f"/api/projects/{project_id}/sources",
+        files={"file": ("garrigan.pdf", four_page_pdf, "application/pdf")},
+    ).json()
+
+    response = client.get(
+        f"/api/projects/{project_id}/sources/{source['id']}/a1-trace/vector.svg"
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/svg+xml")
+    assert b'<svg' in response.content
+    assert b"source-drawing-count=" in response.content
+
+
 def test_a1_trace_rejects_unsupported_source(
     client: TestClient,
     one_page_pdf: bytes,

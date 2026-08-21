@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 
 from hearthview.a1_trace import build_a1_trace, trace_summary
 from hearthview.fixture import build_a1_review_queue
-from hearthview.ingest import PdfIngestError, inspect_pdf, render_page, render_rect, render_region
+from hearthview.ingest import PdfIngestError, inspect_pdf, render_page, render_rect, render_region, render_vector_rect
 from hearthview.storage import ArtifactTooLarge
 
 from hearthview_api.api_models import (
@@ -247,6 +247,29 @@ def a1_trace_preview(
             action="Return to Plans and re-import the approved Garrigan PDF.",
         ) from error
     return Response(content=content, media_type="image/png")
+
+
+@router.get("/projects/{project_id}/sources/{source_id}/a1-trace/vector.svg")
+def a1_trace_vector(project_id: str, source_id: str, request: Request) -> Response:
+    try:
+        source = request.app.state.repository.get_source(project_id, source_id)
+    except KeyError as error:
+        raise _not_found("source") from error
+    trace = _a1_trace_for_source(source, request)
+    try:
+        content = render_vector_rect(
+            request.app.state.artifact_store.resolve(source.sha256),
+            page_number=trace.page_number,
+            rect=trace.proposed_crop,
+        )
+    except PdfIngestError as error:
+        raise DomainError(
+            status_code=422,
+            code="A1_VECTOR_TRACE_FAILED",
+            message="HearthView could not extract the A-1 vector linework.",
+            action="Use the PDF view and report this trace issue before any 3D work resumes.",
+        ) from error
+    return Response(content=content, media_type="image/svg+xml")
 
 
 @router.get("/projects/{project_id}/evidence/{reference_id}/preview")
