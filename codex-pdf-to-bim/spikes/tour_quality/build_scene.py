@@ -102,6 +102,7 @@ def _load_contract(repo: Path) -> tuple[Any, Any]:
     if not (repo / "spikes" / "tour_quality" / "scene_contract.py").is_file():
         raise BuildError(f"Task 1 scene contract is missing under repo: {repo}")
     sys.path.insert(0, str(repo))
+    sys.path.insert(0, str(repo / "services"))
     from spikes.tour_quality.scene_contract import build_scene_contract, validate_scene_contract
 
     contract = build_scene_contract()
@@ -380,12 +381,14 @@ def _build_architecture(contract: Any, materials: dict[str, bpy.types.Material],
     span = envelope.max_x - envelope.min_x
     depth = envelope.max_y - envelope.min_y
     ceiling = envelope.max_z - envelope.min_z
-    wall = 0.14
+    wall = contract.wall_thickness
     openings = {opening.name: opening.footprint for opening in contract.wall_openings}
     kitchen_window = openings["kitchen_window_group"]
     deck_door = openings["deck_door_group"]
+    east_window = openings["family_east_window"]
     mudroom = openings["mudroom_opening"]
     south_living = openings["south_living_opening"]
+    regions = {region.name: region for region in contract.orientation.regions}
 
     floor = create_box(
         "HV_FLOOR",
@@ -418,15 +421,63 @@ def _build_architecture(contract: Any, materials: dict[str, bpy.types.Material],
     _wall_box("HV_NORTH_DECK_HEADER", (deck_door.width, wall, ceiling - door_head), ((deck_door.min_x + deck_door.max_x) / 2, -wall / 2, (door_head + ceiling) / 2), materials, root)
     _wall_box("HV_NORTH_WALL_EAST", (span - deck_door.max_x, wall, ceiling), ((deck_door.max_x + span) / 2, -wall / 2, ceiling / 2), materials, root)
 
-    # West wall is the appliance wall. East wall retains the mudroom transition and TV section.
+    # West wall is the appliance wall. The east wall follows the canonical
+    # window -> solid TV interval -> mudroom opening sequence from A-1.
     _wall_box("HV_WEST_WALL", (wall, depth, ceiling), (-wall / 2, depth / 2, ceiling / 2), materials, root)
-    _wall_box("HV_EAST_WALL_NORTH_PIER", (wall, mudroom.min_y, ceiling), (span + wall / 2, mudroom.min_y / 2, ceiling / 2), materials, root)
+    _wall_box("HV_EAST_WALL_NORTH_PIER", (wall, east_window.min_y, ceiling), (span + wall / 2, east_window.min_y / 2, ceiling / 2), materials, root)
+    _wall_box(
+        "HV_EAST_WINDOW_SILL_WALL",
+        (wall, east_window.depth, window_sill),
+        (span + wall / 2, (east_window.min_y + east_window.max_y) / 2, window_sill / 2),
+        materials,
+        root,
+    )
+    _wall_box(
+        "HV_EAST_WINDOW_HEADER",
+        (wall, east_window.depth, ceiling - window_head),
+        (span + wall / 2, (east_window.min_y + east_window.max_y) / 2, (window_head + ceiling) / 2),
+        materials,
+        root,
+    )
+    _wall_box(
+        "HV_EAST_TV_WALL",
+        (wall, mudroom.min_y - east_window.max_y, ceiling),
+        (span + wall / 2, (east_window.max_y + mudroom.min_y) / 2, ceiling / 2),
+        materials,
+        root,
+    )
     _wall_box("HV_EAST_MUDROOM_HEADER", (wall, mudroom.depth, ceiling - 2.18), (span + wall / 2, (mudroom.min_y + mudroom.max_y) / 2, (2.18 + ceiling) / 2), materials, root)
-    _wall_box("HV_EAST_TV_WALL", (wall, depth - mudroom.max_y, ceiling), (span + wall / 2, (mudroom.max_y + depth) / 2, ceiling / 2), materials, root)
+    _build_east_window_group(
+        "HV_OPENING_family_east_window",
+        min_y=east_window.min_y,
+        max_y=east_window.max_y,
+        sill=window_sill,
+        head=window_head,
+        x=span + 0.002,
+        materials=materials,
+        parent=root,
+        mullions=1,
+    )
 
-    # Only short south returns are modeled so the existing-living-room transition reads as open.
-    _wall_box("HV_SOUTH_RETURN_WEST", (0.62, wall, ceiling), (0.31, depth + wall / 2, ceiling / 2), materials, root)
-    _wall_box("HV_SOUTH_RETURN_EAST", (span - 8.62, wall, ceiling), ((8.62 + span) / 2, depth + wall / 2, ceiling / 2), materials, root)
+    # The south boundary is the printed 37-inch return, 60-inch opening,
+    # 37-inch return chain, positioned globally from the canonical model.
+    existing_living = regions["existing_living_context"]
+    west_return_width = south_living.min_x - existing_living.min_x
+    east_return_width = existing_living.max_x - south_living.max_x
+    _wall_box(
+        "HV_SOUTH_RETURN_WEST",
+        (west_return_width, wall, ceiling),
+        ((existing_living.min_x + south_living.min_x) / 2, depth + wall / 2, ceiling / 2),
+        materials,
+        root,
+    )
+    _wall_box(
+        "HV_SOUTH_RETURN_EAST",
+        (east_return_width, wall, ceiling),
+        ((south_living.max_x + existing_living.max_x) / 2, depth + wall / 2, ceiling / 2),
+        materials,
+        root,
+    )
     create_box(
         "HV_SOUTH_LIVING_THRESHOLD",
         (south_living.width, 0.12, 0.016),
@@ -434,6 +485,34 @@ def _build_architecture(contract: Any, materials: dict[str, bpy.types.Material],
         material=materials["stone"],
         parent=root,
         bevel=0.002,
+    )
+
+    # Focused adjacent context makes both canonical openings legible without
+    # pretending to be a whole-floor reconstruction.
+    mudroom_context = regions["mudroom_context"]
+    create_box(
+        "HV_MUDROOM_CONTEXT_FLOOR",
+        (mudroom_context.width, mudroom_context.depth, 0.045),
+        (
+            (mudroom_context.min_x + mudroom_context.max_x) / 2,
+            (mudroom_context.min_y + mudroom_context.max_y) / 2,
+            -0.0225,
+        ),
+        material=materials["floor"],
+        parent=root,
+        bevel=0.0,
+    )
+    create_box(
+        "HV_EXISTING_LIVING_CONTEXT_FLOOR",
+        (existing_living.width, existing_living.depth, 0.045),
+        (
+            (existing_living.min_x + existing_living.max_x) / 2,
+            (existing_living.min_y + existing_living.max_y) / 2,
+            -0.0225,
+        ),
+        material=materials["floor"],
+        parent=root,
+        bevel=0.0,
     )
 
     # Window and deck-door groups carry trim, sills, mullions and local glazing.
@@ -512,6 +591,59 @@ def _build_window_group(
     for index in range(1, mullions + 1):
         x = min_x + width * index / (mullions + 1)
         create_box(f"{name}_MULLION_{index}", (0.035, 0.045, height - 0.04), (x, y + 0.035, (sill + head) / 2), material=materials["trim"], parent=root, bevel=0.0015)
+
+
+def _build_east_window_group(
+    name: str,
+    *,
+    min_y: float,
+    max_y: float,
+    sill: float,
+    head: float,
+    x: float,
+    materials: dict[str, bpy.types.Material],
+    parent: bpy.types.Object,
+    mullions: int,
+) -> None:
+    root = create_root(name, parent)
+    width = max_y - min_y
+    height = head - sill
+    create_box(
+        f"{name}_GLASS",
+        (0.014, width - 0.08, height - 0.08),
+        (x, (min_y + max_y) / 2, (sill + head) / 2),
+        material=materials["glass"],
+        parent=root,
+        bevel=0.001,
+    )
+    for suffix, y in (("N", min_y), ("S", max_y)):
+        create_box(
+            f"{name}_JAMB_{suffix}",
+            (0.075, 0.065, height + 0.12),
+            (x - 0.025, y, (sill + head) / 2),
+            material=materials["trim"],
+            parent=root,
+            bevel=0.002,
+        )
+    for suffix, z in (("SILL", sill), ("HEAD", head)):
+        create_box(
+            f"{name}_{suffix}",
+            (0.10, width + 0.13, 0.065),
+            (x - 0.028, (min_y + max_y) / 2, z),
+            material=materials["trim"],
+            parent=root,
+            bevel=0.002,
+        )
+    for index in range(1, mullions + 1):
+        y = min_y + width * index / (mullions + 1)
+        create_box(
+            f"{name}_MULLION_{index}",
+            (0.045, 0.035, height - 0.04),
+            (x - 0.035, y, (sill + head) / 2),
+            material=materials["trim"],
+            parent=root,
+            bevel=0.0015,
+        )
 
 
 def _build_navigation(contract: Any, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
@@ -971,7 +1103,7 @@ def _render_poster(scene: bpy.types.Scene, poster_path: Path) -> float:
     return duration
 
 
-def _export_glb(glb_path: Path) -> float:
+def _export_glb(glb_path: Path, contract: Any) -> float:
     desired = {
         "filepath": str(glb_path),
         "export_format": "GLB",
@@ -1012,6 +1144,8 @@ def _export_glb(glb_path: Path) -> float:
                 "decor",
                 "undimensioned_offsets",
             ],
+            "canonical_model_hash": contract.canonical_model_hash,
+            "canonical_geometry_hash": contract.canonical_geometry_hash,
         },
     )
     return duration
@@ -1064,11 +1198,13 @@ def _runtime_metadata(contract: Any) -> dict[str, Any]:
     for camera in contract.camera_presets:
         px, py, pz = camera.position
         tx, ty, tz = camera.target
+        ux, uy, uz = camera.up
         cameras.append(
             {
                 "name": camera.name,
                 "position": [px, pz, -py],
                 "target": [tx, tz, -ty],
+                "up": [ux, uz, -uy],
             }
         )
     eye_height = next(
@@ -1132,7 +1268,10 @@ def _run_validator(repo: Path, output_dir: Path) -> str:
         raise BuildError("uv is required to run the pure-Python artifact validator")
     env = os.environ.copy()
     env["UV_CACHE_DIR"] = "/private/tmp/hearthview-uv-cache"
-    env["PYTHONPATH"] = os.pathsep.join((str(STAGE_ROOT), str(repo)))
+    python_paths = [str(repo), str(repo / "services")]
+    if env.get("PYTHONPATH"):
+        python_paths.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(python_paths)
     command = [
         uv,
         "run",
@@ -1194,16 +1333,30 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
 
     scene = _configure_scene(assets / "drackenstein_quarry_puresky_1k.hdr")
     materials = _create_materials(assets, contract_module.SPAN_METERS, contract_module.ROOM_DEPTH_METERS)
-    architecture = create_root("HV_ARCHITECTURE")
-    cabinetry = create_root("HV_CABINETRY")
-    furniture = create_root("HV_FURNITURE")
-    lighting = create_root("HV_LIGHTING")
-    navigation = create_root("HV_NAVIGATION")
-    for root in (architecture, cabinetry, furniture, lighting, navigation):
+    canonical_root = create_root("HV_CANONICAL")
+    staging_root = create_root("HV_STAGING")
+    canonical_root["canonical_model_hash"] = contract.canonical_model_hash
+    canonical_root["canonical_geometry_hash"] = contract.canonical_geometry_hash
+    staging_root["provisional"] = True
+    architecture = create_root("HV_ARCHITECTURE", canonical_root)
+    navigation = create_root("HV_NAVIGATION", canonical_root)
+    cabinetry = create_root("HV_CABINETRY", staging_root)
+    furniture = create_root("HV_FURNITURE", staging_root)
+    lighting = create_root("HV_LIGHTING", staging_root)
+    for root in (canonical_root, architecture, navigation):
         tag_contract_boundary(
             root,
             label=contract.label,
-            canonical_geometry=contract.canonical_geometry,
+            canonical_geometry=True,
+            categories=(),
+        )
+        root["canonical_model_hash"] = contract.canonical_model_hash
+        root["canonical_geometry_hash"] = contract.canonical_geometry_hash
+    for root in (staging_root, cabinetry, furniture, lighting):
+        tag_contract_boundary(
+            root,
+            label=contract.label,
+            canonical_geometry=False,
             categories=contract.provisional_categories,
         )
 
@@ -1219,7 +1372,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     environment_path = output_dir / ENVIRONMENT_NAME
     shutil.copyfile(assets / "drackenstein_quarry_puresky_1k.hdr", environment_path)
     render_seconds = _render_poster(scene, output_dir / POSTER_NAME)
-    export_seconds = _export_glb(output_dir / GLB_NAME)
+    export_seconds = _export_glb(output_dir / GLB_NAME, contract)
     manifest = _write_manifest(contract, output_dir)
     validator_output = _run_validator(repo, output_dir)
     metrics = _scene_metrics()

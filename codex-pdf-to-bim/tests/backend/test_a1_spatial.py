@@ -1,4 +1,7 @@
 from dataclasses import replace
+from pathlib import Path
+import subprocess
+import sys
 
 from hearthview.a1_spatial import build_a1_spatial_model
 from hearthview.units import TICKS_PER_INCH
@@ -73,3 +76,27 @@ def test_project_projection_keeps_every_architectural_source_reference() -> None
     assert project.island is not None and project.island.source_ref_ids
     assert project.fixed_objects[0].source_ref_ids
 
+
+def test_spatial_module_import_does_not_require_pydantic() -> None:
+    services = Path(__file__).parents[2] / "services"
+    probe = """
+import builtins
+real_import = builtins.__import__
+def guarded(name, *args, **kwargs):
+    if name == 'pydantic' or name.startswith('pydantic.'):
+        raise ModuleNotFoundError('pydantic intentionally unavailable')
+    return real_import(name, *args, **kwargs)
+builtins.__import__ = guarded
+from hearthview.a1_spatial import build_a1_spatial_model
+assert build_a1_spatial_model().canonical_hash()
+"""
+
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        env={"PYTHONPATH": str(services)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr

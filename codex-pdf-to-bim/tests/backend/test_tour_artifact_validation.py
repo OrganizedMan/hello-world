@@ -16,6 +16,7 @@ _STAGED_MODULE_DIR = Path(__file__).parents[2] / "spikes" / "tour_quality"
 spikes.tour_quality.__path__.insert(0, str(_STAGED_MODULE_DIR))
 
 from spikes.tour_quality.validate_artifact import validate_artifact
+from spikes.tour_quality.scene_contract import build_scene_contract
 
 
 SCENE_NODES = [
@@ -78,6 +79,7 @@ def _write_glb(
     island_min_z: float = -3.0226,
     island_max_z: float = -1.7272,
     image_uri: str | None = None,
+    canonical_geometry_hash: str | None = None,
 ) -> None:
     scene = trimesh.Scene()
     scene.add_geometry(
@@ -111,6 +113,7 @@ def _write_glb(
     glb = scene.export(file_type="glb")
 
     def add_metadata(gltf: dict[str, object]) -> None:
+        contract = build_scene_contract()
         asset = gltf.setdefault("asset", {})
         assert isinstance(asset, dict)
         asset["extras"] = {
@@ -124,6 +127,9 @@ def _write_glb(
                 "decor",
                 "undimensioned_offsets",
             ],
+            "canonical_model_hash": contract.canonical_model_hash,
+            "canonical_geometry_hash": canonical_geometry_hash
+            or contract.canonical_geometry_hash,
         }
         if image_uri is not None:
             gltf["images"] = [{"uri": image_uri}]
@@ -132,10 +138,13 @@ def _write_glb(
 
 
 def _literal_manifest() -> dict[str, object]:
+    contract = build_scene_contract()
     return {
         "schema": "hearthview-tour-spike/v1",
         "label": "Quality spike · visual staging",
         "canonical_geometry": False,
+        "canonical_model_hash": contract.canonical_model_hash,
+        "canonical_geometry_hash": contract.canonical_geometry_hash,
         "envelope": {
             "min_x": 0.0,
             "min_y": 0.0,
@@ -206,12 +215,12 @@ def _literal_manifest() -> dict[str, object]:
                 {"name": "west_counter", "min_x": 0.0, "max_x": 0.6604, "min_z": -2.75, "max_z": 0.0},
                 {"name": "north_counter", "min_x": 0.0, "max_x": 3.70, "min_z": -0.6604, "max_z": 0.0},
                 {"name": "island", "min_x": 1.7272, "max_x": 4.3434, "min_z": -3.0226, "max_z": -1.7272},
-                {"name": "tv_wall", "min_x": 8.9894, "max_x": 9.1694, "min_z": -2.80, "max_z": -1.25},
+                {"name": "tv_wall", "min_x": 8.9894, "max_x": 9.1694, "min_z": -3.3528, "max_z": -1.524},
             ],
             "camera_presets": [
-                {"name": "kitchen_overview", "position": [0.70, 1.65, -4.3014], "target": [4.3434, 0.90, -3.0226]},
-                {"name": "walk_start", "position": [4.15, 1.65, -4.2014], "target": [5.20, 1.65, -2.10]},
-                {"name": "overhead", "position": [4.5847, 8.0, -2.4257], "target": [4.5847, 0.0, -2.4257]},
+                {"name": "kitchen_overview", "position": [0.70, 1.65, -4.3014], "target": [4.3434, 0.90, -3.0226], "up": [0.0, 1.0, -0.0]},
+                {"name": "walk_start", "position": [4.15, 1.65, -4.2014], "target": [5.20, 1.65, -2.10], "up": [0.0, 1.0, -0.0]},
+                {"name": "overhead", "position": [4.5847, 8.0, -2.4257], "target": [4.5847, 0.0, -2.4257], "up": [0.0, 0.0, 1.0]},
             ],
         },
         "scene_nodes": deepcopy(SCENE_NODES),
@@ -246,6 +255,7 @@ def _write_artifact_fixture(
     island_min_z: float = -3.0226,
     island_max_z: float = -1.7272,
     image_uri: str | None = None,
+    canonical_geometry_hash: str | None = None,
 ) -> tuple[Path, Path, dict[str, object]]:
     public_dir = root / "tour-spike"
     public_dir.mkdir()
@@ -264,6 +274,7 @@ def _write_artifact_fixture(
         island_min_z=island_min_z,
         island_max_z=island_max_z,
         image_uri=image_uri,
+        canonical_geometry_hash=canonical_geometry_hash,
     )
     poster_path.write_bytes(b"RIFFfixture-WEBP")
     environment_path.write_bytes(b"#?RADIANCE\nfixture")
@@ -302,6 +313,27 @@ def test_wrong_schema_is_rejected(tmp_path: Path) -> None:
     errors = validate_artifact(glb_path, manifest_path, public_dir=glb_path.parent)
 
     assert any("schema" in error for error in errors)
+
+
+def test_stale_manifest_canonical_hash_is_rejected(tmp_path: Path) -> None:
+    glb_path, manifest_path, manifest = _write_artifact_fixture(tmp_path)
+    manifest["canonical_model_hash"] = "0" * 64
+    _write_manifest(manifest_path, manifest)
+
+    errors = validate_artifact(glb_path, manifest_path, public_dir=glb_path.parent)
+
+    assert any("canonical model hash" in error for error in errors)
+
+
+def test_glb_cannot_disagree_with_the_manifest_geometry_hash(tmp_path: Path) -> None:
+    glb_path, manifest_path, _manifest = _write_artifact_fixture(
+        tmp_path,
+        canonical_geometry_hash="0" * 64,
+    )
+
+    errors = validate_artifact(glb_path, manifest_path, public_dir=glb_path.parent)
+
+    assert any("GLB canonical geometry hash" in error for error in errors)
 
 
 @pytest.mark.parametrize(

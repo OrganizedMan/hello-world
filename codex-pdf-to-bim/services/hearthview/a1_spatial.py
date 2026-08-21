@@ -1,24 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from hearthview.canonical import canonical_hash
-from hearthview.models import (
-    ChildKind,
-    FixedObject,
-    Island,
-    ProjectModel,
-    ReviewDecision,
-    SourceDocument,
-    SourceReference,
-    Wall,
-    WallChild,
-)
 from hearthview.units import TICKS_PER_INCH
+
+if TYPE_CHECKING:
+    from hearthview.models import ProjectModel, SourceDocument, SourceReference
 
 
 Axis = Literal["X", "Y"]
+ChildKind = Literal["WINDOW", "SOLID_MOUNT_ZONE", "UNFRAMED_OPENING", "SOLID"]
 
 
 def _inches(value: int) -> int:
@@ -142,6 +135,15 @@ class A1SpatialModel:
         *,
         source_document: SourceDocument | None = None,
     ) -> ProjectModel:
+        from hearthview.models import (
+            FixedObject,
+            Island,
+            ProjectModel,
+            ReviewDecision,
+            Wall,
+            WallChild,
+        )
+
         document = source_document if source_document is not None else default_a1_source_document()
         source_id = document.id
         return ProjectModel(
@@ -207,6 +209,8 @@ class A1SpatialModel:
 
 
 def default_a1_source_document() -> SourceDocument:
+    from hearthview.models import SourceDocument
+
     return SourceDocument(
         id="garrigan_main",
         display_name="Garrigan A-1 fixture.pdf",
@@ -217,6 +221,8 @@ def default_a1_source_document() -> SourceDocument:
 
 
 def build_a1_source_references(source_id: str) -> tuple[SourceReference, ...]:
+    from hearthview.models import SourceReference
+
     return (
         SourceReference(
             id="src_a1_region",
@@ -464,4 +470,3 @@ def build_a1_spatial_model() -> A1SpatialModel:
             ("island_stools", "kitchen_island"),
         ),
     )
-

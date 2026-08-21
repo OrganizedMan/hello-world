@@ -36,22 +36,31 @@ REQUIRED_SCENE_NODES = (
     "HV_ISLAND_STRUCTURE",
     "HV_WALKABLE",
 )
+_EXPECTED_CONTRACT = build_scene_contract()
 EXPECTED_WALKABLE = {
-    "min_x": 0.18,
-    "max_x": 8.9894,
-    "min_z": -4.6714,
-    "max_z": -0.18,
+    "min_x": min(point[0] for point in _EXPECTED_CONTRACT.walkable_polygon),
+    "max_x": max(point[0] for point in _EXPECTED_CONTRACT.walkable_polygon),
+    "min_z": -max(point[1] for point in _EXPECTED_CONTRACT.walkable_polygon),
+    "max_z": -min(point[1] for point in _EXPECTED_CONTRACT.walkable_polygon),
 }
-EXPECTED_BARRIERS = (
-    {"name": "west_counter", "min_x": 0.0, "max_x": 0.6604, "min_z": -2.75, "max_z": 0.0},
-    {"name": "north_counter", "min_x": 0.0, "max_x": 3.70, "min_z": -0.6604, "max_z": 0.0},
-    {"name": "island", "min_x": 1.7272, "max_x": 4.3434, "min_z": -3.0226, "max_z": -1.7272},
-    {"name": "tv_wall", "min_x": 8.9894, "max_x": 9.1694, "min_z": -2.80, "max_z": -1.25},
+EXPECTED_BARRIERS = tuple(
+    {
+        "name": rectangle.name,
+        "min_x": rectangle.min_x,
+        "max_x": rectangle.max_x,
+        "min_z": -rectangle.max_y,
+        "max_z": -rectangle.min_y,
+    }
+    for rectangle in _EXPECTED_CONTRACT.collision_rectangles
 )
-EXPECTED_CAMERAS = (
-    {"name": "kitchen_overview", "position": [0.70, 1.65, -4.3014], "target": [4.3434, 0.90, -3.0226]},
-    {"name": "walk_start", "position": [4.15, 1.65, -4.2014], "target": [5.20, 1.65, -2.10]},
-    {"name": "overhead", "position": [4.5847, 8.0, -2.4257], "target": [4.5847, 0.0, -2.4257]},
+EXPECTED_CAMERAS = tuple(
+    {
+        "name": camera.name,
+        "position": [camera.position[0], camera.position[2], -camera.position[1]],
+        "target": [camera.target[0], camera.target[2], -camera.target[1]],
+        "up": [camera.up[0], camera.up[2], -camera.up[1]],
+    }
+    for camera in _EXPECTED_CONTRACT.camera_presets
 )
 
 
@@ -268,7 +277,12 @@ def validate_artifact(
         errors.append(f"label must be {SCENE_LABEL!r}")
     if manifest.get("canonical_geometry") is not False:
         errors.append("canonical_geometry must be false for visual staging")
-    expected_categories = list(build_scene_contract().provisional_categories)
+    expected_contract = build_scene_contract()
+    expected_categories = list(expected_contract.provisional_categories)
+    if manifest.get("canonical_model_hash") != expected_contract.canonical_model_hash:
+        errors.append("canonical model hash must match the current A-1 spatial model")
+    if manifest.get("canonical_geometry_hash") != expected_contract.canonical_geometry_hash:
+        errors.append("canonical geometry hash must match the current A-1 tour projection")
     if manifest.get("provisional_categories") != expected_categories:
         errors.append("provisional_categories must name exactly the six visual-staging categories")
     _validate_dimensions(manifest, errors)
@@ -351,6 +365,14 @@ def validate_artifact(
                     errors.append("GLB asset canonical_geometry must be false")
                 if asset_metadata.get("provisional_categories") != expected_categories:
                     errors.append("GLB asset must name exactly the six provisional categories")
+                if asset_metadata.get("canonical_model_hash") != manifest.get(
+                    "canonical_model_hash"
+                ):
+                    errors.append("GLB canonical model hash must match the manifest")
+                if asset_metadata.get("canonical_geometry_hash") != manifest.get(
+                    "canonical_geometry_hash"
+                ):
+                    errors.append("GLB canonical geometry hash must match the manifest")
             _validate_glb_resources(gltf, glb_path, errors)
         _validate_actual_geometry(glb_path, errors)
     return tuple(errors)

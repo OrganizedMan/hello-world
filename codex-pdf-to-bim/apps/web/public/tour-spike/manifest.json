@@ -2,6 +2,8 @@
   "schema": "hearthview-tour-spike/v1",
   "label": "Quality spike · visual staging",
   "canonical_geometry": false,
+  "canonical_model_hash": "a7b695f5ba7099e07c0af714e9c98b18446e4918525521469c870a77193328f6",
+  "canonical_geometry_hash": "eafe8a0af126b56885a526597b15fe7c63184ff0790e9b9420204d6850e7395b",
   "envelope": {
     "min_x": 0.0,
     "min_y": 0.0,
@@ -10,6 +12,7 @@
     "max_y": 4.8514,
     "max_z": 2.5654
   },
+  "wall_thickness_meters": 0.1524,
   "counter_zone_depth_meters": 0.6604,
   "printed_dimensions": [
     {
@@ -74,10 +77,10 @@
       "wall": "north",
       "footprint": {
         "name": "kitchen_window_group",
-        "min_x": 3.95,
+        "min_x": 3.937,
         "min_y": 0.0,
-        "max_x": 5.3,
-        "max_y": 0.08
+        "max_x": 5.3086,
+        "max_y": 0.1524
       }
     },
     {
@@ -85,10 +88,21 @@
       "wall": "north",
       "footprint": {
         "name": "deck_door_group",
-        "min_x": 6.05,
+        "min_x": 6.0452,
         "min_y": 0.0,
-        "max_x": 8.8,
-        "max_y": 0.08
+        "max_x": 8.7884,
+        "max_y": 0.1524
+      }
+    },
+    {
+      "name": "family_east_window",
+      "wall": "east",
+      "footprint": {
+        "name": "family_east_window",
+        "min_x": 9.1694,
+        "min_y": 0.3048,
+        "max_x": 9.3218,
+        "max_y": 1.524
       }
     },
     {
@@ -96,10 +110,10 @@
       "wall": "east",
       "footprint": {
         "name": "mudroom_opening",
-        "min_x": 9.0894,
-        "min_y": 0.45,
-        "max_x": 9.1694,
-        "max_y": 1.45
+        "min_x": 9.1694,
+        "min_y": 3.3528,
+        "max_x": 9.3218,
+        "max_y": 5.7912
       }
     },
     {
@@ -107,9 +121,9 @@
       "wall": "south",
       "footprint": {
         "name": "south_living_opening",
-        "min_x": 4.6735999999999995,
-        "min_y": 4.7714,
-        "max_x": 6.25,
+        "min_x": 6.6802,
+        "min_y": 4.699,
+        "max_x": 8.2042,
         "max_y": 4.8514
       }
     }
@@ -158,8 +172,9 @@
     {
       "name": "east_south_transitions",
       "items": [
-        "mudroom_opening",
+        "family_east_window",
         "tv_wall",
+        "mudroom_opening",
         "south_living_opening"
       ]
     }
@@ -207,9 +222,9 @@
     {
       "name": "tv_wall",
       "min_x": 8.9894,
-      "min_y": 1.25,
+      "min_y": 1.524,
       "max_x": 9.1694,
-      "max_y": 2.8
+      "max_y": 3.3528
     }
   ],
   "camera_presets": [
@@ -224,6 +239,11 @@
         4.3434,
         3.0226,
         0.9
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
       ]
     },
     {
@@ -237,6 +257,11 @@
         5.2,
         2.1,
         1.65
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
       ]
     },
     {
@@ -250,9 +275,115 @@
         4.5847,
         2.4257,
         0.0
+      ],
+      "up": [
+        0.0,
+        -1.0,
+        0.0
       ]
     }
   ],
+  "orientation": {
+    "bounds": {
+      "name": "focused_a1",
+      "min_x": 0.0,
+      "min_y": 0.0,
+      "max_x": 9.1694,
+      "max_y": 4.8514
+    },
+    "north_vector": [
+      0,
+      -1
+    ],
+    "north_up": true,
+    "regions": [
+      {
+        "name": "kitchen",
+        "min_x": 0.0,
+        "min_y": 0.0,
+        "max_x": 4.6736,
+        "max_y": 4.8514
+      },
+      {
+        "name": "family_room",
+        "min_x": 4.6736,
+        "min_y": 0.0,
+        "max_x": 9.1694,
+        "max_y": 4.8514
+      },
+      {
+        "name": "mudroom_context",
+        "min_x": 9.1694,
+        "min_y": 3.3528,
+        "max_x": 10.9982,
+        "max_y": 5.7912
+      },
+      {
+        "name": "existing_living_context",
+        "min_x": 5.7404,
+        "min_y": 4.8514,
+        "max_x": 9.144,
+        "max_y": 6.6802
+      }
+    ],
+    "openings": [
+      {
+        "name": "kitchen_window_group",
+        "wall": "north",
+        "footprint": {
+          "name": "kitchen_window_group",
+          "min_x": 3.937,
+          "min_y": 0.0,
+          "max_x": 5.3086,
+          "max_y": 0.1524
+        }
+      },
+      {
+        "name": "deck_door_group",
+        "wall": "north",
+        "footprint": {
+          "name": "deck_door_group",
+          "min_x": 6.0452,
+          "min_y": 0.0,
+          "max_x": 8.7884,
+          "max_y": 0.1524
+        }
+      },
+      {
+        "name": "family_east_window",
+        "wall": "east",
+        "footprint": {
+          "name": "family_east_window",
+          "min_x": 9.1694,
+          "min_y": 0.3048,
+          "max_x": 9.3218,
+          "max_y": 1.524
+        }
+      },
+      {
+        "name": "mudroom_opening",
+        "wall": "east",
+        "footprint": {
+          "name": "mudroom_opening",
+          "min_x": 9.1694,
+          "min_y": 3.3528,
+          "max_x": 9.3218,
+          "max_y": 5.7912
+        }
+      },
+      {
+        "name": "south_living_opening",
+        "wall": "south",
+        "footprint": {
+          "name": "south_living_opening",
+          "min_x": 6.6802,
+          "min_y": 4.699,
+          "max_x": 8.2042,
+          "max_y": 4.8514
+        }
+      }
+    ]
+  },
   "provisional_categories": [
     "cabinetry_detail",
     "hardware",
@@ -266,17 +397,17 @@
     "poster": "poster.webp",
     "environment": "environment.hdr",
     "sha256": {
-      "glb": "2294ec797f90ece51e92e46625d1954468b447f691b831ca2e2e464eb42c3b18",
-      "poster": "30adb65a5acd2dfdde9e31e0206a866e80b82c14950ba71bf17cd192de818d8f",
+      "glb": "33bdfee1b618086ad7785ccb221de6c57b655b44880639e8a105aca9f736531e",
+      "poster": "adabc83de253b8156545939b1249d0680819f7d9f7960567d7c7976346c09cb5",
       "environment": "3c5a3b5efba3de62a845bf21fe7cb88e9657845ea5cf2b90a0158717f19aedfd"
     },
     "bytes": {
-      "glb": 22967336,
-      "poster": 297876,
+      "glb": 22995428,
+      "poster": 292938,
       "environment": 1332398,
-      "manifest": 7080
+      "manifest": 10137
     },
-    "total_browser_bytes": 24604690
+    "total_browser_bytes": 24630901
   },
   "runtime": {
     "coordinate_rule": "three_x=source_x;three_y=source_z;three_z=-source_y",
@@ -313,8 +444,8 @@
         "name": "tv_wall",
         "min_x": 8.9894,
         "max_x": 9.1694,
-        "min_z": -2.8,
-        "max_z": -1.25
+        "min_z": -3.3528,
+        "max_z": -1.524
       }
     ],
     "camera_presets": [
@@ -329,6 +460,11 @@
           4.3434,
           0.9,
           -3.0226
+        ],
+        "up": [
+          0.0,
+          1.0,
+          -0.0
         ]
       },
       {
@@ -342,6 +478,11 @@
           5.2,
           1.65,
           -2.1
+        ],
+        "up": [
+          0.0,
+          1.0,
+          -0.0
         ]
       },
       {
@@ -355,6 +496,11 @@
           4.5847,
           0.0,
           -2.4257
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
         ]
       }
     ]

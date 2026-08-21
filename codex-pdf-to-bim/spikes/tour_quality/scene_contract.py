@@ -197,6 +197,7 @@ class SceneContract:
     canonical_model_hash: str
     canonical_geometry_hash: str
     envelope: Bounds | None
+    wall_thickness: float
     counter_zone_depth: float
     printed_dimensions: tuple[PrintedDimension, ...]
     wall_openings: tuple[WallOpening, ...]
@@ -218,6 +219,7 @@ class SceneContract:
             "canonical_model_hash": self.canonical_model_hash,
             "canonical_geometry_hash": self.canonical_geometry_hash,
             "envelope": self.envelope.to_manifest() if self.envelope else None,
+            "wall_thickness_meters": self.wall_thickness,
             "counter_zone_depth_meters": self.counter_zone_depth,
             "printed_dimensions": [item.to_manifest() for item in self.printed_dimensions],
             "wall_openings": [item.to_manifest() for item in self.wall_openings],
@@ -243,6 +245,7 @@ def build_scene_contract(spatial: A1SpatialModel | None = None) -> SceneContract
     envelope_depth = ticks_to_meters(spatial.bounds.depth_ticks)
     ceiling = ticks_to_meters(spatial.main_ceiling_height_ticks)
     counter_depth = ticks_to_meters(spatial.counter_depth_ticks)
+    wall_thickness = ticks_to_meters(spatial.wall("family_east").thickness_ticks)
     island_min_x = ticks_to_meters(spatial.island.x_ticks)
     island_min_y = ticks_to_meters(spatial.island.y_ticks)
     island = Rectangle(
@@ -287,9 +290,9 @@ def build_scene_contract(spatial: A1SpatialModel | None = None) -> SceneContract
             "east",
             Rectangle(
                 "family_east_window",
-                ticks_to_meters(east.origin_x_ticks),
-                ticks_to_meters(east_window.start_ticks),
                 span,
+                ticks_to_meters(east_window.start_ticks),
+                span + wall_thickness,
                 ticks_to_meters(east_window.end_ticks),
             ),
         ),
@@ -298,9 +301,9 @@ def build_scene_contract(spatial: A1SpatialModel | None = None) -> SceneContract
             "east",
             Rectangle(
                 "mudroom_opening",
-                ticks_to_meters(east.origin_x_ticks),
-                ticks_to_meters(mudroom.start_ticks),
                 span,
+                ticks_to_meters(mudroom.start_ticks),
+                span + wall_thickness,
                 ticks_to_meters(mudroom.end_ticks),
             ),
         ),
@@ -343,6 +346,7 @@ def build_scene_contract(spatial: A1SpatialModel | None = None) -> SceneContract
         canonical_model_hash=spatial.canonical_hash(),
         canonical_geometry_hash=canonical_hash(geometry_payload),
         envelope=Bounds(0.0, 0.0, 0.0, span, envelope_depth, ceiling),
+        wall_thickness=wall_thickness,
         counter_zone_depth=counter_depth,
         printed_dimensions=tuple(PrintedDimension(*value) for value in _PRINTED_DIMENSIONS),
         wall_openings=wall_openings,
