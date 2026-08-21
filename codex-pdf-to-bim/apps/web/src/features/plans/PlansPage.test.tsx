@@ -17,6 +17,10 @@ describe("PlansPage", () => {
 
     expect(screen.getByRole("heading", { name: "Choose the proposed plan" })).toBeVisible();
     expect(screen.getByRole("img", { name: "Sheet A-1 proposed first-floor plan" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Review full A-1 trace" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/a1-trace?source=source-1",
+    );
     expect(screen.getByLabelText("Plan zoom")).toHaveValue("100");
     await user.click(screen.getByRole("button", { name: "Use proposed first floor" }));
     expect(screen.getByText("Proposed first floor selected")).toBeVisible();

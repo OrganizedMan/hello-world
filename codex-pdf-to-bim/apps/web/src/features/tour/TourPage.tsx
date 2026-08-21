@@ -83,12 +83,13 @@ export function TourPage() {
     <main className="tour-page">
       <header className="tour-header">
         <div>
-          <p className="eyebrow">A first look, grounded in the A-1 plan</p>
+          <p className="eyebrow">Unapproved prototype</p>
           <h1>Explore the proposed kitchen and family room</h1>
-          <p>Move from a wide overview to a person-height walk through the shared living space.</p>
+          <p>Compare the full A-1 trace before relying on this experimental room tour.</p>
         </div>
         <aside className="tour-trust-note" aria-label="Tour trust note">
           <strong>{manifest.label}</strong>
+          <span>Unapproved prototype: its geometry must not be treated as A-1 accurate until the 2D trace review is approved.</span>
           <span>Furniture, décor, and finishes are provisional visual choices—not measured construction details.</span>
         </aside>
       </header>

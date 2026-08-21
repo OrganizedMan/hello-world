@@ -124,4 +124,11 @@ describe("TourPage", () => {
 
     await waitFor(() => expect(screen.getByTestId("tour-viewer")).toBeVisible());
   });
+
+  it("does not describe the tour as A-1 accurate before trace approval", async () => {
+    render(<TourPage />);
+
+    expect(await screen.findByText("Unapproved prototype", { exact: true })).toBeVisible();
+    expect(screen.getByText(/must not be treated as A-1 accurate/i)).toBeVisible();
+  });
 });

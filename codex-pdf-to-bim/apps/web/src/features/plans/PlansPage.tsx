@@ -122,6 +122,7 @@ export function PlansPage({ projectId: projectIdProp, sourceId: sourceIdProp, pa
               <span>Other plan layouts remain viewable, but this local version will not guess their geometry.</span>
             </div>
           ) : null}
+          {isA1 ? <Link className="button button--quiet button--wide" to={`/projects/${projectId}/a1-trace?source=${encodeURIComponent(sourceId)}`}>Review full A-1 trace</Link> : null}
           <button className="button button--primary button--wide" type="button" disabled={!isA1} onClick={() => setSelected(true)}>
             Use proposed first floor
           </button>
