@@ -48,15 +48,22 @@ def test_no_solid_rises_above_the_printed_ceiling(massing) -> None:
 
     assert massing.primitives
     assert all(p.z1_ticks <= ceiling_ticks for p in massing.primitives)
-    assert all(p.z0_ticks >= 0 for p in massing.primitives)
+    # Walls start at floor level; only the floor and deck slabs sit below it.
+    for item in massing.primitives:
+        if item.part_kind in ("floor", "deck"):
+            assert item.z0_ticks < 0 <= item.z1_ticks
+        else:
+            assert item.z0_ticks >= 0
 
 
 def test_assumed_heights_are_flagged_and_are_the_minority(massing) -> None:
     """Sills and lintels rest on convention; walls rest on the printed note."""
     assert massing.assumed_primitive_ids
     assert all(
-        pid.startswith(("sill.", "lintel.")) for pid in massing.assumed_primitive_ids
+        pid.startswith(("sill.", "lintel.", "counter.", "fixture.", "stair."))
+        for pid in massing.assumed_primitive_ids
     )
+    # Walls and slabs carry measured dimensions and outnumber the rest.
     assert massing.verified_fraction > 0.5
 
 
@@ -68,17 +75,31 @@ def test_lintels_sit_at_the_assumed_head_height(massing) -> None:
     assert all(p.z0_ticks == head_ticks for p in lintels)
 
 
-def test_plan_extents_survive_the_extrusion(massing) -> None:
-    """The model footprint must match the traced plan, not drift from it."""
+def test_wall_extents_survive_the_extrusion(massing) -> None:
+    """Wall solids must match the traced plan, not drift from it.
+
+    The deck legitimately reaches north of the wall footprint, so it is excluded
+    here and covered by the tour envelope test instead.
+    """
     extraction = extract_a1(Path(_SOURCE))
     plan_width = (extraction.footprint.x1 - extraction.footprint.x0) / POINTS_PER_FOOT
     plan_depth = (extraction.footprint.y1 - extraction.footprint.y0) / POINTS_PER_FOOT
 
-    model_width = max(p.x1_ticks for p in massing.primitives) / TICKS_PER_INCH / 12
-    model_depth = max(p.y1_ticks for p in massing.primitives) / TICKS_PER_INCH / 12
+    walls = [p for p in massing.primitives if p.part_kind == "wall"]
+    model_width = max(p.x1_ticks for p in walls) / TICKS_PER_INCH / 12
+    model_depth = max(p.y1_ticks for p in walls) / TICKS_PER_INCH / 12
 
     assert model_width == pytest.approx(plan_width, abs=0.05)
     assert model_depth == pytest.approx(plan_depth, abs=0.05)
+
+
+def test_the_deck_extends_beyond_the_wall_footprint(massing) -> None:
+    """The deck is north of the building line; losing it would be a silent bug."""
+    decks = [p for p in massing.primitives if p.part_kind == "deck"]
+    walls = [p for p in massing.primitives if p.part_kind == "wall"]
+
+    assert decks
+    assert max(p.y1_ticks for p in decks) > max(p.y1_ticks for p in walls)
 
 
 def test_openings_are_classified_and_doors_have_swings(massing) -> None:

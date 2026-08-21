@@ -89,6 +89,16 @@ class Label:
 
 
 @dataclass(frozen=True)
+class StairNote:
+    """The printed NEW STAIRS callout: riser and tread dimensions."""
+
+    risers: int
+    riser_height_inches: float
+    treads: int
+    tread_depth_inches: float
+
+
+@dataclass(frozen=True)
 class CeilingNote:
     """A printed ceiling height, in inches.
 
@@ -113,6 +123,7 @@ class A1Extraction:
     openings: tuple[Opening, ...]
     labels: tuple[Label, ...]
     ceiling_notes: tuple[CeilingNote, ...] = field(default=())
+    stair_note: StairNote | None = field(default=None)
     stair_treads: tuple[tuple[Point, Point], ...] = field(default=())
 
     def layer(self, name: LayerName) -> tuple[Shape, ...]:
@@ -332,6 +343,28 @@ def _stair_treads(path: Path, page_number: int, view: fitz.Rect) -> list[tuple[P
     return treads
 
 
+def _stair_note(page) -> StairNote | None:
+    """Read the NEW STAIRS callout.
+
+    It sits above the plan view rather than inside it, so it is collected from
+    the whole page. It is the only printed vertical dimension in this drawing
+    set besides the ceiling notes.
+    """
+    text = page.get_text("text")
+    risers = re.search(r"(\d+)\s+RISERS", text)
+    riser_h = re.search(r"HEIGHT OF RISERS:\s*(\d+(?:\.\d+)?)\"", text)
+    treads = re.search(r"(\d+)\s+TREADS", text)
+    tread_d = re.search(r"DEPTH OF TREADS:\s*(\d+(?:\.\d+)?)\"", text)
+    if not (risers and riser_h and treads and tread_d):
+        return None
+    return StairNote(
+        int(risers.group(1)),
+        float(riser_h.group(1)),
+        int(treads.group(1)),
+        float(tread_d.group(1)),
+    )
+
+
 def extract_a1(path: Path, *, page_number: int = 2) -> A1Extraction:
     """Extract the proposed first-floor architectural layer from an A-1 sheet."""
     document = fitz.open(path)
@@ -459,6 +492,7 @@ def extract_a1(path: Path, *, page_number: int = 2) -> A1Extraction:
                     )
                     break
 
+        stair_note = _stair_note(page)
         treads = _stair_treads(Path(path), page_number, view)
         return A1Extraction(
             page_number=page_number,
@@ -470,6 +504,7 @@ def extract_a1(path: Path, *, page_number: int = 2) -> A1Extraction:
             openings=tuple(openings),
             labels=tuple(labels),
             ceiling_notes=tuple(ceiling_notes),
+            stair_note=stair_note,
             stair_treads=tuple(treads),
         )
     finally:

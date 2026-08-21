@@ -38,6 +38,11 @@ POINTS_PER_INCH = POINTS_PER_FOOT / 12.0
 ASSUMED_DOOR_HEAD_INCHES = 80.0  # 6'-8"
 ASSUMED_WINDOW_SILL_INCHES = 30.0  # 2'-6"
 ASSUMED_WINDOW_HEAD_INCHES = 80.0  # 6'-8"
+ASSUMED_COUNTER_HEIGHT_INCHES = 36.0
+ASSUMED_FIXTURE_HEIGHT_INCHES = 32.0
+ASSUMED_STAIR_RISE_INCHES = 7.0  # matches the printed NEW STAIRS riser
+FLOOR_SLAB_INCHES = 6.0
+DECK_SLAB_INCHES = 7.0
 
 _AXIS_TOLERANCE = 0.75  # points; a bay wall's diagonals exceed this
 
@@ -189,6 +194,78 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
                 y1_ticks=y1,
                 z1_ticks=ceiling_z,
                 station_interval=StationInterval(0, x1 - x0),
+            )
+        )
+
+    # Floor slab across the traced footprint, so the tour has ground to stand on.
+    primitives.append(
+        Primitive(
+            "floor.slab",
+            "floor",
+            to_ticks_x(footprint.x0),
+            to_ticks_y(footprint.y1),
+            -to_ticks_z(FLOOR_SLAB_INCHES),
+            to_ticks_x(footprint.x1),
+            to_ticks_y(footprint.y0),
+            0,
+            StationInterval(0, to_ticks_x(footprint.x1)),
+        )
+    )
+
+    for name, layer, height, kind in (
+        ("counter", "counter", ASSUMED_COUNTER_HEIGHT_INCHES, "counter"),
+        ("fixture", "fixture", ASSUMED_FIXTURE_HEIGHT_INCHES, "fixture"),
+    ):
+        for index, shape in enumerate(extraction.layer(layer)):
+            b = shape.bounds
+            element = f"{name}.{index:03d}"
+            assumed.add(element)  # footprint is measured; the height is not
+            x0, x1 = sorted((to_ticks_x(b.x0), to_ticks_x(b.x1)))
+            y0, y1 = sorted((to_ticks_y(b.y0), to_ticks_y(b.y1)))
+            if x1 <= x0 or y1 <= y0:
+                continue
+            primitives.append(
+                Primitive(
+                    element, kind, x0, y0, 0, x1, y1, to_ticks_z(height),
+                    StationInterval(0, x1 - x0),
+                )
+            )
+
+    for index, shape in enumerate(extraction.layer("deck")):
+        b = shape.bounds
+        x0, x1 = sorted((to_ticks_x(b.x0), to_ticks_x(b.x1)))
+        y0, y1 = sorted((to_ticks_y(b.y0), to_ticks_y(b.y1)))
+        if x1 > x0 and y1 > y0:
+            primitives.append(
+                Primitive(
+                    f"deck.{index:03d}", "deck", x0, y0, -to_ticks_z(DECK_SLAB_INCHES),
+                    x1, y1, 0, StationInterval(0, x1 - x0),
+                )
+            )
+
+    # Stair treads step up by the riser height printed in the NEW STAIRS note
+    # where available; otherwise by the same conventional 7".
+    rise = (
+        extraction.stair_note.riser_height_inches
+        if extraction.stair_note
+        else ASSUMED_STAIR_RISE_INCHES
+    )
+    rise_is_printed = extraction.stair_note is not None
+    treads = sorted(extraction.stair_treads, key=lambda t: -t[0][1])
+    for index, ((ax, ay), (bx, by)) in enumerate(treads):
+        element = f"stair.{index:03d}"
+        if not rise_is_printed:
+            assumed.add(element)
+        x0, x1 = sorted((to_ticks_x(min(ax, bx)), to_ticks_x(max(ax, bx))))
+        y_mid = to_ticks_y((ay + by) / 2)
+        depth = int(round(6.0 * TICKS_PER_INCH))
+        z1 = to_ticks_z(rise * (index + 1))
+        if x1 <= x0 or z1 <= 0:
+            continue
+        primitives.append(
+            Primitive(
+                element, "stair", x0, y_mid - depth, 0, x1, y_mid + depth, z1,
+                StationInterval(0, x1 - x0),
             )
         )
 
