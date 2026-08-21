@@ -334,7 +334,7 @@ Reject non-PDF headers, encrypted PDFs, zero-page PDFs, invalid page numbers, up
 
 - [ ] **Step 4: Run generated and real-fixture tests**
 
-Run: `HEARTHVIEW_GARRIGAN_PDF='/Users/jackgarrigan/Downloads/Garrigan - 261 Grove Street - 08-17-26 - to send 1.pdf' uv run pytest tests/backend/test_ingest.py tests/backend/test_projects_api.py -q`  
+Run: `HEARTHVIEW_GARRIGAN_PDF='/absolute/path/to/Garrigan plans.pdf' uv run pytest tests/backend/test_ingest.py tests/backend/test_projects_api.py -q`  
 Expected: generated file and real four-page file pass; A-1 is page 2.
 
 - [ ] **Step 5: Record checkpoint**
@@ -678,7 +678,7 @@ test("homeowner imports A-1, confirms facts, and explores one geometry", async (
 
 - [ ] **Step 2: Verify e2e fails before launcher wiring**
 
-Run: `HEARTHVIEW_GARRIGAN_PDF='/Users/jackgarrigan/Downloads/Garrigan - 261 Grove Street - 08-17-26 - to send 1.pdf' npm run test:e2e`  
+Run: `HEARTHVIEW_GARRIGAN_PDF='/absolute/path/to/Garrigan plans.pdf' npm run test:e2e`  
 Expected: launcher/base URL failure.
 
 - [ ] **Step 3: Implement launcher, doctor, seeded-example convenience, and README**
@@ -691,7 +691,7 @@ Run: `uv run pytest tests/backend -q`
 Expected: all backend unit, property, API, fixture, geometry, and render-contract tests pass.  
 Run: `npm --workspace apps/web test -- --run && npm --workspace apps/web run build`  
 Expected: all web tests pass and production bundle builds.  
-Run: `HEARTHVIEW_GARRIGAN_PDF='/Users/jackgarrigan/Downloads/Garrigan - 261 Grove Street - 08-17-26 - to send 1.pdf' npm run test:e2e`  
+Run: `HEARTHVIEW_GARRIGAN_PDF='/absolute/path/to/Garrigan plans.pdf' npm run test:e2e`  
 Expected: import-to-model workflow passes.  
 Run: `uv run python scripts/doctor.py`  
 Expected: local API/web/PDF requirements pass; Blender is clearly reported as optional and unavailable on this machine.

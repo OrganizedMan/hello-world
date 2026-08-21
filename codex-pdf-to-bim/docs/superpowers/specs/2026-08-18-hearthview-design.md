@@ -3,7 +3,7 @@
 **Status:** Approved through delegated product and technical judgment  
 **Date:** 2026-08-18  
 **Working directory:** `codex-pdf-to-bim/`  
-**Initial fixture:** Garrigan residence, 261 Grove Street  
+**Initial fixture:** Garrigan residence (private homeowner fixture)  
 
 ## 1. Product intent
 

@@ -136,7 +136,7 @@ def build_a1_fixture(source_document: SourceDocument | None = _FIXTURE_SOURCE) -
     )
     return ProjectModel(
         id="garrigan-a1",
-        name="261 Grove Street - Proposed First Floor",
+        name="Garrigan Residence - Proposed First Floor",
         source_documents=(source_document,) if source_document is not None else (),
         source_references=source_references,
         walls=(east_wall, south_wall),
