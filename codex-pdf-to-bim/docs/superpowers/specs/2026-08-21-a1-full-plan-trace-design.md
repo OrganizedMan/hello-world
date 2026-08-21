@@ -110,3 +110,40 @@ If an entire region cannot be traced confidently from A-1, the UI marks the
 region ambiguous rather than filling in a plausible shape. If the full-sheet
 review becomes too ambiguous or unwieldy, the user may approve a named,
 bounded subset; unapproved portions remain unavailable to 3D generation.
+
+## Addendum: extraction findings from the source PDF (2026-08-21)
+
+Verified directly against `A-1`, page 2, view 2. These supersede earlier
+assumptions in this document where they conflict.
+
+**Classification key.** The sheet's own WALL LEGEND drives classification by
+fill colour, so no geometry is hand-entered: `#4C4C4C` new 2x framed wall,
+`#D9D9D9` existing wall, `#E6E6E6` counter run, `#EAEAEA` plumbing/appliance
+fixture. Legend swatches use slightly different greys (`#7D7D7D`, `#E8E8E8`)
+than the plan; the plan values are authoritative.
+
+**Scale is exact, not fitted.** Wall poche is 6.0 / 9.0 / 13.5 / 18.0 pt wide,
+giving 4", 6", 9" and 12" walls at **18.0 pt per foot** — the printed
+`1/4" = 1'-0"`. The extracted island measures 8.59 x 4.29 ft against a printed
+8'-7" x 4'-3".
+
+**Text is a real text layer.** Room labels come from `get_text`, never from
+vector fills. The unreadable output of `d4ed240` was not glyph outlines: that
+code paints *every* filled path `#1e2822` regardless of its real colour, and 96
+of the white boxes that back text labels fall inside the proposed view — one of
+them, 416x258 pt, sits behind "NEW DECK" and blacks out the whole deck.
+
+**There are no Bezier curves on this page.** All arcs are pre-flattened
+polylines, so door swings are recoverable from line segments alone.
+
+**Openings are recoverable.** A single wall fill holds one subpath per solid
+stretch, with door and window gaps simply absent, so openings fall out of the
+gaps between collinear subpaths.
+
+**PyMuPDF alone is not sufficient.** `get_drawings()` silently omits the stair
+tread strokes; pdfplumber returns them. The extractor uses pdfplumber for
+treads and degrades to no stair rather than inventing one.
+
+**Angled walls need parent-level classification.** The dining-room bay splits
+into five short diagonal subpaths whose individual bounds understate their
+thickness, so a subpath is accepted when its parent drawing reads as a wall.
