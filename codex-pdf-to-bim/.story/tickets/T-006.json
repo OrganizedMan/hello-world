@@ -1,0 +1,12 @@
+{
+  "blockedBy": [],
+  "completedDate": null,
+  "createdDate": "2026-08-21",
+  "description": "Reject zero or negative island dimensions at the review boundary with a corrective homeowner message, while preserving exact backend validation. After a valid correction, display the corrected dimensions throughout review, model inspection, and reports instead of fixed fixture wording. Cover both invalid input and corrected display propagation with failing tests before implementation.",
+  "id": "T-006",
+  "order": 50,
+  "phase": "tour-quality",
+  "status": "open",
+  "title": "Make island corrections valid and visible everywhere",
+  "type": "task"
+}

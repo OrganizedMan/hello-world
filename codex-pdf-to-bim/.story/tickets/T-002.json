@@ -1,0 +1,12 @@
+{
+  "blockedBy": [],
+  "completedDate": null,
+  "createdDate": "2026-08-21",
+  "description": "Run the existing Blender 5.2 scene builder against the approved local CC0 authoring assets to generate the self-contained GLB, environment HDR, 1920 by 1080 poster, and manifest. Validate geometry and runtime metadata, inspect the poster at full size, and iterate any material, lighting, scale, opening, or camera defects. Record final hashes, bytes, scene metrics, warnings, and validator evidence without claiming canonical geometry.",
+  "id": "T-002",
+  "order": 10,
+  "phase": "tour-quality",
+  "status": "inprogress",
+  "title": "Generate and visually approve the tour artifacts",
+  "type": "task"
+}

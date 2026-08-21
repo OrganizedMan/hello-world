@@ -1,0 +1,49 @@
+{
+  "blockers": [],
+  "date": "2026-08-21",
+  "phases": [
+    {
+      "description": "Completed local-first vertical slice from PDF import through guided review, exact validation, deterministic GLB compilation, interactive model inspection, and optional Blender rendering.",
+      "id": "p0",
+      "label": "PHASE 0A",
+      "name": "Phase 0A — First-floor vertical slice",
+      "summary": "Completed and verified homeowner workflow foundation."
+    },
+    {
+      "description": "Prove geometry fidelity, residential realism, and comfortable browser navigation with generated Blender artifacts and a dedicated local tour route.",
+      "id": "tour-quality",
+      "label": "TOUR SPIKE",
+      "name": "Tour-quality spike",
+      "summary": "Finish artifact generation, hybrid navigation, and acceptance evidence."
+    },
+    {
+      "description": "Expand the confirmed-model foundation across levels, floor alignment, ceilings, stairs, alternatives, manually reviewed roofs, and recoverable project packaging.",
+      "id": "p0b",
+      "label": "PHASE 0B",
+      "name": "Whole-house manual model",
+      "summary": "Extend the trusted model from the first floor to the whole house."
+    },
+    {
+      "description": "Add vector text and path extraction, region proposals, scale and dimension evidence, wall and opening candidates, and review-time measurements without bypassing homeowner confirmation.",
+      "id": "p1",
+      "label": "PHASE 1",
+      "name": "Vector-PDF assistance",
+      "summary": "Assist reconstruction from vector drawings while keeping suggestions untrusted."
+    },
+    {
+      "description": "Add OCR and classical vision assistance, floor and section association, stair and headroom solving, roof plane graphs, dormers, and bounded solid-kernel support.",
+      "id": "p2-p3",
+      "label": "PHASES 2–3",
+      "name": "Raster, multistory, and roofs",
+      "summary": "Broaden input support and solve whole-house vertical geometry."
+    },
+    {
+      "description": "Complete curated rendering presets and quality checks, exchange profiles, local desktop packaging, backup and restore, signed releases, and production diagnostics.",
+      "id": "p4-p5",
+      "label": "PHASES 4–5",
+      "name": "Photoreal polish, exchange, and packaging",
+      "summary": "Ship polished visualization, exports, and a durable local product."
+    }
+  ],
+  "title": "HearthView"
+}

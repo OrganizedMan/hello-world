@@ -1,0 +1,12 @@
+{
+  "blockedBy": [],
+  "completedDate": null,
+  "createdDate": "2026-08-21",
+  "description": "Persist or recover the active render-job identity so refreshing the Render page resumes status polling rather than losing the in-progress job. Add a failing frontend test that reproduces the refresh behavior, implement the smallest state-recovery path, and retain existing retry and error behavior. Verify against the render API contract and the complete frontend suite.",
+  "id": "T-005",
+  "order": 40,
+  "phase": "tour-quality",
+  "status": "open",
+  "title": "Preserve an active render job across refresh",
+  "type": "task"
+}

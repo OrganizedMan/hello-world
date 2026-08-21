@@ -1,0 +1,12 @@
+{
+  "blockedBy": [],
+  "completedDate": "2026-08-21",
+  "createdDate": "2026-08-21",
+  "description": "Provide the local PDF import, guided A-1 review, exact architectural model, validation token, deterministic GLB, source-linked 3D viewer, camera presets, render job contract, and provenance report. This ticket records the already-committed checkpoint at commit 471f779. The clean recovered baseline passes 160 backend tests with one skip and 23 frontend tests.",
+  "id": "T-001",
+  "order": 10,
+  "phase": "p0",
+  "status": "complete",
+  "title": "Deliver the Phase 0A homeowner vertical slice",
+  "type": "feature"
+}

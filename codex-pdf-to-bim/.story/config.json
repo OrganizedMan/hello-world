@@ -1,0 +1,35 @@
+{
+  "features": {
+    "handovers": true,
+    "issues": true,
+    "reviews": true,
+    "roadmap": true,
+    "tickets": true
+  },
+  "language": "TypeScript-Python",
+  "project": "HearthView",
+  "schemaVersion": 1,
+  "type": "npm",
+  "version": 2,
+  "recipeOverrides": {
+    "stages": {
+      "WRITE_TESTS": {
+        "enabled": true,
+        "onExhaustion": "plan"
+      },
+      "TEST": {
+        "enabled": true,
+        "command": "npm test"
+      },
+      "VERIFY": {
+        "enabled": true,
+        "startCommand": "npm run dev",
+        "readinessUrl": "http://127.0.0.1:5178"
+      },
+      "BUILD": {
+        "enabled": true,
+        "command": "npm run build"
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "blockedBy": [
+    "T-002",
+    "T-003"
+  ],
+  "completedDate": null,
+  "createdDate": "2026-08-21",
+  "description": "Add a real Playwright journey covering route load, orbit, floor placement, walk entry and exit, overhead, reset, and console safety. Run complete tests, build, artifact validation, and headed desktop and narrow-width QA. Publish an honest acceptance table for geometry, realism, navigation, and performance, including any failed or provisional gate.",
+  "id": "T-004",
+  "order": 30,
+  "phase": "tour-quality",
+  "status": "open",
+  "title": "Prove tour acceptance and publish evidence",
+  "type": "task"
+}
