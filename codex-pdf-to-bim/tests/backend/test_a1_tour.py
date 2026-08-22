@@ -13,10 +13,12 @@ from hearthview.a1_extract import extract_a1
 from hearthview.a1_massing import build_a1_massing
 from hearthview.a1_tour import build_tour
 
-_SOURCE = os.environ.get("HEARTHVIEW_A1_PDF")
+from hearthview.drawings import a1_source
+
+_SOURCE = a1_source()
 pytestmark = pytest.mark.skipif(
-    not (_SOURCE and Path(_SOURCE).is_file()),
-    reason="Set HEARTHVIEW_A1_PDF to the Garrigan A-1 drawing to run tour tests.",
+    _SOURCE is None,
+    reason="No drawing set: commit drawings/ or set HEARTHVIEW_A1_PDF.",
 )
 
 

@@ -20,10 +20,12 @@ from hearthview.a1_massing import (
 )
 from hearthview.units import TICKS_PER_INCH
 
-_SOURCE = os.environ.get("HEARTHVIEW_A1_PDF")
+from hearthview.drawings import a1_source
+
+_SOURCE = a1_source()
 pytestmark = pytest.mark.skipif(
-    not (_SOURCE and Path(_SOURCE).is_file()),
-    reason="Set HEARTHVIEW_A1_PDF to the Garrigan A-1 drawing to run massing tests.",
+    _SOURCE is None,
+    reason="No drawing set: commit drawings/ or set HEARTHVIEW_A1_PDF.",
 )
 
 

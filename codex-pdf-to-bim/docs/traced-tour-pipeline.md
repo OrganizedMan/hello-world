@@ -143,15 +143,16 @@ geometry.
 
 ## 5. What is *not* in the repo
 
-Three things a fresh session cannot get from a clone:
+Two things a fresh session cannot get from a clone:
 
-1. **The A-1 PDF.** Needed only to regenerate the spec. The generated
-   `a1_kitchen_scene_spec.json` *is* committed, so everything downstream of the
-   extractor works without it.
-2. **The tour-quality asset directory** (32 hash-pinned files listed in
+1. **The tour-quality asset directory** (32 hash-pinned files listed in
    `spikes/tour_quality/assets/provenance.json`). Only `provenance.json` and
    `LICENSES.md` are tracked; the HDR, models and textures are not.
-3. **Blender.** Required to build the GLB, and nothing else in the pipeline.
+2. **Blender.** Required to build the GLB, and nothing else in the pipeline.
+
+The **drawing set is committed** under `drawings/`, so nothing needs supplying
+out of band any more. `hearthview.drawings.a1_source()` resolves it, and
+`HEARTHVIEW_A1_PDF` still overrides when you want a different revision.
 
 The built artifacts under `apps/web/public/tour-spike/` **are** committed, and
 they are current: the GLB matches the trace exactly, and `manifest.json` is
@@ -186,14 +187,12 @@ forget.
 
 ## 6. Running it
 
-The A-1 PDF is **not in the repository**. Point the tests at it:
+The drawing set is committed, so the whole suite runs from a clean clone with
+nothing exported. To work against a different revision of the drawings:
 
 ```bash
-export HEARTHVIEW_A1_PDF=/absolute/path/to/Garrigan_A-1.pdf
+export HEARTHVIEW_A1_PDF=/absolute/path/to/other-set.pdf
 ```
-
-Without it the spec-generating tests skip; everything else runs against the
-committed `a1_kitchen_scene_spec.json`.
 
 Regenerate the spec after any extractor or frame change:
 
@@ -234,34 +233,39 @@ npm --workspace apps/web run dev -- --port 5178 --host 0.0.0.0
 
 State these plainly rather than implying the model is finished:
 
-- **No elevations or sections exist in the drawing set.** Every window sill,
-  window head and door head height is a convention, declared as `assumed` in the
-  spec's provenance and surfaced in the browser.
+- **Opening heights are still assumed, but the set is not section-free.** Every
+  window sill, window head and door head height is a convention, declared as
+  `assumed` in the spec's provenance and surfaced in the browser. The A-3 OP#B
+  sheet in `drawings/Garrigan-261-Grove-Street-attic-idea.pdf` carries a
+  **Building Section**, which nothing reads yet. Whether it yields real heights
+  for the floors below is unknown and worth finding out before assuming more.
 - **Opening classification is approximate.** Window-versus-door-versus-cased
   typing is inferred from drawn symbols and position; roughly 24 openings across
   the full floor are typed "cased" with low confidence.
 - **~25 diagonal bay segments are approximated** as straight runs.
 - **Multi-floor vertical alignment is untested.** Nothing has yet checked that
-  floor 2's walls land over floor 1's.
+  floor 2's walls land over floor 1's. All four levels *are* drawn -- A-0
+  basement, A-1 first, A-2 second, A-3 third/attic -- so this is now a question
+  of doing the work, not of missing source data.
 - **Scope is the kitchen/family checkpoint region only** — the main kitchen and
   living rectangle plus the west kitchen arm. The region was approved on
   2026-08-22, so whole-floor generalisation is now in scope; see §8.
 - **The whole-floor path is outside the contract that fixed the kitchen.**
   `a1_massing.py` and `a1_tour.py` build the whole traced first floor, but were
   last touched at `ed8ec06`, before all three frame fixes. Nothing in them
-  imports `chirality`, nothing measures the GLB they write, and all 14 of their
-  tests need `HEARTHVIEW_A1_PDF` — so they skip in CI. That is the same three
-  weaknesses that let the kitchen ship mirrored.
+  imports `chirality` and nothing measures the GLB they write. Their 14 tests
+  now run everywhere, since the drawings are committed, but passing those tests
+  says nothing about handedness: that is exactly what the kitchen's suite did
+  while shipping a mirror.
 
 ---
 
 ## 8. Agreed next, in order
 
-1. **The rest of the first floor**, under the §1–§3 contract rather than
-   alongside it. The blocking step is a committed whole-floor spec: the kitchen
-   path works without the PDF because `a1_kitchen_scene_spec.json` is committed,
-   and the whole-floor path has no equivalent, which is why it cannot be checked
-   here or in CI.
+1. **The rest of the house**, under the §1–§3 contract rather than alongside it:
+   traced from the sheets, built, then measured against the trace before it is
+   believed. The drawings being committed removed the first obstacle; what
+   remains is a whole-floor spec and a handedness test on it.
 2. **Overhead view must drop the ceiling.** It currently reads as a solid shape
    the size of the footprint rather than an open dolls'-house view down onto the
    plan.
