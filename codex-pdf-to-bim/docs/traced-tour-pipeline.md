@@ -110,7 +110,7 @@ drawing when it changes.
 
 The gap that guard closes was real: `measure_glb.py` only ever ran by hand, on a
 Mac, straight after a Blender build, so nothing compared the *committed*
-artifacts to the *committed* spec. See the first entry in §6.
+artifacts to the *committed* spec. See item 4 of §5.
 
 ---
 
@@ -130,7 +130,48 @@ artifacts to the *committed* spec. See the first entry in §6.
 
 ---
 
-## 5. Running it
+## 5. What is *not* in the repo
+
+Four things a fresh session cannot get from a clone:
+
+1. **The A-1 PDF.** Needed only to regenerate the spec. The generated
+   `a1_kitchen_scene_spec.json` *is* committed, so everything downstream of the
+   extractor works without it.
+2. **The tour-quality asset directory** (32 hash-pinned files listed in
+   `spikes/tour_quality/assets/provenance.json`). Only `provenance.json` and
+   `LICENSES.md` are tracked; the HDR, models and textures are not.
+3. **Blender.** Required to build the GLB and nothing else.
+4. **A current GLB.** `apps/web/public/tour-spike/hearthview-kitchen-family.glb`
+   is tracked but was built in the old mirrored frame, so it does *not* match
+   the committed spec. Do not trust it, and do not use it to judge the model.
+   The `manifest.json` beside it is stale the same way and one step further
+   back: still `hearthview-tour-spike/v1`, the legacy hand-built spike, carrying
+   `canonical_geometry: false`. Both were last written at `447742e`, nine
+   commits before the frame was made right-handed — so the tour a browser loads
+   today is not the traced scene this document describes.
+
+That last one is checkable rather than a matter of opinion:
+
+```
+$ uv run python scripts/measure_glb.py     apps/web/public/tour-spike/hearthview-kitchen-family.glb     --spec spikes/tour_quality/a1_kitchen_scene_spec.json
+
+  drawing turn   +73.64   model turn    -7.34
+  => MIRRORED versus the drawing
+  ...
+  => worst offset 5.90 m (OUTSIDE the 0.15 m tolerance)
+```
+
+Rebuilding (§6) replaces both. Until then those two files are the last
+artifacts of the frame this change removed.
+
+This is enforced rather than remembered.
+`tests/backend/test_committed_tour_artifact.py` runs the measurement above on
+every `pytest` run, and its three checks are marked `xfail(strict=True)` against
+exactly this staleness. A correct rebuild turns them into XPASS and fails the
+suite until the markers are deleted — remove them in the commit that lands the
+new artifacts.
+
+## 6. Running it
 
 The A-1 PDF is **not in the repository**. Point the tests at it:
 
@@ -176,30 +217,9 @@ npm --workspace apps/web run dev -- --port 5178 --host 0.0.0.0
 
 ---
 
-## 6. What is still unverified
+## 7. What is still unverified
 
 State these plainly rather than implying the model is finished:
-
-- **The committed tour artifacts are stale, and the published model is
-  mirrored.** `apps/web/public/tour-spike/` was last rebuilt at `447742e`, nine
-  commits before the frame was made right-handed. Its `manifest.json` is still
-  `hearthview-tour-spike/v1`, the legacy hand-built spike, carrying
-  `canonical_geometry: false`; `measure_glb.py` reports the GLB as MIRRORED
-  versus the drawing, with landmarks up to **5.90 m** from where the trace puts
-  them. So the tour a browser loads today is *not* the traced scene this
-  document describes.
-  Rebuilding needs Blender and the assets directory, so it has to happen on the
-  Mac:
-
-  ```bash
-  uv run python scripts/kitchen_family_checkpoint.py \
-      --assets /Users/jackgarrigan/Documents/Codex/2026-08-18/bui/work/tour-quality-assets
-  ```
-
-  The three checks in `test_committed_tour_artifact.py` are marked
-  `xfail(strict=True)` against exactly this. A correct rebuild makes them XPASS
-  and fails the suite until the markers are deleted — remove them in the commit
-  that lands the new artifacts.
 
 - **No elevations or sections exist in the drawing set.** Every window sill,
   window head and door head height is a convention, declared as `assumed` in the
