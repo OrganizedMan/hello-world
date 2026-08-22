@@ -143,7 +143,12 @@ def main() -> int:
         print(f"tour GLB   {glb}  {glb.stat().st_size:,} bytes  sha256:{_digest(glb)}")
         print(f"manifest   {manifest}")
         print(f"logs       {logs}")
-        print("\nStart the tour:  npm --workspace apps/web run dev -- --port 5178 --host 127.0.0.1")
+        # 0.0.0.0 so the tour is reachable from a phone on the same network;
+        # 127.0.0.1 only serves the Mac itself.
+        print(
+            "\nStart the tour:  npm --workspace apps/web run dev -- "
+            "--port 5178 --host 0.0.0.0"
+        )
         return 0
 
     STILLS.mkdir(parents=True, exist_ok=True)
