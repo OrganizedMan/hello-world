@@ -870,6 +870,21 @@ def main(argv: list[str] | None = None) -> int:
             export_apply=True,
         )
         print(f"glb       {args.out} ({args.out.stat().st_size:,} bytes)")
+
+        # Point the manifest at the finished model, keeping the canvas beside it.
+        # The canvas is what the corner measurement opens, and this export is
+        # not a substitute for it: casework replaces the plain counter solids,
+        # so its corners no longer match the trace by construction.
+        manifest_path = args.out.with_name("manifest.json")
+        if manifest_path.is_file():
+            manifest = json.loads(manifest_path.read_text())
+            artifact = manifest.setdefault("artifact", {})
+            artifact.setdefault("canvas_glb", artifact.get("glb"))
+            artifact["glb"] = args.out.name
+            artifact["total_browser_bytes"] = args.out.stat().st_size
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+            print(f"manifest  now serves {args.out.name}, canvas kept as "
+                  f"{artifact['canvas_glb']}")
     return 0
 
 

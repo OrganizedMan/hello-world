@@ -639,10 +639,11 @@
     "opening_heights"
   ],
   "artifact": {
-    "glb": "a1-building.glb",
+    "glb": "a1-building-look.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 395736
+    "total_browser_bytes": 20255404,
+    "canvas_glb": "a1-building.glb"
   },
   "runtime": {
     "eye_height_meters": 1.562,
