@@ -236,12 +236,14 @@ other's `manifest.json`:
 | --- | --- | --- |
 | `/tour-spike` | `apps/web/public/tour-spike/` | Kitchen and family room, built in Blender against the quality assets. |
 | `/tour/first-floor` | `apps/web/public/tour-a1/` | The whole traced first floor, plain massing. |
+| `/tour/building` | `apps/web/public/tour-building/` | All four drawn storeys, one node each, with a floor switcher. |
 
 The whole floor needs no Blender -- `a1_tour` writes the GLB itself -- so one
 command builds and measures it anywhere the drawings are:
 
 ```bash
-uv run python scripts/build_a1_tour.py
+uv run python scripts/build_a1_tour.py      # first floor
+uv run python scripts/build_a1_building.py  # every drawn storey
 ```
 
 ---
@@ -260,10 +262,12 @@ State these plainly rather than implying the model is finished:
   typing is inferred from drawn symbols and position; roughly 24 openings across
   the full floor are typed "cased" with low confidence.
 - **~25 diagonal bay segments are approximated** as straight runs.
-- **Multi-floor vertical alignment is untested.** Nothing has yet checked that
-  floor 2's walls land over floor 1's. All four levels *are* drawn -- A-0
-  basement, A-1 first, A-2 second, A-3 third/attic -- so this is now a question
-  of doing the work, not of missing source data.
+- ~~**Multi-floor vertical alignment is untested.**~~ Checked. On one datum the
+  basement's east and west walls land on the first floor's to 0.02 ft, A-2's
+  north edge to 0.01 ft, and A-3's east and west edges match A-2's exactly.
+  What remains assumed is *vertical*: the floor assembly between one ceiling and
+  the next floor is in no sheet, so `ASSUMED_FLOOR_ASSEMBLY_INCHES` is a
+  convention and every storey above the first inherits its error.
 - **Scope is the kitchen/family checkpoint region only** — the main kitchen and
   living rectangle plus the west kitchen arm. The region was approved on
   2026-08-22, so whole-floor generalisation is now in scope; see §8.
@@ -279,15 +283,14 @@ State these plainly rather than implying the model is finished:
 
 ## 8. Agreed next, in order
 
-1. ~~**The rest of the first floor.**~~ Done: `/tour/first-floor` serves the
-   whole traced floor, its mapping is verified right-handed, and all 1,696
-   traced corners are present in the export. The levels above it are next --
-   A-2 and A-3 are drawn and nothing reads them yet.
+1. ~~**The rest of the house.**~~ Done: `/tour/building` serves all four drawn
+   storeys, 528 primitives, every one of 4,224 traced corners present in the
+   export.
 2. **Overhead view must drop the ceiling.** It currently reads as a solid shape
    the size of the footprint rather than an open dolls'-house view down onto the
    plan.
-3. **A floor switcher in the browser UI**, needed before more than one level is
-   worth building.
+3. ~~**A floor switcher in the browser UI.**~~ Done, alongside the storeys it
+   switches between.
 4. **Photorealism**, deliberately after the layout is right — materials,
    lighting and finishes on geometry that is already known to match the drawing.
 
