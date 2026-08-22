@@ -26,6 +26,31 @@ import bpy
 CANVAS_MATERIALS = ("wall", "floor", "counter", "fixture", "deck", "stair")
 
 
+ASSETS = Path(__file__).resolve().parents[2] / "spikes/tour_quality/assets/files"
+
+
+def unwrap_by_size(metres_per_tile: float = 1.0) -> int:
+    """Give every mesh a cube-projected UV set scaled to real size.
+
+    The canvas is extruded boxes and carries no UVs at all, so image textures
+    have nothing to sit on. Cube projection suits axis-aligned boxes exactly,
+    and scaling by real size is what makes a floorboard the same width in a
+    cupboard as in a living room -- a per-object unwrap would stretch each
+    surface to fill the same square and the plank width would vary by room.
+    """
+    unwrapped = 0
+    for obj in [o for o in bpy.data.objects if o.type == "MESH"]:
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.cube_project(cube_size=metres_per_tile, correct_aspect=True)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        obj.select_set(False)
+        unwrapped += 1
+    return unwrapped
+
+
 def _reset() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -39,6 +64,58 @@ def _clear_nodes(material: bpy.types.Material):
     tree.links.new(shader.outputs["BSDF"], output.inputs["Surface"])
     output.location = (400, 0)
     return tree, shader
+
+
+def image_maps(
+    tree,
+    shader,
+    *,
+    colour: Path,
+    roughness: Path | None = None,
+    normal: Path | None = None,
+    scale: float = 1.0,
+    tint: tuple[float, float, float, float] | None = None,
+) -> None:
+    """Wire real colour, roughness and normal maps onto a Principled shader.
+
+    Photographed maps beat anything procedural for oak and stone, and unlike a
+    node graph they survive glTF export -- which procedural materials do not,
+    at all. Colour is sRGB; roughness and normal are data and must not be
+    colour-managed or the surface reads wrong.
+    """
+    coords = tree.nodes.new("ShaderNodeTexCoord")
+    mapping = tree.nodes.new("ShaderNodeMapping")
+    mapping.inputs["Scale"].default_value = (scale, scale, scale)
+    tree.links.new(coords.outputs["UV"], mapping.inputs["Vector"])
+
+    base = tree.nodes.new("ShaderNodeTexImage")
+    base.image = bpy.data.images.load(str(colour), check_existing=True)
+    tree.links.new(mapping.outputs["Vector"], base.inputs["Vector"])
+    if tint:
+        multiply = tree.nodes.new("ShaderNodeMixRGB")
+        multiply.blend_type = "MULTIPLY"
+        multiply.inputs["Fac"].default_value = 1.0
+        multiply.inputs["Color2"].default_value = tint
+        tree.links.new(base.outputs["Color"], multiply.inputs["Color1"])
+        tree.links.new(multiply.outputs["Color"], shader.inputs["Base Color"])
+    else:
+        tree.links.new(base.outputs["Color"], shader.inputs["Base Color"])
+
+    if roughness is not None:
+        rough = tree.nodes.new("ShaderNodeTexImage")
+        rough.image = bpy.data.images.load(str(roughness), check_existing=True)
+        rough.image.colorspace_settings.name = "Non-Color"
+        tree.links.new(mapping.outputs["Vector"], rough.inputs["Vector"])
+        tree.links.new(rough.outputs["Color"], shader.inputs["Roughness"])
+
+    if normal is not None:
+        normal_image = tree.nodes.new("ShaderNodeTexImage")
+        normal_image.image = bpy.data.images.load(str(normal), check_existing=True)
+        normal_image.image.colorspace_settings.name = "Non-Color"
+        tree.links.new(mapping.outputs["Vector"], normal_image.inputs["Vector"])
+        normal_map = tree.nodes.new("ShaderNodeNormalMap")
+        tree.links.new(normal_image.outputs["Color"], normal_map.inputs["Color"])
+        tree.links.new(normal_map.outputs["Normal"], shader.inputs["Normal"])
 
 
 def _texture_coords(tree, scale: float):
@@ -201,13 +278,78 @@ def exterior_stone() -> bpy.types.Material:
     return material
 
 
+def textured_oak_floor() -> bpy.types.Material:
+    """Poly Haven wood_floor: straight boards, as the reference interiors are laid.
+
+    Tinted up because the map is a darker walnut than the pale oak in the
+    reference, and these rooms are lit by one window each -- a dark floor eats
+    what little bounce there is.
+    """
+    material = bpy.data.materials.new("HV_LOOK_OAK_FLOOR_TEX")
+    tree, shader = _clear_nodes(material)
+    image_maps(
+        tree, shader,
+        colour=ASSETS / "wood_floor_diff_2k.jpg",
+        roughness=ASSETS / "wood_floor_rough_2k.jpg",
+        normal=ASSETS / "wood_floor_nor_gl_2k.jpg",
+        scale=0.42,
+        tint=(1.45, 1.34, 1.16, 1.0),
+    )
+    return material
+
+
+def parquet_floor() -> bpy.types.Material:
+    """ambientCG WoodFloor070, herringbone. Not used by default; kept for rooms
+    that should read as patterned rather than boarded."""
+    material = bpy.data.materials.new("HV_LOOK_PARQUET_TEX")
+    tree, shader = _clear_nodes(material)
+    folder = ASSETS / "WoodFloor070"
+    image_maps(
+        tree, shader,
+        colour=folder / "WoodFloor070_2K-JPG_Color.jpg",
+        roughness=folder / "WoodFloor070_2K-JPG_Roughness.jpg",
+        normal=folder / "WoodFloor070_2K-JPG_NormalGL.jpg",
+        scale=0.55,
+    )
+    return material
+
+
+def textured_plaster() -> bpy.types.Material:
+    material = bpy.data.materials.new("HV_LOOK_PLASTER_TEX")
+    tree, shader = _clear_nodes(material)
+    image_maps(
+        tree, shader,
+        colour=ASSETS / "beige_wall_001_diff_1k.jpg",
+        roughness=ASSETS / "beige_wall_001_rough_1k.jpg",
+        normal=ASSETS / "beige_wall_001_nor_gl_1k.jpg",
+        scale=1.6,
+        tint=(1.06, 1.05, 1.02, 1.0),
+    )
+    return material
+
+
+def textured_stone() -> bpy.types.Material:
+    """Honed travertine for counters and the island top."""
+    material = bpy.data.materials.new("HV_LOOK_STONE_TEX")
+    tree, shader = _clear_nodes(material)
+    folder = ASSETS / "Travertine009"
+    image_maps(
+        tree, shader,
+        colour=folder / "Travertine009_2K-JPG_Color.jpg",
+        roughness=folder / "Travertine009_2K-JPG_Roughness.jpg",
+        normal=folder / "Travertine009_2K-JPG_NormalGL.jpg",
+        scale=0.7,
+    )
+    return material
+
+
 LOOKS = {
-    "floor": oak_floor,
+    "floor": textured_oak_floor,
     "ceiling": painted_plaster,
-    "wall": painted_plaster,
-    "counter": honed_marble,
+    "wall": textured_plaster,
+    "counter": textured_stone,
     "fixture": brushed_metal,
-    "stair": oak_floor,
+    "stair": textured_oak_floor,
     "deck": exterior_stone,
 }
 
@@ -388,7 +530,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sky", type=float, default=1.0)
     parser.add_argument("--interior", type=str, help="storey node to stand inside, e.g. storey_a1")
     parser.add_argument("--yaw", type=float, default=0.0)
-    parser.add_argument("--eye", type=float, default=1.6)
+    parser.add_argument("--eye", type=float, default=1.562)
+    parser.add_argument("--tile", type=float, default=1.0,
+                        help="metres per texture tile for the cube projection")
     args = parser.parse_args(raw)
 
     for required in (args.canvas, args.hdri):
@@ -398,11 +542,13 @@ def main(argv: list[str] | None = None) -> int:
 
     _reset()
     bpy.ops.import_scene.gltf(filepath=str(args.canvas))
+    unwrapped = unwrap_by_size(args.tile)
     applied = apply_looks()
     build_world(args.hdri, strength=args.sky)
     add_sun(strength=args.sun)
 
     print(f"canvas    {args.canvas.name}")
+    print(f"unwrapped {unwrapped} meshes at {args.tile} m per tile")
     print(f"materials {', '.join(f'{k} -> {v}' for k, v in sorted(applied.items()))}")
 
     if args.still:
