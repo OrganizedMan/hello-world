@@ -191,7 +191,9 @@ def test_sink_and_dishwasher_follow_the_printed_callouts(built) -> None:
     assert calls["HV_SINK_RIM"][1][0] == pytest.approx(north["sink"]["center_x"], abs=0.02)
     dishwasher_centre = calls["HV_DISHWASHER_BODY"][1][0]
     assert dishwasher_centre == pytest.approx(north["dishwasher"]["center_x"], abs=0.02)
-    assert dishwasher_centre < calls["HV_SINK_RIM"][1][0]
+    # Model x runs west after the chirality mirror, so the dishwasher — which is
+    # west of the sink on the sheet — has the larger model x.
+    assert dishwasher_centre > calls["HV_SINK_RIM"][1][0]
 
 
 def test_every_opening_gets_glazing(built) -> None:

@@ -332,7 +332,7 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
     seen: set[str] = set()
     manifest_cameras = [c for c in manifest_cameras if not (c["name"] in seen or seen.add(c["name"]))]
 
-    return {
+    return mirror_spec_for_blender({
         "schema": "hearthview-kitchen-scene/v1",
         "source": {
             "sheet": "A-1", "page": extraction.page_number,
@@ -368,7 +368,87 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
         "collision": collision,
         "cameras": cameras,
         "manifest_cameras": manifest_cameras,
-    }
+    })
+
+
+def mirror_spec_for_blender(spec: dict) -> dict:
+    """Reflect the spec in X so the exported world matches the plan.
+
+    The scene is authored in plan terms: +x east, +y south. Blender exports
+    Y-up as (x, y, z) -> (x, z, -y), which puts north on +Z. But a right-handed
+    Y-up basis with X=east and Y=up requires Z=south, because east x up = south.
+    Authoring in (east, south, up) is therefore left-handed, and the exported
+    world comes out mirrored — ahead and left swap at every corner.
+
+    Reflecting X once restores the correct chirality. Model +x then runs west,
+    which is why the wall names swap with it: the geometry is what has to be
+    right, and the names have to keep describing it truthfully.
+    """
+    span = spec["envelope"]["span"]
+
+    def mx(value: float) -> float:
+        return round(span - value, 6)
+
+    def mirror_range(lo: float, hi: float) -> tuple[float, float]:
+        return mx(hi), mx(lo)
+
+    def rename(name: str) -> str:
+        if "WEST" in name:
+            return name.replace("WEST", "EAST")
+        if "EAST" in name:
+            return name.replace("EAST", "WEST")
+        return name
+
+    for box in spec["wall_boxes"]:
+        box["name"] = rename(box["name"])
+        # emit_wall builds these as tuples; normalise so the spec is JSON-shaped.
+        box["size"] = list(box["size"])
+        loc = list(box["loc"])
+        loc[0] = mx(loc[0])
+        box["loc"] = loc
+
+    for item in [*spec["windows"], *spec["doors"]]:
+        item["name"] = rename(item["name"])
+        if item["axis"] == "h":
+            item["start"], item["end"] = mirror_range(item["start"], item["end"])
+        else:
+            item["line"] = mx(item["line"])
+            item["outward"] = -item["outward"]
+
+    for slab in spec["slabs"]:
+        slab["rect"][0], slab["rect"][2] = mirror_range(slab["rect"][0], slab["rect"][2])
+
+    north = spec["kitchen"]["north_run"]
+    for tower in north["towers"]:
+        tower["center_x"] = mx(tower["center_x"])
+    for station in ("dishwasher", "sink", "trash"):
+        north[station]["center_x"] = mx(north[station]["center_x"])
+    north["counter"]["start"], north["counter"]["end"] = mirror_range(
+        north["counter"]["start"], north["counter"]["end"]
+    )
+
+    island = spec["kitchen"]["island"]
+    island[0], island[2] = mirror_range(island[0], island[2])
+
+    clear = spec["living"]["clear_area"]
+    clear[0], clear[2] = mirror_range(clear[0], clear[2])
+    spec["living"]["tv"]["wall"] = "west"
+
+    for camera in spec["cameras"]:
+        camera["location"][0] = mx(camera["location"][0])
+        camera["target"][0] = mx(camera["target"][0])
+    for camera in spec["manifest_cameras"]:
+        camera["position"][0] = mx(camera["position"][0])
+        camera["target"][0] = mx(camera["target"][0])
+
+    walkable = spec["walkable"]
+    walkable["min_x"], walkable["max_x"] = mirror_range(walkable["min_x"], walkable["max_x"])
+    for item in spec["collision"]:
+        item["rect"][0], item["rect"][2] = mirror_range(item["rect"][0], item["rect"][2])
+
+    spec["envelope"]["arm_east"] = mx(spec["envelope"]["arm_east"])
+    spec["mirrored_for_blender"] = True
+    return spec
 
 
 def main() -> int:

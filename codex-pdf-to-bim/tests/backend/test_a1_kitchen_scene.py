@@ -53,16 +53,21 @@ def test_range_and_fridge_sit_where_the_sheet_puts_them(spec) -> None:
 
 
 def test_north_wall_stations_follow_the_printed_callouts(spec) -> None:
+    """Model x runs west after the chirality mirror, so compare in plan terms."""
     north = spec["kitchen"]["north_run"]
+    span = spec["envelope"]["span"]
 
-    assert north["sink"]["center_x"] / FT == pytest.approx(7.17, abs=0.2)
-    assert north["dishwasher"]["center_x"] / FT == pytest.approx(4.38, abs=0.2)
-    assert north["trash"]["center_x"] / FT == pytest.approx(9.90, abs=0.2)
-    towers = sorted(t["center_x"] for t in north["towers"])
+    def plan_x(value: float) -> float:
+        return (span - value) / FT
+
+    assert plan_x(north["sink"]["center_x"]) == pytest.approx(7.17, abs=0.2)
+    assert plan_x(north["dishwasher"]["center_x"]) == pytest.approx(4.38, abs=0.2)
+    assert plan_x(north["trash"]["center_x"]) == pytest.approx(9.90, abs=0.2)
+    towers = sorted(plan_x(t["center_x"]) for t in north["towers"])
     assert len(towers) == 2
-    # tower / DW / sink / trash / tower, west to east
-    assert towers[0] < north["dishwasher"]["center_x"] < north["sink"]["center_x"]
-    assert north["sink"]["center_x"] < north["trash"]["center_x"] < towers[1]
+    # tower / DW / sink / trash / tower, west to east on the sheet
+    assert towers[0] < plan_x(north["dishwasher"]["center_x"]) < plan_x(north["sink"]["center_x"])
+    assert plan_x(north["sink"]["center_x"]) < plan_x(north["trash"]["center_x"]) < towers[1]
 
 
 def test_island_matches_its_printed_size(spec) -> None:
@@ -112,3 +117,69 @@ def test_cameras_stand_clear_of_the_island(spec) -> None:
             assert not inside, f"{camera['name']} is inside the island"
     names = {c["name"] for c in spec["manifest_cameras"]}
     assert {"kitchen_overview", "walk_start", "overhead"} <= names
+
+
+def _three(x: float, y: float, z: float = 0.0) -> tuple[float, float, float]:
+    """Blender plan coords to glTF Y-up, matching Blender's export_yup."""
+    return (x, z, -y)
+
+
+def _side_of(viewer, facing, point) -> float:
+    """Positive when `point` is to the viewer's right."""
+    right = (-facing[2], 0.0, facing[0])
+    offset = (point[0] - viewer[0], 0.0, point[2] - viewer[2])
+    return offset[0] * right[0] + offset[2] * right[2]
+
+
+def test_standing_at_the_mudroom_the_sink_is_on_the_right(spec) -> None:
+    """The orientation invariant, stated by the homeowner from the drawing.
+
+    Back to the mudroom with the island ahead: the sink wall is on the right and
+    the passage to the pantry, powder room and dining room is on the left. This
+    failed while the scene was authored left-handed, which mirrored the whole
+    world; it is the cheapest guard against that returning.
+    """
+    kitchen = spec["kitchen"]
+    mudroom = next(d for d in spec["doors"] if d["kind"] == "cased" and d["axis"] == "v")
+    viewer = _three(mudroom["line"] + mudroom["outward"] * 0.6,
+                    (mudroom["start"] + mudroom["end"]) / 2)
+    island = kitchen["island"]
+    target = _three((island[0] + island[2]) / 2, (island[1] + island[3]) / 2)
+    facing = (target[0] - viewer[0], 0.0, target[2] - viewer[2])
+
+    sink = _three(kitchen["north_run"]["sink"]["center_x"], 0.37)
+    assert _side_of(viewer, facing, sink) > 0, "the sink must be on the right"
+
+    arm_opening = next(d for d in spec["doors"] if d["name"].startswith("HV_SOUTH_ARM"))
+    passage = _three((arm_opening["start"] + arm_opening["end"]) / 2, arm_opening["line"])
+    assert _side_of(viewer, facing, passage) < 0, "the pantry passage must be on the left"
+
+
+def test_facing_the_sink_wall_the_range_is_on_the_left(spec) -> None:
+    """Second, independent orientation check on a different pair of walls.
+
+    Stand at the island facing the sink wall (north): the range and
+    refrigerator wall is to the left. A mirrored world puts it on the right.
+    """
+    assert spec.get("mirrored_for_blender") is True
+    kitchen = spec["kitchen"]
+    island = kitchen["island"]
+    viewer = _three((island[0] + island[2]) / 2, (island[1] + island[3]) / 2)
+    sink = _three(kitchen["north_run"]["sink"]["center_x"], 0.37)
+    facing = (sink[0] - viewer[0], 0.0, sink[2] - viewer[2])
+
+    span = spec["envelope"]["span"]
+    range_point = _three(span - 0.33, kitchen["west_run"]["range"]["center_y"])
+    assert _side_of(viewer, facing, range_point) < 0, "the range wall must be on the left"
+
+
+def test_eye_level_cameras_stay_inside_the_envelope(spec) -> None:
+    """A camera outside a wall shoots through it; KITCHEN was 0.54 ft out."""
+    envelope = spec["envelope"]
+
+    for camera in spec["cameras"]:
+        x, y, z = camera["location"]
+        if z >= 2.6:  # plan and axonometric sit above the model on purpose
+            continue
+        assert -0.1 <= x <= envelope["span"] + 0.1, f"{camera['name']} outside in x"
+        assert -0.1 <= y <= envelope["arm_south"] + 0.1, f"{camera['name']} outside in y"
