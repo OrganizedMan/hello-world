@@ -98,9 +98,19 @@ Two things enforce it:
   local coordinates is what let a run land on the wrong wall while matching the
   spec exactly.
 
+- `tests/backend/test_committed_tour_artifact.py` runs that same measurement
+  against the GLB **committed under `apps/web/public/tour-spike/`**, so the
+  artifact the browser is actually served is checked on every `pytest` run
+  rather than only by hand after a build. Building a GLB needs Blender; reading
+  one needs only trimesh, so this runs everywhere the rest of the suite does.
+
 `tests/backend/test_measure_glb_expectations.py` pins that the expected
 positions are derived from the spec rather than written down, so they follow the
 drawing when it changes.
+
+The gap that guard closes was real: `measure_glb.py` only ever ran by hand, on a
+Mac, straight after a Blender build, so nothing compared the *committed*
+artifacts to the *committed* spec. See the first entry in §6.
 
 ---
 
@@ -169,6 +179,27 @@ npm --workspace apps/web run dev -- --port 5178 --host 0.0.0.0
 ## 6. What is still unverified
 
 State these plainly rather than implying the model is finished:
+
+- **The committed tour artifacts are stale, and the published model is
+  mirrored.** `apps/web/public/tour-spike/` was last rebuilt at `447742e`, nine
+  commits before the frame was made right-handed. Its `manifest.json` is still
+  `hearthview-tour-spike/v1`, the legacy hand-built spike, carrying
+  `canonical_geometry: false`; `measure_glb.py` reports the GLB as MIRRORED
+  versus the drawing, with landmarks up to **5.90 m** from where the trace puts
+  them. So the tour a browser loads today is *not* the traced scene this
+  document describes.
+  Rebuilding needs Blender and the assets directory, so it has to happen on the
+  Mac:
+
+  ```bash
+  uv run python scripts/kitchen_family_checkpoint.py \
+      --assets /Users/jackgarrigan/Documents/Codex/2026-08-18/bui/work/tour-quality-assets
+  ```
+
+  The three checks in `test_committed_tour_artifact.py` are marked
+  `xfail(strict=True)` against exactly this. A correct rebuild makes them XPASS
+  and fails the suite until the markers are deleted — remove them in the commit
+  that lands the new artifacts.
 
 - **No elevations or sections exist in the drawing set.** Every window sill,
   window head and door head height is a convention, declared as `assumed` in the

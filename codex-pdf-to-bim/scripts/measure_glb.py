@@ -69,23 +69,54 @@ def expected_from_spec(spec: dict) -> dict[str, tuple[float, float]]:
     }
 
 
-def report_against_spec(found: dict[str, "np.ndarray"], spec: dict) -> bool:
-    """Print the artifact-versus-trace diff. True when everything is in place."""
+CHIRALITY_LANDMARKS = ("HV_SINK_RIM", "HV_RANGE_BODY", "HV_ISLAND_STRUCTURE")
+
+
+def chirality_triangle(
+    found: dict[str, "np.ndarray"],
+) -> tuple[tuple[float, float], ...] | None:
+    """The three ground-plane points the handedness test reads, None if absent."""
+    if not set(CHIRALITY_LANDMARKS) <= found.keys():
+        return None
+    return tuple((float(found[k][0]), float(found[k][2])) for k in CHIRALITY_LANDMARKS)
+
+
+def landmark_offsets(
+    found: dict[str, "np.ndarray"], spec: dict
+) -> tuple[dict[str, float], list[str]]:
+    """How far the built artifact put each landmark from where the trace says.
+
+    Offsets are metres in the glTF ground plane; the second element names the
+    landmarks the GLB never contained. Kept free of printing so that the test
+    suite can measure a committed artifact exactly the way this CLI does.
+    """
     expected = expected_from_spec(spec)
-    print("\n--- artifact vs trace (glTF ground plane, metres) ---")
-    print(f"  {'landmark':<24} {'traced x,z':>18} {'built x,z':>18} {'off by':>8}")
-    worst = 0.0
+    offsets: dict[str, float] = {}
     missing: list[str] = []
     for name, (ex, ez) in sorted(expected.items()):
         if name not in found:
             missing.append(name)
+            continue
+        bx, bz = float(found[name][0]), float(found[name][2])
+        offsets[name] = ((bx - ex) ** 2 + (bz - ez) ** 2) ** 0.5
+    return offsets, missing
+
+
+def report_against_spec(found: dict[str, "np.ndarray"], spec: dict) -> bool:
+    """Print the artifact-versus-trace diff. True when everything is in place."""
+    expected = expected_from_spec(spec)
+    offsets, missing = landmark_offsets(found, spec)
+    print("\n--- artifact vs trace (glTF ground plane, metres) ---")
+    print(f"  {'landmark':<24} {'traced x,z':>18} {'built x,z':>18} {'off by':>8}")
+    worst = max(offsets.values(), default=0.0)
+    for name, (ex, ez) in sorted(expected.items()):
+        if name in missing:
             print(f"  {name:<24} {ex:8.2f},{ez:8.2f} {'NOT IN GLB':>18}")
             continue
         bx, bz = float(found[name][0]), float(found[name][2])
-        offset = ((bx - ex) ** 2 + (bz - ez) ** 2) ** 0.5
-        worst = max(worst, offset)
-        flag = "  <-- off" if offset > TOLERANCE else ""
-        print(f"  {name:<24} {ex:8.2f},{ez:8.2f} {bx:8.2f},{bz:8.2f} {offset:8.2f}{flag}")
+        flag = "  <-- off" if offsets[name] > TOLERANCE else ""
+        print(f"  {name:<24} {ex:8.2f},{ez:8.2f} {bx:8.2f},{bz:8.2f} "
+              f"{offsets[name]:8.2f}{flag}")
     ok = not missing and worst <= TOLERANCE
     print(f"  => worst offset {worst:.2f} m "
           f"({'within' if worst <= TOLERANCE else 'OUTSIDE'} the {TOLERANCE:.2f} m tolerance)"
@@ -137,14 +168,10 @@ def main() -> int:
         else:
             print(f"  {key:<24} NOT FOUND")
 
-    needed = {"HV_SINK_RIM", "HV_RANGE_BODY", "HV_ISLAND_STRUCTURE"}
-    if needed <= found.keys():
+    triangle = chirality_triangle(found)
+    if triangle is not None:
         print("\n--- chirality ---")
-        sink, rng, island = (
-            (float(found[k][0]), float(found[k][2]))
-            for k in ("HV_SINK_RIM", "HV_RANGE_BODY", "HV_ISLAND_STRUCTURE")
-        )
-        sink, rng, island = tuple(sink), tuple(rng), tuple(island)
+        sink, rng, island = triangle
         same = matches_drawing(sink, rng, island)
         print(f"  drawing turn {plan_turn():+8.2f}   "
               f"model turn {model_turn(sink, rng, island):+8.2f}")
