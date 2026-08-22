@@ -49,7 +49,22 @@ def test_no_solid_rises_above_the_printed_ceiling(massing) -> None:
     ceiling_ticks = int(round(massing.ceiling.inches * TICKS_PER_INCH))
 
     assert massing.primitives
-    assert all(p.z1_ticks <= ceiling_ticks for p in massing.primitives)
+
+    # The printed CLG HT is the *finished* ceiling, meaning the underside of the
+    # board. So the ceiling slab is the one solid that legitimately sits above
+    # it, and its underside has to land exactly on the printed height -- which
+    # is a stronger claim than the blanket ceiling this test used to make.
+    ceilings = [p for p in massing.primitives if p.part_kind == "ceiling"]
+    assert ceilings, "a storey needs a ceiling, or its rooms light as open courtyards"
+    for item in ceilings:
+        assert item.z0_ticks == ceiling_ticks
+        assert item.z1_ticks > ceiling_ticks
+
+    assert all(
+        p.z1_ticks <= ceiling_ticks
+        for p in massing.primitives
+        if p.part_kind != "ceiling"
+    )
     # Walls start at floor level; only the floor and deck slabs sit below it.
     for item in massing.primitives:
         if item.part_kind in ("floor", "deck"):

@@ -176,7 +176,7 @@ def _validate_runtime(manifest: dict[str, Any], errors: list[str], contract) -> 
     if runtime.get("coordinate_rule") != COORDINATE_RULE:
         errors.append(f"coordinate rule must be {COORDINATE_RULE!r}")
     if not _same_number(runtime.get("eye_height_meters"), EYE_HEIGHT_METERS):
-        errors.append("runtime eye height must be 1.65 m within 0.003 m")
+        errors.append(f"runtime eye height must be {EYE_HEIGHT_METERS} m within 0.003 m")
 
     walkable = runtime.get("walkable")
     if not isinstance(walkable, dict):

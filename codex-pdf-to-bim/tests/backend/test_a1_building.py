@@ -16,6 +16,7 @@ from hearthview.a1_building import (
     build_building,
 )
 from hearthview.a1_extract import POINTS_PER_FOOT, extract_a1
+from hearthview.a1_massing import CEILING_SLAB_INCHES
 from hearthview.a1_massing import build_a1_massing
 from hearthview.drawings import SHEET_PAGES, a1_source
 from hearthview.units import TICKS_PER_INCH
@@ -54,8 +55,10 @@ def test_each_storey_is_built_at_its_own_elevation(building) -> None:
 
         # Nothing sits more than a slab thickness below its own floor.
         assert lowest >= floor_ticks - 12 * TICKS_PER_INCH
+        # The ceiling board sits on top of the printed ceiling height.
         assert highest == pytest.approx(
-            floor_ticks + storey.ceiling_inches * TICKS_PER_INCH, abs=TICKS_PER_INCH
+            floor_ticks + (storey.ceiling_inches + CEILING_SLAB_INCHES) * TICKS_PER_INCH,
+            abs=TICKS_PER_INCH,
         )
 
 
