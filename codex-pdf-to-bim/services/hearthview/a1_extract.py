@@ -49,7 +49,11 @@ FILL_PAPER = "#FFFFFF"
 WALL_MIN_INCHES = 3.0
 WALL_MAX_INCHES = 21.0
 _SUBPATH_EPSILON = 0.05
-_HEIGHT_TEXT = re.compile(r"(\d+)'\s*-?\s*(\d+)?\s*\"")
+# Inches are marked with a real double quote on A-1 (`8'  5"`) and with two
+# apostrophes on A-0 and A-3 (`6'-9''`). Accepting only the first silently lost
+# every ceiling height on those sheets, which read as the drawing not printing
+# one at all.
+_HEIGHT_TEXT = re.compile(r"""(\d+)'\s*-?\s*(\d+)?\s*(?:"|'')""")
 # A bare 6'-3" only counts as a ceiling height when it sits beside a LOW
 # CEILING note; on its own it is one of the sheet's many plan dimensions.
 _LOW_ZONE_RADIUS = 45.0
@@ -191,6 +195,48 @@ def _is_wall_sized(rect: fitz.Rect, *, min_feet: float) -> bool:
     return WALL_MIN_INCHES <= thickness <= WALL_MAX_INCHES and length >= min_feet
 
 
+VIEW_GAP_FEET = 3.0   # blank space this wide separates one drawn view from another
+
+
+def _largest_poche_cluster(seeds: list[fitz.Rect]) -> list[fitz.Rect]:
+    """The single body of wall poche carrying the most drawn wall.
+
+    A-1 has one plan on the right half of the sheet, so bounding everything
+    right of the midline found it. Other sheets do not: A-2 carries the OP#B
+    option as a second plan, and A-3 a wide shallow strip that is not a plan at
+    all. Bounding both together produced a footprint spanning the gap between
+    them -- a second floor apparently deeper than the first.
+
+    Clustering by proximity and keeping the largest is stable across all four
+    sheets, and degenerates to the old behaviour when a sheet holds one view.
+    """
+    gap = VIEW_GAP_FEET * POINTS_PER_FOOT
+    remaining = sorted(seeds, key=lambda r: (r.y0, r.x0))
+    clusters: list[list[fitz.Rect]] = []
+    while remaining:
+        cluster = [remaining.pop(0)]
+        grew = True
+        while grew:
+            grew = False
+            for candidate in list(remaining):
+                if any(_within(candidate, member, gap) for member in cluster):
+                    cluster.append(candidate)
+                    remaining.remove(candidate)
+                    grew = True
+        clusters.append(cluster)
+    # Total poche area, not rectangle count: one plan drawn with fewer, longer
+    # wall runs should still beat a dense cluster of short marks.
+    return max(clusters, key=lambda group: sum(r.width * r.height for r in group))
+
+
+def _within(a: fitz.Rect, b: fitz.Rect, gap: float) -> bool:
+    """True when two rectangles are closer than `gap` on both axes."""
+    return (
+        a.x0 - gap <= b.x1 and b.x0 - gap <= a.x1
+        and a.y0 - gap <= b.y1 and b.y0 - gap <= a.y1
+    )
+
+
 def _locate_view(drawings: list[dict], page: fitz.Rect) -> tuple[PdfRect, fitz.Rect]:
     """Find the proposed view by clustering wall poche, never by fixed coordinates."""
     midline = page.width / 2
@@ -204,6 +250,7 @@ def _locate_view(drawings: list[dict], page: fitz.Rect) -> tuple[PdfRect, fitz.R
     ]
     if not seeds:
         raise A1ExtractError("No proposed-plan wall poche was found on this page.")
+    seeds = _largest_poche_cluster(seeds)
     footprint = PdfRect(
         min(r.x0 for r in seeds),
         min(r.y0 for r in seeds),
