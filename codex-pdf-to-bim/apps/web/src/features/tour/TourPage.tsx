@@ -15,7 +15,13 @@ const modeDescriptions: Record<TourMode, string> = {
 };
 
 
-export function TourPage() {
+type TourPageProps = {
+  /** Public folder holding manifest.json and the artifacts it names. */
+  basePath?: string;
+};
+
+
+export function TourPage({ basePath = "/tour-spike" }: TourPageProps = {}) {
   const [attempt, setAttempt] = useState(0);
   const [manifest, setManifest] = useState<TourManifest | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -32,7 +38,7 @@ export function TourPage() {
 
     async function loadManifest() {
       try {
-        const response = await fetch("/tour-spike/manifest.json", { signal: controller.signal });
+        const response = await fetch(`${basePath}/manifest.json`, { signal: controller.signal });
         if (!response.ok) throw new Error(`manifest request failed: ${response.status}`);
         const nextManifest = parseTourManifest(await response.json());
         if (!controller.signal.aborted) setManifest(nextManifest);
@@ -43,7 +49,7 @@ export function TourPage() {
 
     void loadManifest();
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, basePath]);
 
   const showPreset = useCallback((nextPreset: TourPresetName) => {
     setMode("orbit");
@@ -120,6 +126,7 @@ export function TourPage() {
       <section className="tour-workspace" aria-label="Interactive room tour">
         <div className="tour-stage">
           <TourViewer
+            basePath={basePath}
             manifest={manifest}
             mode={mode}
             preset={preset}

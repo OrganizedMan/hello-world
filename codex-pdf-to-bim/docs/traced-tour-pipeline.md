@@ -136,7 +136,9 @@ geometry.
 | `spikes/tour_quality/scene_contract.py` | Spec → `hearthview-tour/v2` browser manifest. |
 | `spikes/tour_quality/validate_artifact.py` | Contract and payload gates on the built GLB. |
 | `scripts/kitchen_family_checkpoint.py` | One command: build → validate → measure (→ optional stills). |
-| `scripts/measure_glb.py` | Artifact-versus-trace diff. |
+| `scripts/measure_glb.py` | Artifact-versus-trace diff for the kitchen GLB, landmark by landmark. |
+| `scripts/build_a1_tour.py` | Whole first floor: extract, build, measure. No Blender. |
+| `scripts/measure_a1_tour.py` | Artifact-versus-trace diff for the whole-floor GLB, every primitive corner. |
 | `apps/web/src/features/tour/` | Runtime. `tourManifest.ts` is a discriminated union on `schema`: v1 spike, v2 traced. |
 
 ---
@@ -227,6 +229,21 @@ npm --workspace apps/web run dev -- --port 5178 --host 0.0.0.0
 
 `--host 0.0.0.0` is required to reach the tour from a phone on the same network.
 
+Two tours are served, from separate folders so that neither can overwrite the
+other's `manifest.json`:
+
+| route | folder | what it is |
+| --- | --- | --- |
+| `/tour-spike` | `apps/web/public/tour-spike/` | Kitchen and family room, built in Blender against the quality assets. |
+| `/tour/first-floor` | `apps/web/public/tour-a1/` | The whole traced first floor, plain massing. |
+
+The whole floor needs no Blender -- `a1_tour` writes the GLB itself -- so one
+command builds and measures it anywhere the drawings are:
+
+```bash
+uv run python scripts/build_a1_tour.py
+```
+
 ---
 
 ## 7. What is still unverified
@@ -262,10 +279,10 @@ State these plainly rather than implying the model is finished:
 
 ## 8. Agreed next, in order
 
-1. **The rest of the house**, under the §1–§3 contract rather than alongside it:
-   traced from the sheets, built, then measured against the trace before it is
-   believed. The drawings being committed removed the first obstacle; what
-   remains is a whole-floor spec and a handedness test on it.
+1. ~~**The rest of the first floor.**~~ Done: `/tour/first-floor` serves the
+   whole traced floor, its mapping is verified right-handed, and all 1,696
+   traced corners are present in the export. The levels above it are next --
+   A-2 and A-3 are drawn and nothing reads them yet.
 2. **Overhead view must drop the ceiling.** It currently reads as a solid shape
    the size of the footprint rather than an open dolls'-house view down onto the
    plan.

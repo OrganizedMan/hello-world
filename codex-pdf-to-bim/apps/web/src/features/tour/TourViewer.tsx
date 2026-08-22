@@ -38,6 +38,8 @@ export function applyCameraPreset(camera: Camera, preset: TourCameraPreset): voi
 }
 
 type TourViewerProps = {
+  /** Public folder the manifest and its artifacts were served from. */
+  basePath: string;
   manifest: TourManifest;
   mode: TourMode;
   preset: TourPresetName;
@@ -102,15 +104,16 @@ export function setOverheadVisibility(scene: Object3D, overhead: boolean): void 
 
 
 function TourExperience({
+  basePath,
   manifest,
   mode,
   preset,
   viewRevision,
   onModeChange,
   onReady,
-}: Pick<TourViewerProps, "manifest" | "mode" | "preset" | "viewRevision" | "onModeChange" | "onReady">) {
+}: Pick<TourViewerProps, "basePath" | "manifest" | "mode" | "preset" | "viewRevision" | "onModeChange" | "onReady">) {
   const { camera, gl } = useThree();
-  const loaded = useGLTF(`/tour-spike/${manifest.artifact.glb}`);
+  const loaded = useGLTF(`${basePath}/${manifest.artifact.glb}`);
   const [orbitTarget, setOrbitTarget] = useState<[number, number, number]>([4.3434, 0.9, -3.0226]);
   const pressedKeys = useRef(new Set<string>());
   const dragging = useRef(false);
@@ -337,7 +340,7 @@ export function TourViewer(props: TourViewerProps) {
           <hemisphereLight args={["#fff4df", "#7b746b", 0.65]} />
           <directionalLight position={[3.8, 8.5, -1.5]} intensity={1.3} castShadow shadow-mapSize={[2048, 2048]} />
           <Suspense fallback={null}>
-            <Environment files={`/tour-spike/${props.manifest.artifact.environment}`} environmentIntensity={0.28} />
+            <Environment files={`${props.basePath}/${props.manifest.artifact.environment}`} environmentIntensity={0.28} />
             <TourExperience {...props} />
           </Suspense>
           <AdaptiveDpr pixelated />
