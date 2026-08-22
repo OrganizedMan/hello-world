@@ -963,25 +963,39 @@ def build_casework(entries: list[dict], *, doors_every: float = 0.58) -> int:
 BAKE_UV = "HV_BAKE"
 
 
-def bake_occlusion(*, size: int = 2048, samples: int = 16, distance: float = 1.4) -> int:
-    """Bake contact shadow into an occlusion map the browser can read.
+def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
+                  distance: float = 1.4) -> tuple[int, float]:
+    """Bake what Cycles knows about light into a texture the browser can read.
 
-    This is the difference between a lit room and a flat one. A real-time
-    renderer has no bounce light: it applies the environment evenly to every
-    surface, so an inside corner is exactly as bright as an open wall and the
-    whole interior reads as paper. Cycles knows where the light cannot reach,
-    and glTF has a place to put that knowledge -- `occlusionTexture`, which
-    dims the ambient term only. Baking it here is how the Blender pass reaches
-    the browser at all; nothing else in the look survives the trip.
+    This is the only way any of Blender's rendering reaches the page. glTF
+    carries geometry, images and PBR factors and nothing else -- no node
+    graphs, no lights, no bounce -- and a real-time renderer has no global
+    illumination of its own, so it lights an inside corner exactly as brightly
+    as an open wall and the whole interior reads as paper.
 
-    One shared atlas for the whole house: 150 cabinet parts with a texture each
-    would cost more than the model. The bake needs its own UV set, packed by
-    area, and the size-scaled cube projection stays the render UVs so the oak
-    keeps its plank width.
+    Two modes, and the difference matters:
+
+    ``occlusion`` bakes ambient occlusion and rides out through
+    ``occlusionTexture``, which dims the ambient term. It is cheap, it is
+    honest, and it is only a contact shadow -- the room is still lit by a
+    uniform sky.
+
+    ``light`` bakes the diffuse irradiance itself: sun, sky and every bounce
+    between them, which is the actual Cycles solution for this house at this
+    time of day. It travels as ``emissiveTexture`` because that is the one
+    RGB slot in glTF core that survives with a UV set of its own -- the
+    occlusion slot gets packed into the red channel of an ORM texture
+    alongside roughness and metallic, which would shred a colour lightmap. The
+    browser promotes it back to a three.js ``lightMap`` on load.
+
+    Baked light is linear and goes well above 1.0 in sunlight, so the atlas is
+    normalised to fit an 8-bit image and the divisor is returned. The browser
+    multiplies it back in; without that the sunlit half of every room clips to
+    white.
     """
     meshes = [obj for obj in bpy.data.objects if obj.type == "MESH" and len(obj.data.polygons)]
     if not meshes:
-        return 0
+        return 0, 1.0
 
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
@@ -1010,8 +1024,14 @@ def bake_occlusion(*, size: int = 2048, samples: int = 16, distance: float = 1.4
     )
     bpy.ops.object.mode_set(mode="OBJECT")
 
-    image = bpy.data.images.new("HV_OCCLUSION", width=size, height=size, alpha=False)
-    image.colorspace_settings.name = "Non-Color"
+    lit = mode == "light"
+    image = bpy.data.images.new(
+        "HV_LIGHTMAP" if lit else "HV_OCCLUSION", width=size, height=size, alpha=False,
+        float_buffer=lit,
+    )
+    # Occlusion is data. Baked light is colour, and wants the precision that
+    # sRGB encoding buys an 8-bit image in the shadows.
+    image.colorspace_settings.name = "sRGB" if lit else "Non-Color"
 
     # The bake target is whichever image texture node is active in each
     # material, so every material needs one and it has to read the bake UVs --
@@ -1034,37 +1054,91 @@ def bake_occlusion(*, size: int = 2048, samples: int = 16, distance: float = 1.4
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.samples = samples
-    scene.cycles.bake_type = "AO"
+    scene.cycles.use_denoising = True
     scene.render.bake.use_clear = True
     scene.render.bake.use_selected_to_active = False
     scene.render.bake.margin = max(2, size // 256)
-    if scene.world is not None:
-        # How far a surface looks for something blocking it. A metre and a bit
-        # darkens corners and the underside of a worktop without turning a
-        # whole small room grey.
-        scene.world.light_settings.distance = distance
-    bpy.ops.object.bake(type="AO")
+
+    if lit:
+        scene.cycles.bake_type = "DIFFUSE"
+        # Direct and indirect but *not* colour: the albedo is already in the
+        # base colour map, and multiplying it in twice turns oak into mud.
+        scene.render.bake.use_pass_direct = True
+        scene.render.bake.use_pass_indirect = True
+        scene.render.bake.use_pass_color = False
+        bpy.ops.object.bake(type="DIFFUSE")
+    else:
+        scene.cycles.bake_type = "AO"
+        if scene.world is not None:
+            # How far a surface looks for something blocking it. A metre and a
+            # bit darkens corners and the underside of a worktop without
+            # turning a whole small room grey.
+            scene.world.light_settings.distance = distance
+        bpy.ops.object.bake(type="AO")
+
+    scale = 1.0
+    if lit:
+        scale = _normalise(image)
     image.pack()
 
-    # The exporter only writes occlusionTexture when it finds the glTF settings
-    # group; a stray image texture node is otherwise ignored entirely.
-    from io_scene_gltf2.blender.com.material_helpers import (
-        create_settings_group,
-        get_gltf_node_name,
-    )
-
-    group_name = get_gltf_node_name()
-    group = bpy.data.node_groups.get(group_name) or create_settings_group(group_name)
     for material, texture in targets:
         tree = material.node_tree
-        settings = tree.nodes.new("ShaderNodeGroup")
-        settings.node_tree = group
-        settings.location = (-400, -600)
-        tree.links.new(texture.outputs["Color"], settings.inputs["Occlusion"])
+        if lit:
+            shader = next(
+                (n for n in tree.nodes if n.type in ("BSDF_PRINCIPLED", "EMISSION")), None
+            )
+            if shader is None:
+                continue
+            socket = "Emission Color" if "Emission Color" in shader.inputs else "Color"
+            tree.links.new(texture.outputs["Color"], shader.inputs[socket])
+            if "Emission Strength" in shader.inputs:
+                shader.inputs["Emission Strength"].default_value = 1.0
+        else:
+            # The exporter only writes occlusionTexture when it finds the glTF
+            # settings group; a stray image texture node is otherwise ignored.
+            from io_scene_gltf2.blender.com.material_helpers import (
+                create_settings_group,
+                get_gltf_node_name,
+            )
+
+            group_name = get_gltf_node_name()
+            group = bpy.data.node_groups.get(group_name) or create_settings_group(group_name)
+            settings = tree.nodes.new("ShaderNodeGroup")
+            settings.node_tree = group
+            settings.location = (-400, -600)
+            tree.links.new(texture.outputs["Color"], settings.inputs["Occlusion"])
 
     for obj in meshes:
         obj.select_set(False)
-    return len(targets)
+    return len(targets), scale
+
+
+def _normalise(image) -> float:
+    """Scale a baked light atlas into 0..1 and return what it was divided by.
+
+    Sunlight is not bounded by one. Clamping it instead of scaling it would
+    flatten every lit surface to the same white, which is precisely the look
+    the bake is meant to replace.
+    """
+    import numpy as np
+
+    count = image.size[0] * image.size[1] * image.channels
+    buffer = np.empty(count, dtype=np.float32)
+    image.pixels.foreach_get(buffer)
+    pixels = buffer.reshape(-1, image.channels)
+    rgb = pixels[:, :3]
+
+    live = rgb[rgb > 0.0]
+    peak = float(np.percentile(live, 99.6)) if live.size else 1.0
+    scale = max(peak, 1e-3)
+
+    rgb /= scale
+    np.clip(rgb, 0.0, 1.0, out=rgb)
+    if image.channels > 3:
+        pixels[:, 3] = 1.0
+    image.pixels.foreach_set(pixels.reshape(-1))
+    image.update()
+    return round(scale, 4)
 
 
 def build_world(hdri: Path, strength: float = 1.0, rotation: float = 0.0) -> None:
@@ -1238,10 +1312,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="asset folder holding models/, to stage rooms with")
     parser.add_argument("--openings", action="store_true",
                         help="line every traced opening and glaze the windows")
-    parser.add_argument("--occlusion", action="store_true",
-                        help="bake contact shadow into a glTF occlusion map")
-    parser.add_argument("--occlusion-size", type=int, default=2048)
-    parser.add_argument("--occlusion-samples", type=int, default=16)
+    parser.add_argument("--bake", choices=("none", "occlusion", "light"), default="none",
+                        help="bake contact shadow, or the whole Cycles lighting solution")
+    parser.add_argument("--bake-size", type=int, default=2048)
+    parser.add_argument("--bake-samples", type=int, default=16)
     args = parser.parse_args(raw)
 
     for required in (args.canvas, args.hdri):
@@ -1297,11 +1371,13 @@ def main(argv: list[str] | None = None) -> int:
     build_world(args.hdri, strength=args.sky)
     add_sun(strength=args.sun)
 
-    # Last, because it bakes the geometry as it finally stands -- casework and
-    # room finishes included.
-    occluded = 0
-    if args.occlusion:
-        occluded = bake_occlusion(size=args.occlusion_size, samples=args.occlusion_samples)
+    # Last, because it bakes the geometry as it finally stands -- casework,
+    # joinery, furniture and room finishes included.
+    baked, light_scale = 0, 1.0
+    if args.bake != "none":
+        baked, light_scale = bake_lighting(
+            mode=args.bake, size=args.bake_size, samples=args.bake_samples,
+        )
 
     print(f"canvas    {args.canvas.name}")
     print(f"unwrapped {unwrapped} meshes at {args.tile} m per tile")
@@ -1313,8 +1389,9 @@ def main(argv: list[str] | None = None) -> int:
         print("furniture " + ", ".join(f"{k}:{v}" for k, v in sorted(furniture.items())))
     if finishes:
         print("finishes  " + ", ".join(f"{k}:{v} faces" for k, v in sorted(finishes.items())))
-    if occluded:
-        print(f"occlusion baked into {occluded} materials at {args.occlusion_size}px")
+    if baked:
+        print(f"bake      {args.bake} into {baked} materials at {args.bake_size}px"
+              + (f", scaled by {light_scale}" if args.bake == "light" else ""))
     print(f"materials {', '.join(f'{k} -> {v}' for k, v in sorted(applied.items()))}")
 
     if args.still:
@@ -1358,6 +1435,13 @@ def main(argv: list[str] | None = None) -> int:
             artifact.setdefault("canvas_glb", artifact.get("glb"))
             artifact["glb"] = args.out.name
             artifact["total_browser_bytes"] = args.out.stat().st_size
+            # How the baked lighting was scaled to fit an 8-bit image. The
+            # browser multiplies it back in; without it every sunlit surface
+            # renders at the same clipped white.
+            if args.bake == "light":
+                artifact["lightmap"] = {"carried_as": "emissive", "scale": light_scale}
+            else:
+                artifact.pop("lightmap", None)
             manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
             print(f"manifest  now serves {args.out.name}, canvas kept as "
                   f"{artifact['canvas_glb']}")

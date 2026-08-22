@@ -63,6 +63,15 @@ const sharedSchema = z.object({
     poster: z.string().min(1),
     environment: z.string().min(1),
     total_browser_bytes: z.number().int().positive().max(45_000_000),
+    // Present when Cycles' whole lighting solution was baked into the model.
+    // It rides out in the emissive slot, which is the one RGB texture in glTF
+    // core that keeps a UV set of its own, and the browser promotes it back to
+    // a lightMap. The scale is what the bake was divided by to fit an 8-bit
+    // image: sunlight is not bounded by one.
+    lightmap: z.object({
+      carried_as: z.literal("emissive"),
+      scale: z.number().positive(),
+    }).optional(),
   }),
   runtime: z.object({
     eye_height_meters: z.number().positive().max(2.2),

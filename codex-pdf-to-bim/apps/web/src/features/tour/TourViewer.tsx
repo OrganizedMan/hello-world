@@ -9,6 +9,7 @@ import {
   DoubleSide,
   Euler,
   Mesh,
+  MeshStandardMaterial,
   Object3D,
   PCFSoftShadowMap,
   PerspectiveCamera,
@@ -92,7 +93,44 @@ class TourLoadBoundary extends Component<TourLoadBoundaryProps, { failed: boolea
 }
 
 
-export function prepareTourSceneForBrowser(source: Object3D): Object3D {
+/**
+ * Turn the baked emissive atlas back into what it actually is.
+ *
+ * Cycles' whole lighting solution -- sun, sky and every bounce between them --
+ * is baked into one texture, and glTF core has no lightmap slot to carry it.
+ * The emissive slot is the only RGB texture that keeps a UV set of its own
+ * (occlusion gets packed into the red channel of an ORM texture alongside
+ * roughness, which would shred a colour lightmap), so the bake travels there
+ * and is promoted here. Left as emissive it would glow flatly instead of
+ * lighting the surface it belongs to.
+ */
+export function promoteBakedLighting(scene: Object3D, scale: number): number {
+  let promoted = 0;
+  scene.traverse((node) => {
+    if (!(node instanceof Mesh)) return;
+    for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+      const target = material as MeshStandardMaterial;
+      if (!target?.emissiveMap) continue;
+      target.lightMap = target.emissiveMap;
+      // The bake was divided by this to fit an 8-bit image; put it back or the
+      // sunlit half of every room renders at the same clipped white.
+      target.lightMapIntensity = scale;
+      target.emissiveMap = null;
+      target.emissive?.setRGB(0, 0, 0);
+      // Occlusion is already in there -- it is what a bounce solution is.
+      target.aoMap = null;
+      target.needsUpdate = true;
+      promoted += 1;
+    }
+  });
+  return promoted;
+}
+
+
+export function prepareTourSceneForBrowser(
+  source: Object3D,
+  options: { lightMapScale?: number } = {},
+): Object3D {
   const scene = source.clone(true);
   scene.traverse((node) => {
     if (node instanceof Mesh) {
@@ -112,6 +150,7 @@ export function prepareTourSceneForBrowser(source: Object3D): Object3D {
       node.visible = false;
     }
   });
+  if (options.lightMapScale) promoteBakedLighting(scene, options.lightMapScale);
   return scene;
 }
 
@@ -224,7 +263,11 @@ function TourExperience({
   const lastPointer = useRef({ x: 0, y: 0 });
   const heldPointerLock = useRef(false);
 
-  const scene = useMemo(() => prepareTourSceneForBrowser(loaded.scene), [loaded.scene]);
+  const lightMapScale = manifest.artifact.lightmap?.scale;
+  const scene = useMemo(
+    () => prepareTourSceneForBrowser(loaded.scene, { lightMapScale }),
+    [lightMapScale, loaded.scene],
+  );
 
   // Held by value, not by identity. The page rebuilds this array on every
   // render, so an effect keyed on the array alone re-ran whenever anything
@@ -480,7 +523,10 @@ function TourExperience({
 
   return (
     <>
-      <FittedSun box={visibleBox} />
+      {/* A baked model already contains the sun, and every bounce it made.
+          Adding a second one would light the room twice and cast a shadow
+          across the one that is painted on. */}
+      {lightMapScale ? null : <FittedSun box={visibleBox} />}
       <primitive object={scene} onClick={moveHere} />
       <OrbitControls
         makeDefault
@@ -529,7 +575,10 @@ export function TourViewer(props: TourViewerProps) {
               files={`${props.basePath}/${props.manifest.artifact.environment}`}
               background
               backgroundIntensity={0.7}
-              environmentIntensity={0.7}
+              // A baked model carries its own diffuse light. What the
+              // environment is still for is the specular reflection in a
+              // worktop and a pane of glass, so it stays -- quietly.
+              environmentIntensity={props.manifest.artifact.lightmap ? 0.09 : 0.7}
             />
             <TourExperience {...props} />
           </Suspense>

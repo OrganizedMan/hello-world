@@ -1,7 +1,7 @@
-import { BoxGeometry, DirectionalLight, DoubleSide, FrontSide, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "three";
+import { BoxGeometry, DataTexture, DirectionalLight, DoubleSide, FrontSide, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
 
-import { applyCameraPreset, frameLoopForMode, prepareTourSceneForBrowser, setOverheadVisibility } from "./TourViewer";
+import { applyCameraPreset, frameLoopForMode, prepareTourSceneForBrowser, promoteBakedLighting, setOverheadVisibility } from "./TourViewer";
 
 
 describe("TourViewer browser scene preparation", () => {
@@ -103,5 +103,66 @@ describe("TourViewer browser scene preparation", () => {
     });
 
     expect(camera.position.toArray()).toEqual([19.3459, 14.804, 5.469]);
+  });
+});
+
+
+describe("baked lighting", () => {
+  function bakedScene() {
+    const scene = new Scene();
+    const wall = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+    wall.name = "HV_BAKED_TEST";
+    const baked = new DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+    baked.channel = 1;
+    (wall.material as MeshStandardMaterial).emissiveMap = baked;
+    (wall.material as MeshStandardMaterial).aoMap = baked;
+    scene.add(wall);
+    return { scene, baked };
+  }
+
+  const materialOf = (scene: Scene) =>
+    (scene.getObjectByName("HV_BAKED_TEST") as Mesh).material as MeshStandardMaterial;
+
+  /**
+   * glTF core has no lightmap slot. Cycles' whole solution rides out in the
+   * emissive one -- the only RGB texture that keeps a UV set of its own --
+   * and left as emissive it glows flatly instead of lighting the surface.
+   */
+  it("moves the baked atlas from emissive to the light map", () => {
+    const { scene, baked } = bakedScene();
+
+    promoteBakedLighting(scene, 6.5);
+    const material = materialOf(scene);
+
+    expect(material.lightMap).toBe(baked);
+    expect(material.emissiveMap).toBeNull();
+    expect(material.emissive.getHex()).toBe(0x000000);
+  });
+
+  it("restores the divisor the bake was scaled by", () => {
+    const { scene } = bakedScene();
+
+    promoteBakedLighting(scene, 6.5);
+
+    expect(materialOf(scene).lightMapIntensity).toBe(6.5);
+  });
+
+  it("drops the occlusion map, which a bounce solution already contains", () => {
+    const { scene } = bakedScene();
+
+    promoteBakedLighting(scene, 6.5);
+
+    expect(materialOf(scene).aoMap).toBeNull();
+  });
+
+  it("leaves an unbaked model alone", () => {
+    const scene = new Scene();
+    const wall = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+    wall.name = "HV_PLAIN_TEST";
+    scene.add(wall);
+
+    expect(promoteBakedLighting(scene, 6.5)).toBe(0);
+    expect(((scene.getObjectByName("HV_PLAIN_TEST") as Mesh).material as MeshStandardMaterial)
+      .lightMap).toBeNull();
   });
 });

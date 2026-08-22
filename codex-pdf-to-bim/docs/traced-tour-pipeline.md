@@ -398,3 +398,37 @@ a wall and darken the room the window was cut to light.
 
 Door leaves are deliberately absent. A walkable tour whose doors are shut is a
 tour of one room.
+
+### Baked lighting, not baked occlusion
+
+Occlusion was the timid version. It dims the ambient term, which fixes flat
+corners and leaves the room lit by a uniform sky -- so it reads as a good
+model, not as a photograph. `--bake light` bakes the diffuse irradiance
+itself: sun, sky, and every bounce between them, which is the Cycles solution
+for this house at this time of day.
+
+Three details make it work at all.
+
+**It travels as `emissiveTexture`.** glTF core has no lightmap slot. Occlusion
+looks like the obvious carrier and is not: the exporter packs it into the red
+channel of an ORM texture alongside roughness and metallic, which shreds a
+colour lightmap. Emissive is the one RGB texture in the core spec that keeps a
+UV set of its own. The browser promotes it back to a three.js `lightMap` on
+load; left as emissive it would glow flatly instead of lighting the surface.
+
+**Direct and indirect, but not colour.** `use_pass_color` stays off. The albedo
+is already in the base colour map, and multiplying it in twice turns oak into
+mud.
+
+**Sunlight is not bounded by one.** The bake is linear and goes well past 1.0
+in a sunlit patch, so the atlas is normalised to fit an 8-bit image and the
+divisor rides in the manifest as `artifact.lightmap.scale`. The browser
+multiplies it back through `lightMapIntensity`. Clamping instead would flatten
+every lit surface to the same white, which is exactly the look the bake exists
+to replace.
+
+A baked model also has to stop being lit twice: the directional sun is not
+rendered at all, and the environment drops to a fraction of its strength --
+just enough for the specular reflection in a worktop or a pane of glass. What
+it is *not* is a substitute for a real-time renderer that could do this itself.
+Nothing in the bake moves. The sun is at the hour it was baked at, forever.
