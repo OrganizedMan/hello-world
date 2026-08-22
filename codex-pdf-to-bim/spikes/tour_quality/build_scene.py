@@ -510,7 +510,6 @@ def _build_traced_living(
     width, depth = max_x - min_x, max_y - min_y
     centre_x, centre_y = (min_x + max_x) / 2, (min_y + max_y) / 2
     tv = spec["living"]["tv"]
-    span = spec["envelope"]["span"]
 
     create_box(
         "HV_LIVING_RUG", (min(2.72, width * 0.78), min(2.62, depth * 0.72), 0.018),
@@ -537,12 +536,12 @@ def _build_traced_living(
     )
     # The 60" TV hangs on the east wall where A-1 marks it.
     create_box(
-        "HV_MEDIA_CONSOLE", (0.42, 1.72, 0.44), (span - 0.30, tv["center_y"], 0.24),
+        "HV_MEDIA_CONSOLE", (0.42, 1.72, 0.44), (0.30, tv["center_y"], 0.24),
         material=materials["oak"], parent=root, bevel=0.015, bevel_segments=4,
     )
     create_box(
         "HV_TV_SCREEN", (0.045, tv["width"], 0.80),
-        (span - 0.08, tv["center_y"], 1.23),
+        (0.08, tv["center_y"], 1.23),
         material=materials["screen"], parent=root, bevel=0.018, bevel_segments=5,
     )
     planter = (max_x - 0.35, min_y + 0.35)
@@ -607,10 +606,12 @@ def _build_traced_kitchen(
         )
         base(f"HV_WEST_BASE_{index}", upper["center_y"] - upper["width"] / 2,
              upper["width"], "Y")
+    span = spec["envelope"]["span"]
     _create_range_and_hood(west["range"]["center_y"] - west["range"]["width"] / 2,
-                           west["range"]["width"], depth, materials, root)
+                           west["range"]["width"], depth, materials, root, wall_x=span)
     _create_refrigerator(west["fridge"]["center_y"] - west["fridge"]["width"] / 2,
-                         west["fridge"]["width"], west["fridge"]["depth"], materials, root)
+                         west["fridge"]["width"], west["fridge"]["depth"], materials, root,
+                         wall_x=span)
 
     # Island: printed 8'-7" x 4'-3", placed where the trace found it.
     min_x, min_y, max_x, max_y = kitchen["island"]
@@ -1199,28 +1200,32 @@ def _create_sink_and_faucet(center_x: float, depth: float, materials: dict[str, 
     create_cylinder("HV_FAUCET_HANDLE", radius=0.012, depth=0.14, location=(center_x + 0.29, 0.18, 1.08), material=materials["bronze"], parent=root, vertices=24)
 
 
-def _create_range_and_hood(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
+def _create_range_and_hood(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object, wall_x: float | None = None) -> None:
+    """Range against the x=0 wall, or mirrored against the wall at ``wall_x``."""
+    fx = (lambda value: value) if wall_x is None else (lambda value: wall_x - value)
     center_y = start + width / 2
-    create_box("HV_RANGE_BODY", (depth - 0.02, width - 0.02, 0.89), ((depth - 0.02) / 2, center_y, 0.445), material=materials["black"], parent=root, bevel=0.006)
-    create_box("HV_RANGE_OVEN_GLASS", (0.025, width * 0.67, 0.43), (depth + 0.006, center_y, 0.42), material=materials["screen"], parent=root, bevel=0.018)
-    create_cylinder("HV_RANGE_HANDLE", radius=0.012, depth=width * 0.72, location=(depth + 0.032, center_y, 0.68), rotation=(math.pi / 2, 0.0, 0.0), material=materials["steel"], parent=root, vertices=24)
+    create_box("HV_RANGE_BODY", (depth - 0.02, width - 0.02, 0.89), (fx((depth - 0.02) / 2), center_y, 0.445), material=materials["black"], parent=root, bevel=0.006)
+    create_box("HV_RANGE_OVEN_GLASS", (0.025, width * 0.67, 0.43), (fx(depth + 0.006), center_y, 0.42), material=materials["screen"], parent=root, bevel=0.018)
+    create_cylinder("HV_RANGE_HANDLE", radius=0.012, depth=width * 0.72, location=(fx(depth + 0.032), center_y, 0.68), rotation=(math.pi / 2, 0.0, 0.0), material=materials["steel"], parent=root, vertices=24)
     for row, x in enumerate((0.19, 0.46)):
         for col, y_offset in enumerate((-0.25, 0.25)):
-            create_cylinder(f"HV_RANGE_BURNER_{row}_{col}", radius=0.105, depth=0.018, location=(x, center_y + y_offset, 0.908), material=materials["black"], parent=root, vertices=40, bevel=0.002)
+            create_cylinder(f"HV_RANGE_BURNER_{row}_{col}", radius=0.105, depth=0.018, location=(fx(x), center_y + y_offset, 0.908), material=materials["black"], parent=root, vertices=40, bevel=0.002)
     for index, offset in enumerate((-0.28, -0.14, 0.0, 0.14, 0.28)):
-        create_cylinder(f"HV_RANGE_KNOB_{index + 1}", radius=0.027, depth=0.025, location=(depth + 0.032, center_y + offset, 0.79), rotation=(0.0, math.pi / 2, 0.0), material=materials["bronze"], parent=root, vertices=28)
-    create_box("HV_RANGE_HOOD", (0.58, width + 0.10, 0.19), (0.30, center_y, 1.73), material=materials["cabinet"], parent=root, bevel=0.025, bevel_segments=5)
-    create_box("HV_RANGE_HOOD_CHIMNEY", (0.35, 0.44, 0.66), (0.18, center_y, 2.12), material=materials["cabinet"], parent=root, bevel=0.008)
+        create_cylinder(f"HV_RANGE_KNOB_{index + 1}", radius=0.027, depth=0.025, location=(fx(depth + 0.032), center_y + offset, 0.79), rotation=(0.0, math.pi / 2, 0.0), material=materials["bronze"], parent=root, vertices=28)
+    create_box("HV_RANGE_HOOD", (0.58, width + 0.10, 0.19), (fx(0.30), center_y, 1.73), material=materials["cabinet"], parent=root, bevel=0.025, bevel_segments=5)
+    create_box("HV_RANGE_HOOD_CHIMNEY", (0.35, 0.44, 0.66), (fx(0.18), center_y, 2.12), material=materials["cabinet"], parent=root, bevel=0.008)
 
 
-def _create_refrigerator(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
+def _create_refrigerator(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object, wall_x: float | None = None) -> None:
+    """Refrigerator against the x=0 wall, or mirrored against ``wall_x``."""
+    fx = (lambda value: value) if wall_x is None else (lambda value: wall_x - value)
     center_y = start + width / 2
-    create_box("HV_REFRIGERATOR_BODY", (depth - 0.015, width - 0.015, 2.28), ((depth - 0.015) / 2, center_y, 1.14), material=materials["steel"], parent=root, bevel=0.015, bevel_segments=4)
-    create_box("HV_REFRIGERATOR_DOOR_N", (0.026, width / 2 - 0.012, 1.58), (depth + 0.007, start + width * 0.25, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
-    create_box("HV_REFRIGERATOR_DOOR_S", (0.026, width / 2 - 0.012, 1.58), (depth + 0.007, start + width * 0.75, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
-    create_box("HV_REFRIGERATOR_FREEZER", (0.026, width - 0.025, 0.50), (depth + 0.007, center_y, 0.36), material=materials["cabinet"], parent=root, bevel=0.006)
+    create_box("HV_REFRIGERATOR_BODY", (depth - 0.015, width - 0.015, 2.28), (fx((depth - 0.015) / 2), center_y, 1.14), material=materials["steel"], parent=root, bevel=0.015, bevel_segments=4)
+    create_box("HV_REFRIGERATOR_DOOR_N", (0.026, width / 2 - 0.012, 1.58), (fx(depth + 0.007), start + width * 0.25, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
+    create_box("HV_REFRIGERATOR_DOOR_S", (0.026, width / 2 - 0.012, 1.58), (fx(depth + 0.007), start + width * 0.75, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
+    create_box("HV_REFRIGERATOR_FREEZER", (0.026, width - 0.025, 0.50), (fx(depth + 0.007), center_y, 0.36), material=materials["cabinet"], parent=root, bevel=0.006)
     for index, y in enumerate((start + width * 0.39, start + width * 0.61)):
-        create_cylinder(f"HV_REFRIGERATOR_HANDLE_{index + 1}", radius=0.011, depth=0.74, location=(depth + 0.045, y, 1.46), material=materials["bronze"], parent=root, vertices=24)
+        create_cylinder(f"HV_REFRIGERATOR_HANDLE_{index + 1}", radius=0.011, depth=0.74, location=(fx(depth + 0.045), y, 1.46), material=materials["bronze"], parent=root, vertices=24)
 
 
 def _panel_island(island: Any, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:

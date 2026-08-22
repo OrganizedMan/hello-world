@@ -315,7 +315,9 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
     ]
 
     collision = [
-        {"name": "island", "rect": island},
+        # A copy: sharing the list with kitchen["island"] made the mirror pass
+        # hit the same object twice and cancel itself out.
+        {"name": "island", "rect": list(island)},
     ]
     walkable = {"min_x": 0.35, "max_x": span - 0.35, "min_y": 0.35, "max_y": arm_south - 0.35}
 

@@ -17,6 +17,8 @@ from pathlib import Path
 
 import pytest
 
+from hearthview.chirality import blender_to_gltf, matches_drawing
+
 REPO = Path(__file__).resolve().parents[2]
 SPEC_PATH = REPO / "spikes/tour_quality/a1_kitchen_scene_spec.json"
 pytestmark = pytest.mark.skipif(not SPEC_PATH.is_file(), reason="scene spec missing")
@@ -266,5 +268,52 @@ def test_tv_hangs_on_the_east_wall_at_the_marked_height(built) -> None:
     tv = spec["living"]["tv"]
     args = next(a for kind, name, a, _k in record if name == "HV_TV_SCREEN")
 
-    assert args[1][0] == pytest.approx(span - 0.08, abs=0.01)
+    # The TV wall is x=0 in the mirrored authoring frame.
+    assert args[1][0] == pytest.approx(0.08, abs=0.01)
     assert args[1][1] == pytest.approx(tv["center_y"], abs=0.02)
+
+
+def test_built_scene_is_not_mirrored(built) -> None:
+    """Handedness, checked without reference to any compass direction.
+
+    Three landmarks whose arrangement on the sheet is known must make the same
+    turn in the model. A mirrored world reverses that sign however the axes are
+    labelled, so this catches the reflection that shipped twice before.
+    """
+    _spec, record = built
+    boxes = {name: args[1] for kind, name, args, _k in record
+             if kind == "create_box" and len(args) > 1}
+
+    def point(name):
+        location = boxes[name]
+        return blender_to_gltf(location[0], location[1])
+
+    assert matches_drawing(
+        point("HV_SINK_RIM"), point("HV_RANGE_BODY"), point("HV_ISLAND_STRUCTURE")
+    ), "the built scene is mirrored"
+
+
+def test_west_wall_appliances_sit_on_the_west_wall(built) -> None:
+    """The range and refrigerator hardcoded x=0 and stayed put through a mirror."""
+    spec, record = built
+    span = spec["envelope"]["span"]
+    boxes = {name: args[1] for kind, name, args, _k in record
+             if kind == "create_box" and len(args) > 1}
+
+    for name in ("HV_RANGE_BODY", "HV_REFRIGERATOR_BODY"):
+        assert boxes[name][0] > span * 0.85, f"{name} is not against the west wall"
+    # The TV is on the opposite wall, which is x=0 in the mirrored frame.
+    assert boxes["HV_TV_SCREEN"][0] < span * 0.15
+
+
+def test_island_is_not_double_mirrored(built) -> None:
+    """collision[0]['rect'] once aliased kitchen['island'], cancelling the mirror."""
+    spec, record = built
+    island = spec["kitchen"]["island"]
+    collision = next(c["rect"] for c in spec["collision"] if c["name"] == "island")
+
+    assert island is not collision
+    assert island[0] == pytest.approx(collision[0], abs=1e-6)
+    boxes = {name: args[1] for kind, name, args, _k in record
+             if kind == "create_box" and len(args) > 1}
+    assert boxes["HV_ISLAND_STRUCTURE"][0] == pytest.approx((island[0] + island[2]) / 2, abs=0.01)
