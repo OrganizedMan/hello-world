@@ -262,6 +262,21 @@ State these plainly rather than implying the model is finished:
   typing is inferred from drawn symbols and position; roughly 24 openings across
   the full floor are typed "cased" with low confidence.
 - **~25 diagonal bay segments are approximated** as straight runs.
+- **Stair extraction does not survive the other sheets.** Treads are found per
+  sheet with no check that they stack, and they do not:
+
+  | sheet | stair east position | treads | printed rise |
+  | --- | --- | --- | --- |
+  | A-0 | — | 0 | note present |
+  | A-1 | 16.9 – 19.8 ft | 6 | yes |
+  | A-2 | — | 0 | no |
+  | A-3 | 27.3 – 32.8 ft | 10 | no |
+
+  A-3's run sits about ten feet east of A-1's and extends a foot past its own
+  footprint, and A-2 has no stair at all, so the model offers no way between
+  storeys. Flights in a house stack; nothing checks that, which is why this
+  shipped looking fine. Whatever A-3's treads are, they are probably not its
+  stair.
 - ~~**Multi-floor vertical alignment is untested.**~~ Checked. On one datum the
   basement's east and west walls land on the first floor's to 0.02 ft, A-2's
   north edge to 0.01 ft, and A-3's east and west edges match A-2's exactly.
