@@ -17,6 +17,7 @@ Runs under Blender, either as `blender --background --python` or against the
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -372,6 +373,144 @@ def apply_looks() -> dict[str, str]:
     return applied
 
 
+# Floor finish per room kind. Everything not named here keeps the default oak.
+ROOM_FLOORS = {
+    "bathroom": "tile",
+    "utility": "tile",
+    "kitchen": "oak",
+    "storage": "tile",
+    "exterior": "stone",
+}
+
+
+def tiled_floor() -> bpy.types.Material:
+    """Travertine, laid at a tile size rather than a slab size."""
+    material = bpy.data.materials.new("HV_LOOK_TILE_TEX")
+    tree, shader = _clear_nodes(material)
+    folder = ASSETS / "Travertine009"
+    image_maps(
+        tree, shader,
+        colour=folder / "Travertine009_2K-JPG_Color.jpg",
+        roughness=folder / "Travertine009_2K-JPG_Roughness.jpg",
+        normal=folder / "Travertine009_2K-JPG_NormalGL.jpg",
+        scale=1.9,
+        tint=(1.06, 1.04, 1.0, 1.0),
+    )
+    return material
+
+
+def _subdivide_floor(obj, *, floor_material_hint: str, target_metres: float) -> int:
+    """Cut the floor slab into a grid so a finish can change partway across it.
+
+    The canvas puts one floor slab per storey, so its top is a single polygon
+    covering every room. Assigning materials per face changes nothing until
+    there are faces to assign: this cuts them to roughly `target_metres`, which
+    is fine enough to follow a wall line and coarse enough not to explode the
+    mesh.
+    """
+    import bmesh
+
+    floor_slot = next(
+        (index for index, slot in enumerate(obj.material_slots)
+         if slot.material is not None and floor_material_hint in slot.material.name),
+        None,
+    )
+    if floor_slot is None:
+        return 0
+
+    mesh = bmesh.new()
+    mesh.from_mesh(obj.data)
+    faces = [f for f in mesh.faces if f.material_index == floor_slot]
+    if not faces:
+        mesh.free()
+        return 0
+
+    longest = max(
+        max((v.co - w.co).length for v, w in zip(f.verts, list(f.verts)[1:] + [f.verts[0]]))
+        for f in faces
+    )
+    cuts = max(0, min(64, int(longest / target_metres) - 1))
+    if cuts:
+        edges = {e for f in faces for e in f.edges}
+        bmesh.ops.subdivide_edges(mesh, edges=list(edges), cuts=cuts, use_grid_fill=True)
+    mesh.to_mesh(obj.data)
+    mesh.free()
+    obj.data.update()
+    return cuts
+
+
+def apply_room_finishes(rooms_block: dict, datum_origin: tuple[float, float]) -> dict[str, int]:
+    """Give each floor face the finish its room asks for.
+
+    The canvas has one floor mesh per storey, so a finish cannot vary by room
+    without going per-face: every floor polygon is asked which room its centre
+    falls in, and takes that room's material.
+
+    Room extents arrive in the manifest rather than being recomputed, because
+    Blender's Python has no PDF toolchain and should not need one. Blender's
+    axes after a glTF import are x east, y north, in metres from the datum
+    storey's south-west corner, so converting a face centre back to sheet
+    coordinates is the inverse of the mapping that built the canvas.
+    """
+    FT = 0.3048
+    POINTS_PER_FOOT = 18.0
+    cell = rooms_block["cell_points"]
+    datum_x, datum_y1 = datum_origin
+
+    finishes = {"tile": tiled_floor(), "stone": exterior_stone()}
+    counted: dict[str, int] = {}
+
+    for storey in rooms_block["storeys"]:
+        obj = bpy.data.objects.get(storey["node"])
+        if obj is None:
+            continue
+
+        # Rebuild the ownership grid from its runs.
+        columns, rows = storey["columns"], storey["rows"]
+        owner = [-1] * (columns * rows)
+        for who, row, first, last in storey["runs"]:
+            base = row * columns
+            for column in range(first, last + 1):
+                owner[base + column] = who
+        kinds = [room["kind"] for room in storey["rooms"]]
+        origin_x, origin_y = storey["origin_pdf"]
+
+        _subdivide_floor(obj, floor_material_hint="OAK_FLOOR", target_metres=0.35)
+
+        slots = {
+            slot.material.name: index
+            for index, slot in enumerate(obj.material_slots)
+            if slot.material is not None
+        }
+        floor_slot = next((i for name, i in slots.items() if "OAK_FLOOR" in name), None)
+        if floor_slot is None:
+            continue
+        for material in finishes.values():
+            if material.name not in slots:
+                obj.data.materials.append(material)
+                slots[material.name] = len(obj.data.materials) - 1
+
+        for polygon in obj.data.polygons:
+            if polygon.material_index != floor_slot:
+                continue
+            centre = obj.matrix_world @ polygon.center
+            pdf_x = datum_x + (centre.x / FT) * POINTS_PER_FOOT
+            pdf_y = datum_y1 - (centre.y / FT) * POINTS_PER_FOOT
+            cx = int((pdf_x - origin_x) / cell)
+            cy = int((pdf_y - origin_y) / cell)
+            if not (0 <= cx < columns and 0 <= cy < rows):
+                continue
+            who = owner[cy * columns + cx]
+            if who < 0:
+                continue
+            kind = kinds[who]
+            wanted = ROOM_FLOORS.get(kind)
+            if wanted in finishes:
+                polygon.material_index = slots[finishes[wanted].name]
+                counted[kind] = counted.get(kind, 0) + 1
+    return counted
+
+
 def build_world(hdri: Path, strength: float = 1.0, rotation: float = 0.0) -> None:
     """Sky and daylight from the HDRI, which is also what shows through windows."""
     world = bpy.data.worlds.new("HV_LOOK_WORLD")
@@ -531,6 +670,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interior", type=str, help="storey node to stand inside, e.g. storey_a1")
     parser.add_argument("--yaw", type=float, default=0.0)
     parser.add_argument("--eye", type=float, default=1.562)
+    parser.add_argument("--rooms", action="store_true",
+                        help="vary floor finish by room kind, read from the sheets")
     parser.add_argument("--tile", type=float, default=1.0,
                         help="metres per texture tile for the cube projection")
     args = parser.parse_args(raw)
@@ -544,11 +685,24 @@ def main(argv: list[str] | None = None) -> int:
     bpy.ops.import_scene.gltf(filepath=str(args.canvas))
     unwrapped = unwrap_by_size(args.tile)
     applied = apply_looks()
+
+    finishes: dict[str, int] = {}
+    if args.rooms:
+        manifest_path = args.canvas.with_name("manifest.json")
+        if manifest_path.is_file():
+            manifest = json.loads(manifest_path.read_text())
+            block = manifest.get("rooms")
+            envelope = manifest.get("datum_pdf_origin")
+            if block and envelope:
+                finishes = apply_room_finishes(block, tuple(envelope))
+
     build_world(args.hdri, strength=args.sky)
     add_sun(strength=args.sun)
 
     print(f"canvas    {args.canvas.name}")
     print(f"unwrapped {unwrapped} meshes at {args.tile} m per tile")
+    if finishes:
+        print("finishes  " + ", ".join(f"{k}:{v} faces" for k, v in sorted(finishes.items())))
     print(f"materials {', '.join(f'{k} -> {v}' for k, v in sorted(applied.items()))}")
 
     if args.still:

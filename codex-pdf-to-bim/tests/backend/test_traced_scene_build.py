@@ -42,6 +42,22 @@ class _FakeContract:
         ]
 
 
+class _Modifier:
+    def __init__(self, name: str, kind: str) -> None:
+        self.name = name
+        self.type = kind
+        self.operation = "DIFFERENCE"
+        self.object = None
+        self.solver = "EXACT"
+
+
+class _Modifiers(list):
+    def new(self, name: str, type: str) -> _Modifier:  # noqa: A002 - bpy's own name
+        modifier = _Modifier(name, type)
+        self.append(modifier)
+        return modifier
+
+
 class _Obj(dict):
     """Stands in for a bpy object; records custom properties by key.
 
@@ -57,6 +73,11 @@ class _Obj(dict):
         self.parent = None
         self.location = (0.0, 0.0, 0.0)
         self.rotation_euler = (0.0, 0.0, 0.0)
+        # The sink carves its bowl with a boolean modifier. Nothing here needs
+        # the carve -- these tests are about where solids sit, and a boolean
+        # does not move the bounding box it cuts into -- but the builder does
+        # call through, so the stub has to answer.
+        self.modifiers = _Modifiers()
 
 
 def _world(point, parent) -> tuple[float, float, float]:
@@ -89,11 +110,21 @@ def _install_stubs(record: list[tuple]) -> None:
 
     bpy.data = types.SimpleNamespace(
         lights=types.SimpleNamespace(new=lambda name, type=None: _Sun(name)),
-        objects=types.SimpleNamespace(new=lambda name, data: _Sun(name)),
+        objects=types.SimpleNamespace(
+            new=lambda name, data: _Sun(name),
+            remove=lambda obj, do_unlink=True: None,
+        ),
     )
-    bpy.ops = types.SimpleNamespace()
+    # The sink carves its bowl with a boolean, which needs an active object and
+    # a modifier_apply. The carve does nothing here and does not need to: these
+    # tests assert where solids sit, and a boolean does not move the bounding
+    # box it cuts into. The stub answers so the builder can run unchanged.
+    bpy.ops = types.SimpleNamespace(
+        object=types.SimpleNamespace(modifier_apply=lambda modifier=None: {"FINISHED"}),
+    )
     bpy.context = types.SimpleNamespace(
-        collection=types.SimpleNamespace(objects=types.SimpleNamespace(link=lambda obj: None))
+        collection=types.SimpleNamespace(objects=types.SimpleNamespace(link=lambda obj: None)),
+        view_layer=types.SimpleNamespace(objects=types.SimpleNamespace(active=None)),
     )
     sys.modules["bpy"] = bpy
     sys.modules["mathutils"] = types.ModuleType("mathutils")

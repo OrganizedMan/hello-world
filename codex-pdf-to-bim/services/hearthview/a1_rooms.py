@@ -72,6 +72,52 @@ _KINDS: tuple[tuple[str, RoomKind], ...] = (
 
 
 @dataclass(frozen=True)
+class RoomGrid:
+    """Which room owns each cell, so a point can be asked rather than a box.
+
+    Room bounding boxes overlap on an L-shaped plan -- the living room's box can
+    cover part of the kitchen -- so choosing a finish by box gives the wrong
+    room along the join. The fill itself does not overlap, so keep it.
+    """
+
+    rooms: tuple["Room", ...]
+    owner: tuple[int, ...]
+    columns: int
+    rows: int
+    origin_x: float
+    origin_y: float
+
+    def runs(self) -> list[list[int]]:
+        """Cell ownership as [room, row, first_column, last_column] runs.
+
+        The grid is 160 by 178 per storey, which is bulky as a list of cells and
+        compact as runs, because rooms are mostly convex. This is what travels
+        to Blender: it must not need the PDF toolchain to know where a room is.
+        """
+        out: list[list[int]] = []
+        for row in range(self.rows):
+            start = 0
+            base = row * self.columns
+            while start < self.columns:
+                who = self.owner[base + start]
+                end = start
+                while end + 1 < self.columns and self.owner[base + end + 1] == who:
+                    end += 1
+                if who >= 0:
+                    out.append([who, row, start, end])
+                start = end + 1
+        return out
+
+    def at(self, pdf_x: float, pdf_y: float) -> "Room | None":
+        cx = int((pdf_x - self.origin_x) / CELL_POINTS)
+        cy = int((pdf_y - self.origin_y) / CELL_POINTS)
+        if not (0 <= cx < self.columns and 0 <= cy < self.rows):
+            return None
+        index = self.owner[cy * self.columns + cx]
+        return self.rooms[index] if index >= 0 else None
+
+
+@dataclass(frozen=True)
 class Room:
     name: str
     kind: RoomKind
@@ -130,6 +176,11 @@ def _merge_labels(labels: tuple[Label, ...]) -> list[tuple[str, PdfRect]]:
 
 def detect_rooms(extraction: A1Extraction) -> tuple[Room, ...]:
     """Grow every room label outwards until it meets a wall or another room."""
+    return build_room_grid(extraction).rooms
+
+
+def build_room_grid(extraction: A1Extraction) -> RoomGrid:
+    """The rooms, plus the cell ownership the fill produced."""
     footprint = extraction.footprint
     columns = max(1, int((footprint.x1 - footprint.x0) / CELL_POINTS) + 1)
     rows = max(1, int((footprint.y1 - footprint.y0) / CELL_POINTS) + 1)
@@ -197,10 +248,12 @@ def detect_rooms(extraction: A1Extraction) -> tuple[Room, ...]:
 
     cell_area = (CELL_INCHES / 12.0) ** 2
     rooms: list[Room] = []
+    kept: list[int] = []
     for index, (name, kind, existing, _seed) in enumerate(seeds):
         members = [i for i, who in enumerate(owner) if who == index]
         if not members:
             continue
+        kept.append(index)
         xs = [i % columns for i in members]
         ys = [i // columns for i in members]
         rooms.append(Room(
@@ -216,4 +269,19 @@ def detect_rooms(extraction: A1Extraction) -> tuple[Room, ...]:
             cells=len(members),
             existing=existing,
         ))
-    return tuple(sorted(rooms, key=lambda r: -r.area_square_feet))
+    # `owner` indexes into the seed list, so reorder it alongside any sort of
+    # the rooms themselves or the two stop agreeing.
+    order = sorted(range(len(rooms)), key=lambda i: -rooms[i].area_square_feet)
+    remap = {old: new for new, old in enumerate(order)}
+    seed_to_room = {seed_index: room_index for room_index, seed_index in enumerate(kept)}
+    return RoomGrid(
+        rooms=tuple(rooms[i] for i in order),
+        owner=tuple(
+            remap[seed_to_room[value]] if value in seed_to_room else -1
+            for value in owner
+        ),
+        columns=columns,
+        rows=rows,
+        origin_x=footprint.x0,
+        origin_y=footprint.y0,
+    )

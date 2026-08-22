@@ -402,6 +402,28 @@ def build_tour(extraction: A1Extraction, massing: A1Massing) -> TourArtifact:
     return TourArtifact(glb, build_manifest(extraction, massing, glb_bytes=len(glb)))
 
 
+def _room_block(building) -> dict:
+    """Per-storey room extents, in the grid the fill produced."""
+    from hearthview.a1_rooms import CELL_POINTS, build_room_grid
+
+    out: dict[str, object] = {"cell_points": CELL_POINTS, "storeys": []}
+    for storey in building.storeys:
+        grid = build_room_grid(storey.extraction)
+        out["storeys"].append({
+            "sheet": storey.sheet,
+            "node": storey_node_name(storey.sheet),
+            "origin_pdf": [grid.origin_x, grid.origin_y],
+            "columns": grid.columns,
+            "rows": grid.rows,
+            "rooms": [
+                {"name": r.name, "kind": r.kind, "area_square_feet": r.area_square_feet}
+                for r in grid.rooms
+            ],
+            "runs": grid.runs(),
+        })
+    return out
+
+
 def storey_node_name(sheet: str) -> str:
     """GLB node holding one storey. The browser shows and hides these by name."""
     return f"storey_{sheet.replace('-', '').lower()}"
@@ -461,6 +483,13 @@ def build_building_tour(building) -> TourArtifact:
         elif preset["name"] == "overhead":
             preset["position"] = [round(east, 4), round(highest + reach * 1.1, 4), round(north, 4)]
             preset["target"] = [round(east, 4), round(lowest, 4), round(north, 4)]
+
+    # Rooms travel with the artifact so the look pass can vary finishes without
+    # needing the extractor -- Blender's Python has no PDF stack.
+    manifest["rooms"] = _room_block(building)
+    # Sheet coordinates of the datum the canvas was built on, so the look pass
+    # can convert a point in the model back to a point on the drawing.
+    manifest["datum_pdf_origin"] = [building.datum.x0, building.datum.y1]
 
     manifest["provenance"]["assumed"].append(
         f"floor assembly between storeys {ASSUMED_FLOOR_ASSEMBLY_INCHES:.0f}\" "
