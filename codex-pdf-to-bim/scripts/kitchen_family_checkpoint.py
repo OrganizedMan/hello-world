@@ -70,6 +70,15 @@ def main() -> int:
     parser.add_argument("--height", type=int, default=1000)
     parser.add_argument("--skip-build", action="store_true", help="Only re-render stills.")
     parser.add_argument(
+        "--stills",
+        action="store_true",
+        help=(
+            "Also render the Cycles validation stills. Off by default: render_scene.py "
+            "derives its own cameras rather than using the manifest presets, so the "
+            "stills exercise a different path from the walkable tour."
+        ),
+    )
+    parser.add_argument(
         "--spike",
         action="store_true",
         help="Build the original hand-transcribed spike instead of the A-1 traced scene.",
@@ -128,6 +137,14 @@ def main() -> int:
     if not args.spike:
         validate += ["--spec", str(SPEC)]
     _run("2/3 validate_artifact", validate, logs / "validate_artifact.log")
+
+    if not args.stills:
+        print("\n=== build complete (stills skipped; pass --stills to render them) ===")
+        print(f"tour GLB   {glb}  {glb.stat().st_size:,} bytes  sha256:{_digest(glb)}")
+        print(f"manifest   {manifest}")
+        print(f"logs       {logs}")
+        print("\nStart the tour:  npm --workspace apps/web run dev -- --port 5178 --host 127.0.0.1")
+        return 0
 
     STILLS.mkdir(parents=True, exist_ok=True)
     for index, camera in enumerate(CAMERAS, start=1):
