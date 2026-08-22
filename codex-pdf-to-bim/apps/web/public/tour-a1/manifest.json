@@ -25,7 +25,7 @@
   },
   "envelope": {
     "min_x": 0.0,
-    "min_y": -0.1778,
+    "min_y": -0.2032,
     "min_z": -15.6258,
     "max_x": 12.1279,
     "max_y": 2.6924,
@@ -641,7 +641,7 @@
     "glb": "a1-first-floor.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 158484
+    "total_browser_bytes": 158476
   },
   "runtime": {
     "eye_height_meters": 1.562,

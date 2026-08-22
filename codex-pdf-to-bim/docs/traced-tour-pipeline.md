@@ -302,13 +302,16 @@ State these plainly rather than implying the model is finished:
 1. ~~**The rest of the house.**~~ Done: `/tour/building` serves all four drawn
    storeys, 528 primitives, every one of 4,224 traced corners present in the
    export.
-2. **Overhead view must drop the ceiling.** It currently reads as a solid shape
-   the size of the footprint rather than an open dolls'-house view down onto the
-   plan.
+2. ~~**Overhead view must drop the ceiling.**~~ Done. Ceilings are their own
+   glTF nodes now, because a material cannot be hidden per-face in three.js, and
+   they are switched off overhead and whenever a single floor is chosen. Walking
+   keeps them.
 3. ~~**A floor switcher in the browser UI.**~~ Done, alongside the storeys it
-   switches between.
+   switches between — and the camera reframes onto the floor you pick, which is
+   what made the switcher feel broken even once it worked.
 4. **Photorealism**, deliberately after the layout is right — materials,
    lighting and finishes on geometry that is already known to match the drawing.
+   In progress; see §10.
 
 ---
 
@@ -335,3 +338,43 @@ kitchen. It is the comparison, not the product.
 
 Still deferred: the stock-furniture placement UI, and the levels above the
 first.
+
+---
+
+## 10. Photorealism has to survive glTF
+
+Two hard limits shape the whole look pass.
+
+**Procedural materials do not export.** glTF has no node graphs, so a Blender
+material built from noise and gradients arrives in the browser as 0 images and
+0 textures — a flat colour. Photographed maps do arrive. That inverts the
+usual advice: the texture library is the *easy* path here and the procedural
+one is impossible, not the other way round.
+
+**A real-time renderer has no bounce light.** Cycles knows an inside corner is
+darker than an open wall; three.js applies the environment evenly to every
+surface, so an interior lit only by an environment map reads as flat paper
+whatever the materials are. This is most of the gap between the Cycles stills
+and the browser, and no amount of material work closes it.
+
+What does close it is `occlusionTexture`, the one place in the glTF core where
+baked lighting has somewhere to go: it dims the ambient term only, which is
+exactly the term that is wrong. `bake_occlusion()` in `building_look.py` bakes
+Cycles ambient occlusion into a single shared atlas for the whole house and
+wires it through the exporter's `glTF Material Output` group, which is the only
+node setup the exporter recognises for occlusion.
+
+Two things about that bake are load-bearing:
+
+- **The bake needs its own UV set.** The render UVs are a cube projection
+  scaled by real size, so oak keeps the same plank width in a cupboard as in a
+  living room; they tile, and a tiling UV folds an atlas over itself.
+- **Islands, not faces.** `uv.lightmap_pack` gives every face its own island.
+  The floors are subdivided into thousands of faces to carry per-room finishes,
+  so that produced a fourteen-thousand-island atlas and the walls came back as
+  triangular smears. `uv.smart_project` merges connected coplanar faces, which
+  is one island per wall face and one per floor.
+
+The browser side matters too, and had been fighting it: the environment was
+loaded at 0.3 strength and hidden behind a flat page colour, so the sky was
+neither the outdoor view through the windows nor the light in the room.

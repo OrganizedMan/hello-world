@@ -91,6 +91,9 @@ for (const floor of floors) {
     continue;
   }
   await button.click();
+  // Reset first: the previous pass left the overhead preset selected, and
+  // every floor would otherwise be photographed from straight above.
+  await page.getByRole("button", { name: "Reset" }).click();
   await shot(floor.replace(/\s+/g, "-").toLowerCase());
   console.log("  showing:", (await visibleStoreyNodes()).join(", "));
 

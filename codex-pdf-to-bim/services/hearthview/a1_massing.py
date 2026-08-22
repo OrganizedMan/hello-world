@@ -47,6 +47,12 @@ FLOOR_SLAB_INCHES = 6.0
 # printed dimension; it only has to read as a surface overhead.
 CEILING_SLAB_INCHES = 5.0
 DECK_SLAB_INCHES = 7.0
+# A deck is built a step below the interior finished floor -- for the threshold
+# and so water runs away from the house. It also has to be built that way here:
+# the deck footprint overlaps the floor slab where it meets the building, and
+# two coplanar faces at the same height fight for the depth buffer, which is
+# the mottled brown-and-white patch that appeared on the third floor.
+DECK_STEP_DOWN_INCHES = 1.0
 
 _AXIS_TOLERANCE = 0.75  # points; a bay wall's diagonals exceed this
 
@@ -302,8 +308,10 @@ def build_a1_massing(
         if x1 > x0 and y1 > y0:
             primitives.append(
                 Primitive(
-                    f"deck.{index:03d}", "deck", x0, y0, to_ticks_z(-DECK_SLAB_INCHES),
-                    x1, y1, to_ticks_z(0.0), StationInterval(0, x1 - x0),
+                    f"deck.{index:03d}", "deck", x0, y0,
+                    to_ticks_z(-DECK_SLAB_INCHES - DECK_STEP_DOWN_INCHES),
+                    x1, y1, to_ticks_z(-DECK_STEP_DOWN_INCHES),
+                    StationInterval(0, x1 - x0),
                 )
             )
 

@@ -66,9 +66,19 @@ def test_no_solid_rises_above_the_printed_ceiling(massing) -> None:
         if p.part_kind != "ceiling"
     )
     # Walls start at floor level; only the floor and deck slabs sit below it.
+    # The deck stops a step short of it: a deck is built below the interior
+    # finished floor, and it has to be, because its footprint overlaps the
+    # floor slab where it meets the house and two faces at one height fight
+    # for the depth buffer.
+    from hearthview.a1_massing import DECK_STEP_DOWN_INCHES
+
     for item in massing.primitives:
-        if item.part_kind in ("floor", "deck"):
+        if item.part_kind == "floor":
             assert item.z0_ticks < 0 <= item.z1_ticks
+        elif item.part_kind == "deck":
+            assert item.z1_ticks < 0
+            assert item.z0_ticks < item.z1_ticks
+            assert DECK_STEP_DOWN_INCHES > 0
         else:
             assert item.z0_ticks >= 0
 

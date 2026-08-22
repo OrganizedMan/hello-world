@@ -1,4 +1,4 @@
-import { BoxGeometry, DirectionalLight, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "three";
+import { BoxGeometry, DirectionalLight, DoubleSide, FrontSide, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
 
 import { applyCameraPreset, frameLoopForMode, prepareTourSceneForBrowser, setOverheadVisibility } from "./TourViewer";
@@ -28,6 +28,23 @@ describe("TourViewer browser scene preparation", () => {
     expect(light.visible).toBe(true);
     expect(preparedCabinet.castShadow).toBe(true);
     expect(preparedCabinet.receiveShadow).toBe(true);
+  });
+
+  /**
+   * The model culls back faces, and three.js then derives shadowSide as
+   * BackSide -- which, with the depth bias these thin walls need, cancelled
+   * every shadow in the house and left it looking like white cardboard.
+   */
+  it("casts shadows from both sides of a front-side material", () => {
+    const source = new Scene();
+    const wall = new Mesh(new BoxGeometry(), new MeshStandardMaterial({ side: FrontSide }));
+    wall.name = "HV_WALL_TEST";
+    source.add(wall);
+
+    const prepared = prepareTourSceneForBrowser(source);
+    const material = (prepared.getObjectByName("HV_WALL_TEST") as Mesh).material as MeshStandardMaterial;
+
+    expect(material.shadowSide).toBe(DoubleSide);
   });
 
   it("removes only the ceiling from an overhead view and restores it afterward", () => {

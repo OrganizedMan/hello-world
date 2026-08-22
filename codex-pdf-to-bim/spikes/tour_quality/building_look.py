@@ -654,6 +654,113 @@ def build_casework(entries: list[dict], *, doors_every: float = 0.58) -> int:
     return made
 
 
+BAKE_UV = "HV_BAKE"
+
+
+def bake_occlusion(*, size: int = 2048, samples: int = 16, distance: float = 1.4) -> int:
+    """Bake contact shadow into an occlusion map the browser can read.
+
+    This is the difference between a lit room and a flat one. A real-time
+    renderer has no bounce light: it applies the environment evenly to every
+    surface, so an inside corner is exactly as bright as an open wall and the
+    whole interior reads as paper. Cycles knows where the light cannot reach,
+    and glTF has a place to put that knowledge -- `occlusionTexture`, which
+    dims the ambient term only. Baking it here is how the Blender pass reaches
+    the browser at all; nothing else in the look survives the trip.
+
+    One shared atlas for the whole house: 150 cabinet parts with a texture each
+    would cost more than the model. The bake needs its own UV set, packed by
+    area, and the size-scaled cube projection stays the render UVs so the oak
+    keeps its plank width.
+    """
+    meshes = [obj for obj in bpy.data.objects if obj.type == "MESH" and len(obj.data.polygons)]
+    if not meshes:
+        return 0
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in meshes:
+        layers = obj.data.uv_layers
+        if not layers:
+            continue
+        layers[0].active_render = True
+        bake_layer = layers.get(BAKE_UV) or layers.new(name=BAKE_UV)
+        bake_layer.active = True
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+
+    # Pack every selected object into one square. Smart project, not lightmap
+    # pack: lightmap pack gives every *face* its own island, and the floors are
+    # subdivided into thousands of them to carry per-room finishes, so a
+    # fourteen-thousand-island atlas came back as triangular smears. Smart
+    # project merges connected coplanar faces, which is one island per wall
+    # face and one per floor -- a few hundred in total.
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(
+        angle_limit=1.15,
+        island_margin=0.004,
+        correct_aspect=False,
+        scale_to_bounds=False,
+    )
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    image = bpy.data.images.new("HV_OCCLUSION", width=size, height=size, alpha=False)
+    image.colorspace_settings.name = "Non-Color"
+
+    # The bake target is whichever image texture node is active in each
+    # material, so every material needs one and it has to read the bake UVs --
+    # not the render UVs, which tile and would fold the atlas over itself.
+    materials = {slot.material for obj in meshes for slot in obj.material_slots if slot.material}
+    targets = []
+    for material in materials:
+        tree = material.node_tree
+        uv_node = tree.nodes.new("ShaderNodeUVMap")
+        uv_node.uv_map = BAKE_UV
+        uv_node.location = (-900, -600)
+        texture = tree.nodes.new("ShaderNodeTexImage")
+        texture.image = image
+        texture.location = (-700, -600)
+        tree.links.new(uv_node.outputs["UV"], texture.inputs["Vector"])
+        tree.nodes.active = texture
+        texture.select = True
+        targets.append((material, texture))
+
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = samples
+    scene.cycles.bake_type = "AO"
+    scene.render.bake.use_clear = True
+    scene.render.bake.use_selected_to_active = False
+    scene.render.bake.margin = max(2, size // 256)
+    if scene.world is not None:
+        # How far a surface looks for something blocking it. A metre and a bit
+        # darkens corners and the underside of a worktop without turning a
+        # whole small room grey.
+        scene.world.light_settings.distance = distance
+    bpy.ops.object.bake(type="AO")
+    image.pack()
+
+    # The exporter only writes occlusionTexture when it finds the glTF settings
+    # group; a stray image texture node is otherwise ignored entirely.
+    from io_scene_gltf2.blender.com.material_helpers import (
+        create_settings_group,
+        get_gltf_node_name,
+    )
+
+    group_name = get_gltf_node_name()
+    group = bpy.data.node_groups.get(group_name) or create_settings_group(group_name)
+    for material, texture in targets:
+        tree = material.node_tree
+        settings = tree.nodes.new("ShaderNodeGroup")
+        settings.node_tree = group
+        settings.location = (-400, -600)
+        tree.links.new(texture.outputs["Color"], settings.inputs["Occlusion"])
+
+    for obj in meshes:
+        obj.select_set(False)
+    return len(targets)
+
+
 def build_world(hdri: Path, strength: float = 1.0, rotation: float = 0.0) -> None:
     """Sky and daylight from the HDRI, which is also what shows through windows."""
     world = bpy.data.worlds.new("HV_LOOK_WORLD")
@@ -821,6 +928,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="vary floor finish by room kind, read from the sheets")
     parser.add_argument("--tile", type=float, default=1.0,
                         help="metres per texture tile for the cube projection")
+    parser.add_argument("--occlusion", action="store_true",
+                        help="bake contact shadow into a glTF occlusion map")
+    parser.add_argument("--occlusion-size", type=int, default=2048)
+    parser.add_argument("--occlusion-samples", type=int, default=16)
     args = parser.parse_args(raw)
 
     for required in (args.canvas, args.hdri):
@@ -857,12 +968,20 @@ def main(argv: list[str] | None = None) -> int:
     build_world(args.hdri, strength=args.sky)
     add_sun(strength=args.sun)
 
+    # Last, because it bakes the geometry as it finally stands -- casework and
+    # room finishes included.
+    occluded = 0
+    if args.occlusion:
+        occluded = bake_occlusion(size=args.occlusion_size, samples=args.occlusion_samples)
+
     print(f"canvas    {args.canvas.name}")
     print(f"unwrapped {unwrapped} meshes at {args.tile} m per tile")
     if casework:
         print(f"casework  {casework} runs built as cabinetry")
     if finishes:
         print("finishes  " + ", ".join(f"{k}:{v} faces" for k, v in sorted(finishes.items())))
+    if occluded:
+        print(f"occlusion baked into {occluded} materials at {args.occlusion_size}px")
     print(f"materials {', '.join(f'{k} -> {v}' for k, v in sorted(applied.items()))}")
 
     if args.still:
@@ -876,11 +995,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"still     {args.still}")
 
     if args.out:
+        # Cull back faces. Blender renders both sides by default and writes
+        # doubleSided into the glTF, which costs the browser every wall twice
+        # and, worse, lets the far side of a wall shade as if it were lit --
+        # a solid box has no inside to look at.
+        for material in bpy.data.materials:
+            material.use_backface_culling = True
+
         args.out.parent.mkdir(parents=True, exist_ok=True)
         bpy.ops.export_scene.gltf(
             filepath=str(args.out),
             export_format="GLB",
             export_apply=True,
+            # Every source map is already a JPEG; a baked occlusion atlas as
+            # lossless PNG costs more than the rest of the model put together.
+            export_image_format="JPEG",
+            export_jpeg_quality=82,
         )
         print(f"glb       {args.out} ({args.out.stat().st_size:,} bytes)")
 

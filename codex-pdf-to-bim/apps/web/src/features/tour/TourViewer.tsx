@@ -2,10 +2,11 @@ import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNo
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { AdaptiveDpr, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import {
-  ACESFilmicToneMapping,
+  AgXToneMapping,
   Box3,
   Camera,
   DirectionalLight,
+  DoubleSide,
   Euler,
   Mesh,
   Object3D,
@@ -97,6 +98,15 @@ export function prepareTourSceneForBrowser(source: Object3D): Object3D {
     if (node instanceof Mesh) {
       node.castShadow = true;
       node.receiveShadow = true;
+      // Shadows have to be told which side to cast from once the model culls
+      // back faces. three.js derives shadowSide from side, and for a
+      // front-side material it picks BackSide -- which, with the depth bias
+      // these thin walls need, cancelled every shadow in the house and left it
+      // looking like white cardboard. The geometry is closed boxes, so casting
+      // from both sides is both correct and what the bias was tuned against.
+      for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+        if (material) material.shadowSide = DoubleSide;
+      }
     }
     if ("isLight" in node && node.isLight === true) {
       node.visible = false;
@@ -109,25 +119,35 @@ export function prepareTourSceneForBrowser(source: Object3D): Object3D {
 /**
  * A sun fitted to whatever is currently on screen.
  *
- * A directional light's shadow camera is an orthographic box, and three.js
- * defaults it to 5 metres either side of the origin. This house is 12 m by
- * 16 m, so nearly all of it fell outside that box and cast no shadow at all --
- * which is most of why the massing read as flat paper cutouts. Fitting the box
- * to the visible bounds is what turns the light back on.
+ * Two things it has to get right. A directional light's shadow camera is an
+ * orthographic box, and three.js defaults it to 5 metres either side of the
+ * origin; this house is 12 m by 16 m, so nearly all of it fell outside that
+ * box and cast no shadow at all. And the sun has to be *low*. Height was
+ * scaled by the model's own height, which for a four-storey stack put it 68
+ * degrees up -- overhead noon, whose shadows fall underneath the walls that
+ * cast them and are invisible from any useful angle. A fixed slant of about
+ * 33 degrees is late afternoon, and its shadows read across a room.
+ *
+ * Its compass bearing matters as much as its height. The sun started out in
+ * the same quarter of the sky as the framing camera, which throws every shadow
+ * directly behind the thing casting it -- so the house looked unlit even
+ * though the shadow map was working, and turning the light up only produced a
+ * brighter unlit house. It now stands about a hundred degrees round from the
+ * camera, which is a three-quarter light: the near faces stay lit and the
+ * shadows fall across the floor towards the viewer.
  */
-function FittedSun({ scene, storeys }: { scene: Object3D; storeys: string[] }) {
+function FittedSun({ box }: { box: Box3 | null }) {
   const light = useRef<DirectionalLight>(null);
 
   const fit = useMemo(() => {
-    const box = new Box3().setFromObject(scene);
-    const centre = box.getCenter(new Vector3());
-    const size = box.getSize(new Vector3());
+    const bounds = box ?? new Box3(new Vector3(-6, 0, -8), new Vector3(6, 3, 8));
+    const centre = bounds.getCenter(new Vector3());
+    const size = bounds.getSize(new Vector3());
     // Half-diagonal of the ground plan, with headroom so a low sun still
     // covers the far corner rather than clipping the shadow at the edge.
     const reach = Math.max(1, Math.hypot(size.x, size.z) * 0.62);
     return { centre, reach, height: Math.max(size.y, 3) };
-  // Storeys are in the deps because hiding floors changes the bounds.
-  }, [scene, storeys]);
+  }, [box]);
 
   useEffect(() => {
     const current = light.current;
@@ -140,12 +160,12 @@ function FittedSun({ scene, storeys }: { scene: Object3D; storeys: string[] }) {
     <directionalLight
       ref={light}
       position={[
-        fit.centre.x + fit.reach * 0.75,
-        fit.centre.y + fit.height * 1.6 + fit.reach * 0.55,
-        fit.centre.z + fit.reach * 0.95,
+        fit.centre.x + fit.reach * 0.77,
+        fit.centre.y + fit.height * 0.5 + fit.reach * 0.95,
+        fit.centre.z - fit.reach * 1.24,
       ]}
-      intensity={1.55}
-      color="#fff2e0"
+      intensity={3.2}
+      color="#fff1dc"
       castShadow
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-fit.reach}
@@ -156,8 +176,8 @@ function FittedSun({ scene, storeys }: { scene: Object3D; storeys: string[] }) {
       shadow-camera-far={fit.reach * 6 + fit.height * 4}
       // Walls here are thin boxes seen edge-on, which is the worst case for
       // shadow acne; normalBias moves the sample off the surface instead.
-      shadow-bias={-0.0004}
-      shadow-normalBias={0.035}
+      shadow-bias={-0.00018}
+      shadow-normalBias={0.02}
     />
   );
 }
@@ -272,8 +292,11 @@ function TourExperience({
   const modeRef = useRef(mode);
   modeRef.current = mode;
 
+  // One measurement of what is on screen, shared by the camera and the sun.
+  const visibleBox = useMemo(() => boundsOfStoreys(scene, storeys), [scene, storeys]);
+
   useEffect(() => {
-    const box = boundsOfStoreys(scene, storeys);
+    const box = visibleBox;
     if (modeRef.current === "walk") {
       // Switching floors while walking should move you to that floor, not
       // leave you standing at the old one's height inside its ceiling.
@@ -302,7 +325,7 @@ function TourExperience({
     // house needs, so the controls pulled the camera back in on the frame
     // after it was placed.
     setMaxDistance(Math.max(18, framing.distance * 1.6));
-  }, [camera, manifest.runtime.eye_height_meters, preset, presets, scene, storeys, viewRevision]);
+  }, [camera, manifest.runtime.eye_height_meters, preset, presets, viewRevision, visibleBox]);
 
   useEffect(() => {
     if (mode !== "walk") {
@@ -317,9 +340,8 @@ function TourExperience({
     // walk_start is a spot on the first floor. Walking a storey you picked
     // upstairs has to start on that storey's slab, or you spend the walk
     // buried in the floor below.
-    const box = boundsOfStoreys(scene, storeys);
-    if (box) camera.position.setY(box.min.y + manifest.runtime.eye_height_meters);
-  }, [camera, gl.domElement, manifest.runtime.eye_height_meters, mode, presets, scene, storeys]);
+    if (visibleBox) camera.position.setY(visibleBox.min.y + manifest.runtime.eye_height_meters);
+  }, [camera, gl.domElement, manifest.runtime.eye_height_meters, mode, presets, visibleBox]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -458,7 +480,7 @@ function TourExperience({
 
   return (
     <>
-      <FittedSun scene={scene} storeys={storeys} />
+      <FittedSun box={visibleBox} />
       <primitive object={scene} onClick={moveHere} />
       <OrbitControls
         makeDefault
@@ -487,16 +509,28 @@ export function TourViewer(props: TourViewerProps) {
           camera={{ fov: FIELD_OF_VIEW.orbit, near: 0.05, far: 160, position: initialPosition }}
           dpr={[1, 1.75]}
           frameloop={frameLoopForMode(props.mode)}
-          gl={{ antialias: true, outputColorSpace: SRGBColorSpace, toneMapping: ACESFilmicToneMapping }}
+          // AgX is the transform the Cycles stills were graded through. ACES
+          // pushed the warm plaster towards orange and clipped the daylight,
+          // which is a large part of why the browser and the renders did not
+          // look like the same building.
+          gl={{ antialias: true, outputColorSpace: SRGBColorSpace, toneMapping: AgXToneMapping }}
           onCreated={({ gl }) => {
-            gl.toneMappingExposure = 0.72;
+            gl.toneMappingExposure = 0.95;
           }}
           shadows={{ type: PCFSoftShadowMap }}
         >
           <color attach="background" args={["#d9d1c3"]} />
-          <hemisphereLight args={["#eaf0ff", "#6b6157", 0.22]} />
           <Suspense fallback={null}>
-            <Environment files={`${props.basePath}/${props.manifest.artifact.environment}`} environmentIntensity={0.30} />
+            {/* The sky is the outdoor view: it is what shows through every
+                window and door, and it is the light in the room. It was being
+                used at 0.3 strength and hidden behind a flat beige page
+                colour, so the house stood in a void lit by nothing. */}
+            <Environment
+              files={`${props.basePath}/${props.manifest.artifact.environment}`}
+              background
+              backgroundIntensity={0.7}
+              environmentIntensity={0.7}
+            />
             <TourExperience {...props} />
           </Suspense>
           <AdaptiveDpr pixelated />
