@@ -2,13 +2,13 @@
 
 `measure_glb --spec` is the pipeline's one check that opens the exported GLB,
 but it only runs by hand, on a Mac, straight after a Blender build. Nothing ran
-it against what is *committed*, so `apps/web/public/tour-spike/` drifted nine
-commits behind the spec and no suite noticed: the published model still comes
-from the legacy hand-built spike, mirrored, from before the frame was made
-right-handed.
+it against what is *committed*, so `apps/web/public/tour-spike/` once drifted
+nine commits behind the spec without a single suite going red: the published
+model was still the legacy hand-built spike, mirrored, from before the frame
+was made right-handed.
 
-Building the GLB needs Blender. Reading one needs only trimesh, so these run
-everywhere the rest of the suite does. That is the whole point of the rule in
+These close that gap. Building the GLB needs Blender. Reading one needs only
+trimesh, so they run everywhere the rest of the suite does. That is the whole point of the rule in
 `docs/traced-tour-pipeline.md` §3 — a check that never opens the exported GLB
 proves nothing about the model.
 """
@@ -29,14 +29,6 @@ GLB_PATH = PUBLIC / "hearthview-kitchen-family.glb"
 MANIFEST_PATH = PUBLIC / "manifest.json"
 
 TRACED_SCHEMA = "hearthview-tour/v2"
-
-# Remove these markers in the same commit that lands the rebuilt artifacts. They
-# are strict, so a correct rebuild turns them into XPASS and fails this suite
-# until the markers go — the guard cannot be left silently disabled.
-STALE = (
-    "the committed tour artifacts predate the right-handed frame; rebuild with "
-    "scripts/kitchen_family_checkpoint.py and drop this marker"
-)
 
 pytestmark = pytest.mark.skipif(
     not (SPEC_PATH.is_file() and GLB_PATH.is_file() and MANIFEST_PATH.is_file()),
@@ -66,13 +58,11 @@ def landmarks() -> dict:
     return centres(scene)
 
 
-@pytest.mark.xfail(strict=True, reason=STALE)
 def test_the_published_manifest_comes_from_the_traced_pipeline(manifest) -> None:
     """A v1 manifest means the browser is being served the pre-trace spike."""
     assert manifest["schema"] == TRACED_SCHEMA
 
 
-@pytest.mark.xfail(strict=True, reason=STALE)
 def test_the_published_model_is_not_a_mirror_of_the_drawing(landmarks) -> None:
     from hearthview.chirality import matches_drawing, model_turn, plan_turn
     from measure_glb import chirality_triangle
@@ -87,7 +77,6 @@ def test_the_published_model_is_not_a_mirror_of_the_drawing(landmarks) -> None:
     )
 
 
-@pytest.mark.xfail(strict=True, reason=STALE)
 def test_every_landmark_lands_where_the_trace_puts_it(landmarks, spec) -> None:
     from measure_glb import TOLERANCE, landmark_offsets
 
@@ -102,12 +91,12 @@ def test_every_landmark_lands_where_the_trace_puts_it(landmarks, spec) -> None:
 
 
 def test_an_artifact_built_to_the_trace_would_satisfy_this_guard(spec) -> None:
-    """The three checks above are about the stale GLB, not broken measuring.
+    """Prove the three checks above can be satisfied at all.
 
     Feed the measuring code a synthetic artifact whose landmarks sit exactly
     where the trace puts them; it must report no drift and the drawing's own
-    handedness. Without this, the xfails above could be hiding an inverted test
-    that nothing could ever satisfy.
+    handedness. Without this, an inverted comparison up there would look like
+    a demanding test rather than an impossible one.
     """
     from hearthview.chirality import matches_drawing
     from measure_glb import (

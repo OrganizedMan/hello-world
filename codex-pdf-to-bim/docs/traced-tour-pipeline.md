@@ -110,7 +110,18 @@ drawing when it changes.
 
 The gap that guard closes was real: `measure_glb.py` only ever ran by hand, on a
 Mac, straight after a Blender build, so nothing compared the *committed*
-artifacts to the *committed* spec. See item 4 of §5.
+artifacts to the *committed* spec. See §5.
+
+None of the checks above runs Blender, so none of them exercises the build.
+`spikes/tour_quality/validate_artifact.py` does, from inside it — and its
+expectations can go stale like any others. A correct traced build was once
+rejected outright because the `HV_FLOOR` check still assumed the single
+rectangle of the old spike, while the traced plan is L-shaped and its MAIN slab
+starts north of the origin. **When the validator rejects a build, establish
+whether the geometry or the expectation is wrong before touching the builder**;
+the shape of the failure usually says which. There, span and depth both passed
+and only the north offset disagreed, which is a moved goalpost, not bad
+geometry.
 
 ---
 
@@ -132,7 +143,7 @@ artifacts to the *committed* spec. See item 4 of §5.
 
 ## 5. What is *not* in the repo
 
-Four things a fresh session cannot get from a clone:
+Three things a fresh session cannot get from a clone:
 
 1. **The A-1 PDF.** Needed only to regenerate the spec. The generated
    `a1_kitchen_scene_spec.json` *is* committed, so everything downstream of the
@@ -140,36 +151,38 @@ Four things a fresh session cannot get from a clone:
 2. **The tour-quality asset directory** (32 hash-pinned files listed in
    `spikes/tour_quality/assets/provenance.json`). Only `provenance.json` and
    `LICENSES.md` are tracked; the HDR, models and textures are not.
-3. **Blender.** Required to build the GLB and nothing else.
-4. **A current GLB.** `apps/web/public/tour-spike/hearthview-kitchen-family.glb`
-   is tracked but was built in the old mirrored frame, so it does *not* match
-   the committed spec. Do not trust it, and do not use it to judge the model.
-   The `manifest.json` beside it is stale the same way and one step further
-   back: still `hearthview-tour-spike/v1`, the legacy hand-built spike, carrying
-   `canonical_geometry: false`. Both were last written at `447742e`, nine
-   commits before the frame was made right-handed — so the tour a browser loads
-   today is not the traced scene this document describes.
+3. **Blender.** Required to build the GLB, and nothing else in the pipeline.
 
-That last one is checkable rather than a matter of opinion:
+The built artifacts under `apps/web/public/tour-spike/` **are** committed, and
+they are current: the GLB matches the trace exactly, and `manifest.json` is
+`hearthview-tour/v2` with `canonical_geometry: true`.
+
+That is checked rather than remembered.
+`tests/backend/test_committed_tour_artifact.py` measures the committed GLB
+against the committed spec on every `pytest` run, and CI runs it on every push.
+Reading a GLB needs only trimesh; only building one needs Blender.
 
 ```
-$ uv run python scripts/measure_glb.py     apps/web/public/tour-spike/hearthview-kitchen-family.glb     --spec spikes/tour_quality/a1_kitchen_scene_spec.json
+$ uv run python scripts/measure_glb.py \
+      apps/web/public/tour-spike/hearthview-kitchen-family.glb \
+      --spec spikes/tour_quality/a1_kitchen_scene_spec.json
 
-  drawing turn   +73.64   model turn    -7.34
-  => MIRRORED versus the drawing
-  ...
-  => worst offset 5.90 m (OUTSIDE the 0.15 m tolerance)
+  drawing turn   +73.64   model turn    +5.10
+  => MATCHES the drawing
+  from the TV wall across the island, the sink is on the RIGHT (A-1 says RIGHT)
+  => worst offset 0.00 m (within the 0.15 m tolerance)
 ```
 
-Rebuilding (§6) replaces both. Until then those two files are the last
-artifacts of the frame this change removed.
+The offsets are zero rather than merely small because the builder and the
+measurement both derive from the same spec. Any nonzero number here is real
+drift, not rounding.
 
-This is enforced rather than remembered.
-`tests/backend/test_committed_tour_artifact.py` runs the measurement above on
-every `pytest` run, and its three checks are marked `xfail(strict=True)` against
-exactly this staleness. A correct rebuild turns them into XPASS and fails the
-suite until the markers are deleted — remove them in the commit that lands the
-new artifacts.
+They were not always current, which is why that guard exists. The artifacts once
+sat nine commits behind the spec — still `hearthview-tour-spike/v1` from the
+legacy hand-built spike, mirrored, worst landmark 5.90 m out — while every suite
+stayed green, because nothing opened the GLB. **Rebuild (§6) after any change
+that moves geometry, and commit the result**; the guard fails the suite if you
+forget.
 
 ## 6. Running it
 

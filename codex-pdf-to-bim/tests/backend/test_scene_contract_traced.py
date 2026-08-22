@@ -73,3 +73,43 @@ def test_spike_contract_is_untouched() -> None:
     assert spike.canonical_geometry is False
     assert spike.source is None
     assert validate_scene_contract(spike) == ()
+
+
+def test_the_floor_expectation_follows_the_main_slab_not_the_origin() -> None:
+    """The L-shaped plan's MAIN slab starts north of the frame origin.
+
+    HV_FLOOR is the MAIN slab alone; the west kitchen arm fills the strip south
+    of it and exports as HV_FLOOR_ARM. The artifact validator used to expect
+    HV_FLOOR to run from north 0, which is only true of the single-rectangle
+    spike, and rejected every correct traced build with a 1.17 m offset.
+    """
+    from spikes.tour_quality.validate_artifact import _expected_floor_z, _printed
+
+    spec = json.loads(_SPEC.read_text())
+    built = build_scene_contract_from_spec(spec)
+    depth = _printed(built, "depth_east_interior", _printed(built, "room_depth", 0.0))
+
+    main = next(slab["rect"] for slab in spec["slabs"] if slab["name"] == "MAIN")
+    min_z, max_z = _expected_floor_z(built, depth)
+
+    # glTF ground plane: +x is east and -z is north.
+    assert min_z == pytest.approx(-main[3], abs=0.003)
+    assert max_z == pytest.approx(-main[1], abs=0.003)
+    # The slab genuinely does not start at the origin, or this proves nothing.
+    assert abs(main[1]) > 0.5
+
+
+def test_a_slab_flush_with_the_origin_still_expects_zero() -> None:
+    """The old single-rectangle layout must keep its previous expectation."""
+    from spikes.tour_quality.validate_artifact import _expected_floor_z
+
+    class _Envelope:
+        max_y = 4.8514
+
+    class _Contract:
+        envelope = _Envelope()
+
+    min_z, max_z = _expected_floor_z(_Contract(), 4.8514)
+
+    assert min_z == pytest.approx(-4.8514)
+    assert max_z == pytest.approx(0.0)
