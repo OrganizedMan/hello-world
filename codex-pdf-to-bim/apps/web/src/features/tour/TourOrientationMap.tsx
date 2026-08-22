@@ -23,10 +23,31 @@ export function TourOrientationMap({ orientation, island }: TourOrientationMapPr
   const maxY = Math.max(...rectangles.map((item) => item.max_y));
   const width = maxX - minX;
   const height = maxY - minY;
-  // Three's source-to-runtime conversion keeps north at screen top while
-  // placing canonical east on screen left in the overhead camera.
-  const x = (value: number) => ((maxX - value) / width) * 100;
-  const y = (value: number) => ((value - minY) / height) * 64;
+  // Which way the plan is drawn follows the manifest's own north vector, so a
+  // frame change in the authoring pipeline cannot silently mirror this map.
+  // The traced frame is +y north (a true north-up, east-right plan); the older
+  // spike frame is -y north and reads east on screen left, matching the mirror
+  // that frame carried in its overhead camera.
+  const northIsPlusY = orientation.north_vector[1] > 0;
+  const x = northIsPlusY
+    ? (value: number) => ((value - minX) / width) * 100
+    : (value: number) => ((maxX - value) / width) * 100;
+  const y = northIsPlusY
+    ? (value: number) => ((maxY - value) / height) * 64
+    : (value: number) => ((value - minY) / height) * 64;
+  // The projections above run in opposite directions, so rectangles are built
+  // from the extremes rather than assuming which edge maps to the smaller
+  // screen coordinate.
+  const box = (minA: number, maxA: number, project: (value: number) => number) => {
+    const a = project(minA);
+    const b = project(maxA);
+    return { start: Math.min(a, b), length: Math.abs(b - a) };
+  };
+  const rect = (item: NonNullable<TourRectangle>) => {
+    const horizontal = box(item.min_x, item.max_x, x);
+    const vertical = box(item.min_y, item.max_y, y);
+    return { x: horizontal.start, y: vertical.start, width: horizontal.length, height: vertical.length };
+  };
 
   return (
     <svg className="tour-map" viewBox="0 0 100 64" role="img" aria-label="North-up plan of the kitchen, family room, and adjacent openings">
@@ -36,10 +57,7 @@ export function TourOrientationMap({ orientation, island }: TourOrientationMapPr
           <g key={region.name} data-tour-region={region.name}>
             <rect
               className={`tour-map__region tour-map__region--${region.name}`}
-              x={x(region.max_x)}
-              y={y(region.min_y)}
-              width={x(region.min_x) - x(region.max_x)}
-              height={y(region.max_y) - y(region.min_y)}
+              {...rect(region)}
             />
             <text x={(x(region.min_x) + x(region.max_x)) / 2} y={(y(region.min_y) + y(region.max_y)) / 2}>{label}</text>
           </g>
@@ -47,7 +65,7 @@ export function TourOrientationMap({ orientation, island }: TourOrientationMapPr
       })}
       {island ? (
         <g data-tour-region="island">
-          <rect className="tour-map__island" x={x(island.max_x)} y={y(island.min_y)} width={x(island.min_x) - x(island.max_x)} height={y(island.max_y) - y(island.min_y)} />
+          <rect className="tour-map__island" {...rect(island)} />
           <text x={(x(island.min_x) + x(island.max_x)) / 2} y={(y(island.min_y) + y(island.max_y)) / 2}>Island</text>
         </g>
       ) : null}

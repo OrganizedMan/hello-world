@@ -11,6 +11,7 @@ required scene nodes that never get created.
 from __future__ import annotations
 
 import json
+import math
 import sys
 import types
 from pathlib import Path
@@ -42,11 +43,34 @@ class _FakeContract:
 
 
 class _Obj(dict):
-    """Stands in for a bpy object; records custom properties by key."""
+    """Stands in for a bpy object; records custom properties by key.
+
+    It also carries the transform fields `_station` writes, so geometry built
+    under a rotated station empty can be resolved to world space here. Testing
+    local coordinates is what let a run land on the wrong wall twice: the
+    numbers matched the spec exactly and the model was still wrong.
+    """
 
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name
+        self.parent = None
+        self.location = (0.0, 0.0, 0.0)
+        self.rotation_euler = (0.0, 0.0, 0.0)
+
+
+def _world(point, parent) -> tuple[float, float, float]:
+    """Resolve a local point through the chain of parent empties."""
+    x, y = float(point[0]), float(point[1])
+    z = float(point[2]) if len(point) > 2 else 0.0
+    node = parent
+    while isinstance(node, _Obj):
+        angle = node.rotation_euler[2]
+        cos, sin = math.cos(angle), math.sin(angle)
+        ox, oy, oz = node.location
+        x, y, z = ox + x * cos - y * sin, oy + x * sin + y * cos, oz + z
+        node = node.parent
+    return (x, y, z)
 
 
 def _install_stubs(record: list[tuple]) -> None:
@@ -90,11 +114,19 @@ def _install_stubs(record: list[tuple]) -> None:
             return _Obj(name)
         return call
 
+    def _create_root(name, parent=None):
+        record.append(("create_root", name, (), {"parent": parent}))
+        obj = _Obj(name)
+        obj.parent = parent
+        return obj
+
+    builders.create_root = _create_root
+
     for fn in (
         "add_area_light", "add_camera", "add_point_light", "create_box",
         "create_cabinet_unit", "create_curve_tube", "create_cylinder",
         "create_mesh_plane", "create_pbr_material", "create_principled_material",
-        "create_root", "create_shaker_front", "create_sofa", "create_sphere",
+        "create_shaker_front", "create_sofa", "create_sphere",
         "create_stool", "import_gltf_asset", "tag_contract_boundary",
     ):
         setattr(builders, fn, _maker(fn))
@@ -131,6 +163,30 @@ def _boxes(record):
     return [(name, args, kwargs) for kind, name, args, kwargs in record if kind == "create_box"]
 
 
+def _world_boxes(record) -> dict[str, tuple[tuple, tuple]]:
+    """Every box as (size, world centre), with station rotations applied.
+
+    Sizes are swapped when the station turns the run onto the other axis, so a
+    caller can compare footprints without knowing which wall a run sits on.
+    """
+    out: dict[str, tuple[tuple, tuple]] = {}
+    for name, args, kwargs in _boxes(record):
+        if len(args) < 2:
+            continue
+        parent = kwargs.get("parent")
+        centre = _world(args[1], parent)
+        angle = 0.0
+        node = parent
+        while isinstance(node, _Obj):
+            angle += node.rotation_euler[2]
+            node = node.parent
+        size = tuple(args[0])
+        if abs(math.cos(angle)) < 0.5:      # station turned the run 90 degrees
+            size = (size[1], size[0], size[2])
+        out[name] = (size, centre)
+    return out
+
+
 def test_traced_builders_run_without_error(built) -> None:
     _spec, record = built
     assert record, "traced builders produced no geometry"
@@ -159,43 +215,39 @@ def test_all_geometry_stays_inside_the_traced_envelope(built) -> None:
     envelope = spec["envelope"]
     margin = 0.6  # wall bodies sit outside the interior face
 
-    for name, args, _kwargs in _boxes(record):
-        if len(args) < 2:
-            continue
-        (sx, sy, _sz), (cx, cy, _cz) = args[0], args[1]
+    for name, ((sx, sy, _sz), (cx, cy, _cz)) in _world_boxes(record).items():
         assert -margin <= cx - sx / 2, f"{name} escapes west"
         assert cx + sx / 2 <= envelope["span"] + margin, f"{name} escapes east"
-        assert -margin <= cy - sy / 2, f"{name} escapes north"
-        assert cy + sy / 2 <= envelope["arm_south"] + margin, f"{name} escapes south"
+        assert -margin <= cy - sy / 2, f"{name} escapes south"
+        assert cy + sy / 2 <= envelope["arm_north"] + margin, f"{name} escapes north"
 
 
 def test_appliances_are_placed_at_the_traced_stations(built) -> None:
     spec, record = built
     west = spec["kitchen"]["west_run"]
-    calls = {name: (args, kwargs) for _k, name, args, kwargs in record}
+    boxes = _world_boxes(record)
 
-    # _create_range_and_hood/_create_refrigerator take a run start, not a centre.
-    assert "HV_RANGE_BODY" in calls
-    assert "HV_REFRIGERATOR_BODY" in calls
-    range_centre = calls["HV_RANGE_BODY"][0][1][1]
-    fridge_centre = calls["HV_REFRIGERATOR_BODY"][0][1][1]
+    assert "HV_RANGE_BODY" in boxes
+    assert "HV_REFRIGERATOR_BODY" in boxes
+    range_centre = boxes["HV_RANGE_BODY"][1][1]
+    fridge_centre = boxes["HV_REFRIGERATOR_BODY"][1][1]
     assert range_centre == pytest.approx(west["range"]["center_y"], abs=0.02)
     assert fridge_centre == pytest.approx(west["fridge"]["center_y"], abs=0.02)
-    # The range must sit north of the refrigerator, as drawn.
-    assert range_centre < fridge_centre
+    # The range must sit north of the refrigerator, as drawn. +y is north.
+    assert range_centre > fridge_centre
 
 
 def test_sink_and_dishwasher_follow_the_printed_callouts(built) -> None:
     spec, record = built
     north = spec["kitchen"]["north_run"]
-    calls = {name: args for _k, name, args, _kw in record}
+    boxes = _world_boxes(record)
 
-    assert calls["HV_SINK_RIM"][1][0] == pytest.approx(north["sink"]["center_x"], abs=0.02)
-    dishwasher_centre = calls["HV_DISHWASHER_BODY"][1][0]
+    sink_centre = boxes["HV_SINK_RIM"][1][0]
+    dishwasher_centre = boxes["HV_DISHWASHER_BODY"][1][0]
+    assert sink_centre == pytest.approx(north["sink"]["center_x"], abs=0.02)
     assert dishwasher_centre == pytest.approx(north["dishwasher"]["center_x"], abs=0.02)
-    # Model x runs west after the chirality mirror, so the dishwasher — which is
-    # west of the sink on the sheet — has the larger model x.
-    assert dishwasher_centre > calls["HV_SINK_RIM"][1][0]
+    # +x is east, so the dishwasher — west of the sink on the sheet — is smaller.
+    assert dishwasher_centre < sink_centre
 
 
 def test_every_opening_gets_glazing(built) -> None:
@@ -266,11 +318,11 @@ def test_tv_hangs_on_the_east_wall_at_the_marked_height(built) -> None:
     spec, record = built
     span = spec["envelope"]["span"]
     tv = spec["living"]["tv"]
-    args = next(a for kind, name, a, _k in record if name == "HV_TV_SCREEN")
+    centre = _world_boxes(record)["HV_TV_SCREEN"][1]
 
-    # The TV wall is x=0 in the mirrored authoring frame.
-    assert args[1][0] == pytest.approx(0.08, abs=0.01)
-    assert args[1][1] == pytest.approx(tv["center_y"], abs=0.02)
+    # The east wall's interior face is x = span; the screen hangs just inside it.
+    assert centre[0] == pytest.approx(span - 0.055, abs=0.01)
+    assert centre[1] == pytest.approx(tv["center_y"], abs=0.02)
 
 
 def test_built_scene_is_not_mirrored(built) -> None:
@@ -281,11 +333,10 @@ def test_built_scene_is_not_mirrored(built) -> None:
     labelled, so this catches the reflection that shipped twice before.
     """
     _spec, record = built
-    boxes = {name: args[1] for kind, name, args, _k in record
-             if kind == "create_box" and len(args) > 1}
+    boxes = _world_boxes(record)
 
     def point(name):
-        location = boxes[name]
+        _size, location = boxes[name]
         return blender_to_gltf(location[0], location[1])
 
     assert matches_drawing(
@@ -294,16 +345,15 @@ def test_built_scene_is_not_mirrored(built) -> None:
 
 
 def test_west_wall_appliances_sit_on_the_west_wall(built) -> None:
-    """The range and refrigerator hardcoded x=0 and stayed put through a mirror."""
+    """The range and refrigerator once hardcoded x=0 and ignored their station."""
     spec, record = built
     span = spec["envelope"]["span"]
-    boxes = {name: args[1] for kind, name, args, _k in record
-             if kind == "create_box" and len(args) > 1}
+    boxes = _world_boxes(record)
 
     for name in ("HV_RANGE_BODY", "HV_REFRIGERATOR_BODY"):
-        assert boxes[name][0] > span * 0.85, f"{name} is not against the west wall"
-    # The TV is on the opposite wall, which is x=0 in the mirrored frame.
-    assert boxes["HV_TV_SCREEN"][0] < span * 0.15
+        assert boxes[name][1][0] < span * 0.15, f"{name} is not against the west wall"
+    # The TV is on the opposite (east) wall.
+    assert boxes["HV_TV_SCREEN"][1][0] > span * 0.85
 
 
 def test_island_is_not_double_mirrored(built) -> None:
@@ -314,6 +364,5 @@ def test_island_is_not_double_mirrored(built) -> None:
 
     assert island is not collision
     assert island[0] == pytest.approx(collision[0], abs=1e-6)
-    boxes = {name: args[1] for kind, name, args, _k in record
-             if kind == "create_box" and len(args) > 1}
-    assert boxes["HV_ISLAND_STRUCTURE"][0] == pytest.approx((island[0] + island[2]) / 2, abs=0.01)
+    boxes = _world_boxes(record)
+    assert boxes["HV_ISLAND_STRUCTURE"][1][0] == pytest.approx((island[0] + island[2]) / 2, abs=0.01)

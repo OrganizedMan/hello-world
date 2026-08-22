@@ -5,9 +5,12 @@ a fully decomposed Blender build plan out. Every wall box, opening, appliance
 station and camera in the emitted spec is derived from the PDF's own vectors
 and text labels, so `build_scene.py` no longer needs a hand-transcribed layout.
 
-Coordinates are metres in the established Blender scene convention: origin at
-the inside north-west corner of the kitchen, +x east, +y south, +z up. The
-manifest/browser (glTF, Y-up) variant of a point (x, y, z) is (x, z, -y).
+Coordinates are metres, origin at the inside south-west corner of the kitchen
+arm: +x east, +y north, +z up. That triple is right-handed (east x north = up),
+so the glTF export -- (x, y, z) -> (x, z, -y) -- lands the model the same way
+round as the drawing. Nothing in this pipeline is mirrored; walls that face a
+different direction are placed by rotating a station empty, never by flipping
+an axis.
 
 Scope is deliberately the kitchen/family checkpoint region only: the main
 kitchen + living rectangle plus the west kitchen arm that runs the printed
@@ -56,11 +59,19 @@ _MIN_OPENING_FT = 1.5     # below this a gap is a drafting artifact, not an open
 
 
 def _mx(pdf_x: float) -> float:
+    """PDF x to metres east of the west wall."""
     return (pdf_x - _W) / PT_PER_FT * FT
 
 
 def _my(pdf_y: float) -> float:
-    return (pdf_y - _N) / PT_PER_FT * FT
+    """PDF y to metres NORTH of the kitchen arm's south wall.
+
+    North-positive is what makes the scene right-handed: (east, north, up)
+    satisfies east x north = up, so the glTF export lands the model the same way
+    round as the drawing. Measuring south instead is left-handed and produces a
+    mirrored world, which is what the old mirror pass existed to undo.
+    """
+    return (_S_ARM - pdf_y) / PT_PER_FT * FT
 
 
 @dataclass(frozen=True)
@@ -145,10 +156,11 @@ def _station_labels(pdf_path: Path, page_number: int) -> dict[str, list[tuple[fl
 
 
 def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
-    span = _mx(_E)                 # 28.87 ft
-    depth_east = _my(_S_EAST)      # 15.73 ft
+    span = _mx(_E)                 # 28.87 ft, west wall at x=0
+    arm_north = _my(_N)            # 19.57 ft, north wall (printed 19'-7")
+    living_south = _my(_S_EAST)    # 3.84 ft, family-room south wall
     arm_east = _mx(_ARM_E)         # 10.93 ft
-    arm_south = _my(_S_ARM)        # 19.57 ft (printed 19'-7")
+    depth_east = arm_north - living_south   # 15.73 ft
 
     # ---- openings per boundary, typed from the drawn symbols ----
     # North: triple window unit (2'-0" | 4'-5" | 2'-0" over the 36" sink) then
@@ -156,14 +168,14 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
     north = _wall_gaps(extraction, axis="h", band_lo=585.6, band_hi=594.6, run_lo=_W, run_hi=_E)
     north_gaps: list[_Gap] = []
     for lo, hi in north:
-        start, end = _mx(lo), _mx(hi)
+        start, end = sorted((_mx(lo), _mx(hi)))
         centre_ft = (start + end) / 2 / FT
         kind = "door" if 16.0 < centre_ft < 19.5 else "window"
         north_gaps.append(_Gap(start, end, kind))
 
     west = _wall_gaps(extraction, axis="v", band_lo=1448.7, band_hi=1462.2, run_lo=_N, run_hi=_S_ARM)
     west_gaps = [
-        _Gap(_my(lo), _my(hi), "window")
+        _Gap(*sorted((_my(lo), _my(hi))), "window")
         for lo, hi in west
         if (hi - lo) / PT_PER_FT >= _MIN_OPENING_FT
     ]
@@ -171,16 +183,16 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
     east = _wall_gaps(extraction, axis="v", band_lo=1981.8, band_hi=1990.8, run_lo=_N, run_hi=_S_EAST)
     east_gaps: list[_Gap] = []
     for lo, hi in east:
-        start, end = _my(lo), _my(hi)
-        # The upper gap is the drawn window; the lower is the cased opening to
-        # the mudroom (no sash, no swing on the sheet).
-        east_gaps.append(_Gap(start, end, "window" if end < 2.0 else "cased"))
+        start, end = sorted((_my(lo), _my(hi)))
+        # Nearer the north wall is the drawn window; the lower one is the cased
+        # opening to the mudroom (no sash, no swing on the sheet).
+        east_gaps.append(_Gap(start, end, "window" if start > arm_north - 2.0 else "cased"))
 
     south = _wall_gaps(extraction, axis="h", band_lo=877.7, band_hi=886.7, run_lo=_ARM_E + 6, run_hi=_E)
-    south_gaps = [_Gap(_mx(lo), _mx(hi), "cased") for lo, hi in south]
+    south_gaps = [_Gap(*sorted((_mx(lo), _mx(hi))), "cased") for lo, hi in south]
 
     arm = _wall_gaps(extraction, axis="h", band_lo=946.8, band_hi=952.8, run_lo=_W, run_hi=_ARM_E)
-    arm_gaps = [_Gap(_mx(lo), _mx(hi), "cased") for lo, hi in arm]
+    arm_gaps = [_Gap(*sorted((_mx(lo), _mx(hi))), "cased") for lo, hi in arm]
 
     # ---- decompose boundary walls into solid boxes + sills/headers ----
     boxes: list[dict] = []
@@ -230,28 +242,28 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
             cursor = gap.end
         seg(f"{name}_SOLID_END", cursor, run[1], 0.0, CEILING)
 
-    emit_wall("HV_NORTH", axis="h", run=(0.0, span), line=0.0,
-              thickness=_T_NORTH, outward=-1, gaps=north_gaps)
-    emit_wall("HV_WEST", axis="v", run=(0.0, arm_south), line=0.0,
+    emit_wall("HV_NORTH", axis="h", run=(0.0, span), line=arm_north,
+              thickness=_T_NORTH, outward=+1, gaps=north_gaps)
+    emit_wall("HV_WEST", axis="v", run=(0.0, arm_north), line=0.0,
               thickness=_T_WEST, outward=-1, gaps=west_gaps)
-    emit_wall("HV_EAST", axis="v", run=(0.0, depth_east), line=span,
+    emit_wall("HV_EAST", axis="v", run=(living_south, arm_north), line=span,
               thickness=_T_EAST, outward=+1, gaps=east_gaps)
-    emit_wall("HV_SOUTH_LIVING", axis="h", run=(arm_east + _T_ARM, span), line=depth_east,
-              thickness=_T_SOUTH, outward=+1, gaps=south_gaps)
-    emit_wall("HV_SOUTH_ARM", axis="h", run=(0.0, arm_east), line=arm_south,
-              thickness=_T_ARM, outward=+1, gaps=arm_gaps)
-    emit_wall("HV_ARM_EAST", axis="v", run=(depth_east, arm_south), line=arm_east,
+    emit_wall("HV_SOUTH_LIVING", axis="h", run=(arm_east + _T_ARM, span), line=living_south,
+              thickness=_T_SOUTH, outward=-1, gaps=south_gaps)
+    emit_wall("HV_SOUTH_ARM", axis="h", run=(0.0, arm_east), line=0.0,
+              thickness=_T_ARM, outward=-1, gaps=arm_gaps)
+    emit_wall("HV_ARM_EAST", axis="v", run=(0.0, living_south), line=arm_east,
               thickness=_T_ARM, outward=+1, gaps=[])
 
     # ---- floor and ceiling: main rectangle + the west arm ----
     slabs = [
-        {"name": "MAIN", "rect": [0.0, 0.0, span, depth_east]},
-        {"name": "ARM", "rect": [0.0, depth_east, arm_east, arm_south]},
+        {"name": "MAIN", "rect": [0.0, living_south, span, arm_north]},
+        {"name": "ARM", "rect": [0.0, 0.0, arm_east, living_south]},
     ]
 
     # ---- kitchen stations from the PDF labels + burner glyph ----
     labels = _station_labels(pdf_path, extraction.page_number)
-    towers = sorted(x for x, y in labels.get("TOWER", []) if y < 1.0)
+    towers = sorted(x for x, y in labels.get("TOWER", []) if y > arm_north - 1.0)
     dw_x = labels["DW"][0][0]
     trash_x = labels["TRASH"][0][0]
     sink_x = labels['36" SINK'][0][0]
@@ -266,30 +278,82 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
     island_shapes = [s for s in extraction.layer("counter")
                      if 8.0 < (s.bounds.x1 - s.bounds.x0) / PT_PER_FT < 9.2]
     island_b = island_shapes[0].bounds
-    island = [_mx(island_b.x0), _my(island_b.y0), _mx(island_b.x1), _my(island_b.y1)]
+    # _my flips the y order, so sort rather than trusting the PDF corner order.
+    island_y = sorted((_my(island_b.y0), _my(island_b.y1)))
+    island = [_mx(island_b.x0), island_y[0], _mx(island_b.x1), island_y[1]]
+
+    # Every run is emitted as a station: an anchor point plus a rotation about
+    # the vertical axis. The cabinetry builders work in one canonical local
+    # frame — wall at local y=0, room toward local +y, run along local +x — and
+    # every wall on this plan (and on any other floor) is reachable from that
+    # frame by a rotation alone. So nothing is mirrored, and no builder has to
+    # know which wall it is standing on. `run_start` is the distance from the
+    # station anchor along local +x; `center_x`/`center_y` keep the world
+    # position for tests and collision.
+    NORTH_STATION = {"anchor": [span, arm_north], "rotation_deg": 180.0}
+    WEST_STATION = {"anchor": [0.0, arm_north], "rotation_deg": -90.0}
+
+    def north_run_u(center_x: float) -> float:
+        """World x on the north wall to local run coordinate."""
+        return span - center_x
+
+    def west_run_u(center_y: float) -> float:
+        """World y on the west wall to local run coordinate."""
+        return arm_north - center_y
+
+    def north_unit(center_x: float, width: float) -> dict:
+        return {"run_start": north_run_u(center_x) - width / 2,
+                "width": width, "center_x": center_x}
+
+    def west_unit(center_y: float, width: float) -> dict:
+        return {"run_start": west_run_u(center_y) - width / 2,
+                "width": width, "center_y": center_y}
+
+    def run_extent(units: list[dict], pad: float, limit: float) -> dict:
+        """Counter extent in local run coordinates.
+
+        Only counter-height units are passed in: a slab that ran through the
+        full-height towers or the refrigerator would show as a stone band
+        across their fronts. Clamped to the wall so it cannot overhang.
+        """
+        starts = [u["run_start"] for u in units]
+        ends = [u["run_start"] + u["width"] for u in units]
+        return {"start": max(0.05, min(starts) - pad),
+                "end": min(limit - 0.05, max(ends) + pad)}
+
+    north_counter_units = [
+        north_unit(dw_x, 0.61), north_unit(sink_x, 0.9144), north_unit(trash_x, 0.46)
+    ]
+    west_counter_units = [west_unit(y, 1.35) for y in uppers_y] + [
+        west_unit(range_y, 0.9144)
+    ]
 
     kitchen = {
         "counter_depth": COUNTER_DEPTH,
         "north_run": {
-            "towers": [{"center_x": x, "width": 0.61, "depth": 0.64} for x in towers],
-            "dishwasher": {"center_x": dw_x, "width": 0.61},
-            "sink": {"center_x": sink_x, "width": 0.9144},
-            "trash": {"center_x": trash_x, "width": 0.46},
-            "counter": {"start": min(towers) - 0.31 if towers else 0.05,
-                         "end": max(towers) + 0.31 if towers else span / 3},
+            "station": NORTH_STATION,
+            "wall": {"line": arm_north, "outward": +1, "run": [0.0, span]},
+            "towers": [dict(north_unit(x, 0.61), depth=0.64) for x in towers],
+            "dishwasher": north_unit(dw_x, 0.61),
+            "sink": north_unit(sink_x, 0.9144),
+            "trash": north_unit(trash_x, 0.46),
+            "counter": run_extent(north_counter_units, 0.31, span),
         },
         "west_run": {
-            "counter": {"start": 0.61, "end": arm_south - 0.05},
-            "uppers": [{"center_y": y, "width": 1.35} for y in uppers_y],
-            "range": {"center_y": range_y, "width": 0.9144},
-            "fridge": {"center_y": fridge_y, "width": 0.9144, "depth": 0.75},
+            "station": WEST_STATION,
+            "wall": {"line": 0.0, "outward": -1, "run": [0.0, arm_north]},
+            "counter": run_extent(west_counter_units, 0.31, arm_north),
+            "uppers": [west_unit(y, 1.35) for y in uppers_y],
+            "range": west_unit(range_y, 0.9144),
+            "fridge": dict(west_unit(fridge_y, 0.9144), depth=0.75),
         },
         "island": island,
     }
 
     living = {
-        "clear_area": [max(island[2] + 0.55, arm_east + _T_ARM), 0.35, span - 0.35, depth_east - 0.35],
-        "tv": {"wall": "east", "center_y": tv[1], "width": 1.524},
+        "clear_area": [max(island[2] + 0.55, arm_east + _T_ARM), living_south + 0.35,
+                       span - 0.35, arm_north - 0.35],
+        "tv": {"wall": "east", "line": span, "center_y": tv[1], "width": 1.524},
     }
 
     # ---- navigation + cameras (Blender coords; gltf = (x, z, -y)) ----
@@ -297,21 +361,28 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
     island_cy = (island[1] + island[3]) / 2
     live_cx = (living["clear_area"][0] + living["clear_area"][2]) / 2
     live_cy = (living["clear_area"][1] + living["clear_area"][3]) / 2
-    envelope_cx, envelope_cy = span / 2, arm_south / 2
+    envelope_cx, envelope_cy = span / 2, arm_north / 2
+    # Every station below stands inside the traced envelope; the eye heights are
+    # the tour's 1.65 m. South is -y and north is +y, so a camera that looks at
+    # the north counter stands at a *smaller* y than its target.
     cameras = [
         {"name": "PLAN", "kind": "ortho_top",
          "location": [envelope_cx, envelope_cy, 9.0],
          "target": [envelope_cx, envelope_cy, 0.0],
-         "ortho_scale": max(span, arm_south) + 1.2},
+         "ortho_scale": max(span, arm_north) + 1.2},
+        # Outside the south-east corner, looking back into the plan.
         {"name": "AXONOMETRIC", "kind": "persp", "lens_mm": 45.0,
-         "location": [span + 5.6, arm_south + 4.6, 6.4],
-         "target": [envelope_cx, envelope_cy * 0.9, 0.8]},
+         "location": [span + 5.6, living_south - 6.0, 6.4],
+         "target": [envelope_cx, envelope_cy, 0.8]},
+        # Standing in the family room, west of the mudroom, looking at the
+        # island and the sink wall behind it.
         {"name": "KITCHEN", "kind": "persp", "lens_mm": 32.0,
-         "location": [island_cx + 2.4, island_cy + 2.6, 1.72],
-         "target": [island_cx, island_cy, 0.9]},
+         "location": [min(span - 0.9, island[2] + 2.6), island_cy - 1.1, 1.65],
+         "target": [island_cx, island_cy + 0.6, 1.15]},
+        # Standing at the east end of the island, looking into the family room.
         {"name": "LIVING_ROOM", "kind": "persp", "lens_mm": 28.0,
-         "location": [island[2] + 0.7, 0.85, 1.65],
-         "target": [live_cx + 1.2, live_cy + 1.0, 1.0]},
+         "location": [island[2] + 0.75, island_cy, 1.65],
+         "target": [live_cx + 0.9, live_cy - 0.3, 1.2]},
     ]
 
     collision = [
@@ -319,7 +390,8 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
         # hit the same object twice and cancel itself out.
         {"name": "island", "rect": list(island)},
     ]
-    walkable = {"min_x": 0.35, "max_x": span - 0.35, "min_y": 0.35, "max_y": arm_south - 0.35}
+    walkable = {"min_x": 0.35, "max_x": span - 0.35,
+                "min_y": 0.35, "max_y": arm_north - 0.35}
 
     def gltf(point: list[float]) -> list[float]:
         return [round(point[0], 4), round(point[2], 4), round(-point[1], 4)]
@@ -334,7 +406,7 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
     seen: set[str] = set()
     manifest_cameras = [c for c in manifest_cameras if not (c["name"] in seen or seen.add(c["name"]))]
 
-    return mirror_spec_for_blender({
+    return {
         "schema": "hearthview-kitchen-scene/v1",
         "source": {
             "sheet": "A-1", "page": extraction.page_number,
@@ -358,8 +430,13 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
         },
         "units": "meters",
         "ceiling": CEILING,
+        # Region occupies x in [0, span], y in [0, arm_north]. The main
+        # rectangle is y in [living_south, arm_north] across the full span; the
+        # west kitchen arm is y in [0, living_south], x in [0, arm_east].
         "envelope": {"span": round(span, 4), "depth_east": round(depth_east, 4),
-                      "arm_east": round(arm_east, 4), "arm_south": round(arm_south, 4)},
+                      "arm_east": round(arm_east, 4),
+                      "arm_north": round(arm_north, 4),
+                      "living_south": round(living_south, 4)},
         "wall_boxes": boxes,
         "windows": windows,
         "doors": doors,
@@ -370,87 +447,16 @@ def build_kitchen_scene_spec(extraction: A1Extraction, pdf_path: Path) -> dict:
         "collision": collision,
         "cameras": cameras,
         "manifest_cameras": manifest_cameras,
-    })
-
-
-def mirror_spec_for_blender(spec: dict) -> dict:
-    """Reflect the spec in X so the exported world matches the plan.
-
-    The scene is authored in plan terms: +x east, +y south. Blender exports
-    Y-up as (x, y, z) -> (x, z, -y), which puts north on +Z. But a right-handed
-    Y-up basis with X=east and Y=up requires Z=south, because east x up = south.
-    Authoring in (east, south, up) is therefore left-handed, and the exported
-    world comes out mirrored — ahead and left swap at every corner.
-
-    Reflecting X once restores the correct chirality. Model +x then runs west,
-    which is why the wall names swap with it: the geometry is what has to be
-    right, and the names have to keep describing it truthfully.
-    """
-    span = spec["envelope"]["span"]
-
-    def mx(value: float) -> float:
-        return round(span - value, 6)
-
-    def mirror_range(lo: float, hi: float) -> tuple[float, float]:
-        return mx(hi), mx(lo)
-
-    def rename(name: str) -> str:
-        if "WEST" in name:
-            return name.replace("WEST", "EAST")
-        if "EAST" in name:
-            return name.replace("EAST", "WEST")
-        return name
-
-    for box in spec["wall_boxes"]:
-        box["name"] = rename(box["name"])
-        # emit_wall builds these as tuples; normalise so the spec is JSON-shaped.
-        box["size"] = list(box["size"])
-        loc = list(box["loc"])
-        loc[0] = mx(loc[0])
-        box["loc"] = loc
-
-    for item in [*spec["windows"], *spec["doors"]]:
-        item["name"] = rename(item["name"])
-        if item["axis"] == "h":
-            item["start"], item["end"] = mirror_range(item["start"], item["end"])
-        else:
-            item["line"] = mx(item["line"])
-            item["outward"] = -item["outward"]
-
-    for slab in spec["slabs"]:
-        slab["rect"][0], slab["rect"][2] = mirror_range(slab["rect"][0], slab["rect"][2])
-
-    north = spec["kitchen"]["north_run"]
-    for tower in north["towers"]:
-        tower["center_x"] = mx(tower["center_x"])
-    for station in ("dishwasher", "sink", "trash"):
-        north[station]["center_x"] = mx(north[station]["center_x"])
-    north["counter"]["start"], north["counter"]["end"] = mirror_range(
-        north["counter"]["start"], north["counter"]["end"]
-    )
-
-    island = spec["kitchen"]["island"]
-    island[0], island[2] = mirror_range(island[0], island[2])
-
-    clear = spec["living"]["clear_area"]
-    clear[0], clear[2] = mirror_range(clear[0], clear[2])
-    spec["living"]["tv"]["wall"] = "west"
-
-    for camera in spec["cameras"]:
-        camera["location"][0] = mx(camera["location"][0])
-        camera["target"][0] = mx(camera["target"][0])
-    for camera in spec["manifest_cameras"]:
-        camera["position"][0] = mx(camera["position"][0])
-        camera["target"][0] = mx(camera["target"][0])
-
-    walkable = spec["walkable"]
-    walkable["min_x"], walkable["max_x"] = mirror_range(walkable["min_x"], walkable["max_x"])
-    for item in spec["collision"]:
-        item["rect"][0], item["rect"][2] = mirror_range(item["rect"][0], item["rect"][2])
-
-    spec["envelope"]["arm_east"] = mx(spec["envelope"]["arm_east"])
-    spec["mirrored_for_blender"] = True
-    return spec
+        "frame": {
+            "x": "metres east of the west wall",
+            "y": "metres north of the kitchen arm's south wall",
+            "z": "metres above the finished floor",
+            "handedness": "right",
+            "gltf": "(x, y, z) -> (x, z, -y)",
+            "note": "no mirror anywhere in the pipeline; walls are placed by "
+                    "rotating a station empty about the vertical axis",
+        },
+    }
 
 
 def main() -> int:

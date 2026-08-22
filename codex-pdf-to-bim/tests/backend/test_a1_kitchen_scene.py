@@ -36,29 +36,34 @@ def test_envelope_matches_the_printed_dimensions(spec) -> None:
     assert envelope["span"] / FT == pytest.approx(28.87, abs=0.1)
     assert envelope["depth_east"] / FT == pytest.approx(15.92, abs=0.35)
     # The west kitchen run is printed 19'-7"; the spike cut it to 15'-11".
-    assert envelope["arm_south"] / FT == pytest.approx(19.58, abs=0.15)
+    assert envelope["arm_north"] / FT == pytest.approx(19.58, abs=0.15)
 
 
 def test_range_and_fridge_sit_where_the_sheet_puts_them(spec) -> None:
     west = spec["kitchen"]["west_run"]
+    arm_north = spec["envelope"]["arm_north"]
 
-    # Interior-face frame: the sheet's callouts measured from the inside of
-    # the 6" north wall (burner glyph 6.90 ft, fridge label 13.70 ft).
-    assert west["range"]["center_y"] / FT == pytest.approx(6.90, abs=0.2)
-    assert west["fridge"]["center_y"] / FT == pytest.approx(13.70, abs=0.25)
+    def from_north_wall(center_y: float) -> float:
+        """Feet south of the north wall's interior face, as the sheet reads."""
+        return (arm_north - center_y) / FT
+
+    # The sheet's callouts measured from the inside of the 6" north wall
+    # (burner glyph 6.90 ft, fridge label 13.70 ft).
+    assert from_north_wall(west["range"]["center_y"]) == pytest.approx(6.90, abs=0.2)
+    assert from_north_wall(west["fridge"]["center_y"]) == pytest.approx(13.70, abs=0.25)
     # Order down the west wall: uppers, range, uppers, refrigerator.
-    uppers = sorted(u["center_y"] for u in west["uppers"])
+    uppers = sorted(from_north_wall(u["center_y"]) for u in west["uppers"])
     assert len(uppers) == 2
-    assert uppers[0] < west["range"]["center_y"] < uppers[1] < west["fridge"]["center_y"]
+    assert (uppers[0] < from_north_wall(west["range"]["center_y"]) < uppers[1]
+            < from_north_wall(west["fridge"]["center_y"]))
 
 
 def test_north_wall_stations_follow_the_printed_callouts(spec) -> None:
-    """Model x runs west after the chirality mirror, so compare in plan terms."""
+    """Model x is feet east of the west wall -- the same direction the sheet reads."""
     north = spec["kitchen"]["north_run"]
-    span = spec["envelope"]["span"]
 
     def plan_x(value: float) -> float:
-        return (span - value) / FT
+        return value / FT
 
     assert plan_x(north["sink"]["center_x"]) == pytest.approx(7.17, abs=0.2)
     assert plan_x(north["dishwasher"]["center_x"]) == pytest.approx(4.38, abs=0.2)
@@ -104,7 +109,7 @@ def test_every_wall_box_stays_on_the_region_boundary(spec) -> None:
     for box in spec["wall_boxes"]:
         (sx, sy, _), (cx, cy, _) = box["size"], box["loc"]
         assert -margin <= cx - sx / 2 and cx + sx / 2 <= envelope["span"] + margin, box["name"]
-        assert -margin <= cy - sy / 2 and cy + sy / 2 <= envelope["arm_south"] + margin, box["name"]
+        assert -margin <= cy - sy / 2 and cy + sy / 2 <= envelope["arm_north"] + margin, box["name"]
 
 
 def test_cameras_stand_clear_of_the_island(spec) -> None:
@@ -147,7 +152,8 @@ def test_standing_at_the_mudroom_the_sink_is_on_the_right(spec) -> None:
     target = _three((island[0] + island[2]) / 2, (island[1] + island[3]) / 2)
     facing = (target[0] - viewer[0], 0.0, target[2] - viewer[2])
 
-    sink = _three(kitchen["north_run"]["sink"]["center_x"], 0.37)
+    sink = _three(kitchen["north_run"]["sink"]["center_x"],
+                  spec["envelope"]["arm_north"] - 0.37)
     assert _side_of(viewer, facing, sink) > 0, "the sink must be on the right"
 
     arm_opening = next(d for d in spec["doors"] if d["name"].startswith("HV_SOUTH_ARM"))
@@ -161,15 +167,16 @@ def test_facing_the_sink_wall_the_range_is_on_the_left(spec) -> None:
     Stand at the island facing the sink wall (north): the range and
     refrigerator wall is to the left. A mirrored world puts it on the right.
     """
-    assert spec.get("mirrored_for_blender") is True
+    assert spec["frame"]["handedness"] == "right"
     kitchen = spec["kitchen"]
+    arm_north = spec["envelope"]["arm_north"]
     island = kitchen["island"]
     viewer = _three((island[0] + island[2]) / 2, (island[1] + island[3]) / 2)
-    sink = _three(kitchen["north_run"]["sink"]["center_x"], 0.37)
+    sink = _three(kitchen["north_run"]["sink"]["center_x"], arm_north - 0.37)
     facing = (sink[0] - viewer[0], 0.0, sink[2] - viewer[2])
 
-    span = spec["envelope"]["span"]
-    range_point = _three(span - 0.33, kitchen["west_run"]["range"]["center_y"])
+    # The west wall's interior face is x = 0; the range stands just inside it.
+    range_point = _three(0.33, kitchen["west_run"]["range"]["center_y"])
     assert _side_of(viewer, facing, range_point) < 0, "the range wall must be on the left"
 
 
@@ -182,4 +189,4 @@ def test_eye_level_cameras_stay_inside_the_envelope(spec) -> None:
         if z >= 2.6:  # plan and axonometric sit above the model on purpose
             continue
         assert -0.1 <= x <= envelope["span"] + 0.1, f"{camera['name']} outside in x"
-        assert -0.1 <= y <= envelope["arm_south"] + 0.1, f"{camera['name']} outside in y"
+        assert -0.1 <= y <= envelope["arm_north"] + 0.1, f"{camera['name']} outside in y"

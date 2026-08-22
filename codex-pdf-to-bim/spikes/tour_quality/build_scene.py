@@ -534,14 +534,17 @@ def _build_traced_living(
         target_max_extent=1.20, rotation_z=math.radians(90.0),
         material_overrides={"table": materials["oak"], "wood": materials["oak"]},
     )
-    # The 60" TV hangs on the east wall where A-1 marks it.
+    # The 60" TV hangs on the east wall where A-1 marks it. `tv["line"]` is
+    # that wall's interior face, so both boxes are offset inward (west of it)
+    # rather than sitting at a hardcoded x the way the spike's did.
+    face = tv["line"]
     create_box(
-        "HV_MEDIA_CONSOLE", (0.42, 1.72, 0.44), (0.30, tv["center_y"], 0.24),
+        "HV_MEDIA_CONSOLE", (0.42, 1.72, 0.44), (face - 0.21, tv["center_y"], 0.24),
         material=materials["oak"], parent=root, bevel=0.015, bevel_segments=4,
     )
     create_box(
         "HV_TV_SCREEN", (0.045, tv["width"], 0.80),
-        (0.08, tv["center_y"], 1.23),
+        (face - 0.055, tv["center_y"], 1.23),
         material=materials["screen"], parent=root, bevel=0.018, bevel_segments=5,
     )
     planter = (max_x - 0.35, min_y + 0.35)
@@ -554,6 +557,26 @@ def _build_traced_living(
         create_sphere(f"HV_PLANT_LEAF_{index + 1}", radius=0.30, location=(planter[0] + dx, planter[1] + dy, dz), scale=scale, material=materials["leaf"], parent=root, segments=32, rings=16)
 
 
+# South end of the hand-built spike's west cabinet run, in spike coordinates.
+_SPIKE_WEST_RUN = 2.75
+
+
+def _station(name: str, anchor: list[float], rotation_deg: float,
+             parent: bpy.types.Object) -> bpy.types.Object:
+    """An empty at a wall point, rotated so the canonical local frame lands on it.
+
+    Builders below work in one frame only — wall at local y=0, room toward +y,
+    run along +x. Every wall on the plan is reachable from that by a rotation
+    about the vertical axis, so nothing needs a mirror and no builder has to
+    know which wall it sits on. Children are parented, so Blender applies the
+    transform and the local coordinates never touch world space.
+    """
+    empty = create_root(name, parent)
+    empty.location = (anchor[0], anchor[1], 0.0)
+    empty.rotation_euler = (0.0, 0.0, math.radians(rotation_deg))
+    return empty
+
+
 def _build_traced_kitchen(
     spec: dict, materials: dict[str, bpy.types.Material], root: bpy.types.Object
 ) -> None:
@@ -564,54 +587,55 @@ def _build_traced_kitchen(
     west = kitchen["west_run"]
 
     def base(name: str, start: float, width: float, run_axis: str, unit_depth: float = None,
-             doors: int = 2) -> None:
+             doors: int = 2, parent: bpy.types.Object = None) -> None:
         create_cabinet_unit(
             name, start=start, width=width, depth=unit_depth or depth,
             base_z=0.095, height=0.775, run_axis=run_axis,
             body_material=materials["cabinet_body"], front_material=materials["cabinet"],
-            hardware_material=materials["bronze"], parent=root, doors=doors,
+            hardware_material=materials["bronze"], parent=parent or root, doors=doors,
         )
 
-    # North run: tower / dishwasher / sink / trash / tower, west to east.
+    # Every station below is built in the canonical local frame under its own
+    # rotated empty, so the same code serves any wall on any floor.
+    north_wall = _station("HV_STATION_NORTH", north["station"]["anchor"],
+                          north["station"]["rotation_deg"], root)
+    west_wall = _station("HV_STATION_WEST", west["station"]["anchor"],
+                         west["station"]["rotation_deg"], root)
+
     run = north["counter"]
     create_box("HV_NORTH_COUNTER", (run["end"] - run["start"], depth, 0.04),
                ((run["start"] + run["end"]) / 2, depth / 2, 0.89),
-               material=materials["stone"], parent=root, bevel=0.006, bevel_segments=4)
+               material=materials["stone"], parent=north_wall, bevel=0.006, bevel_segments=4)
     for index, tower in enumerate(north["towers"], start=1):
         create_cabinet_unit(
-            f"HV_NORTH_TOWER_{index}", start=tower["center_x"] - tower["width"] / 2,
+            f"HV_NORTH_TOWER_{index}", start=tower["run_start"],
             width=tower["width"], depth=tower["depth"], base_z=0.095, height=2.26,
             run_axis="X", body_material=materials["cabinet_body"],
             front_material=materials["cabinet"], hardware_material=materials["bronze"],
-            parent=root, doors=2,
+            parent=north_wall, doors=2,
         )
     dishwasher, sink, trash = north["dishwasher"], north["sink"], north["trash"]
-    _create_dishwasher(dishwasher["center_x"] - dishwasher["width"] / 2,
-                       dishwasher["width"], depth, materials, root)
-    base("HV_NORTH_SINK_BASE", sink["center_x"] - sink["width"] / 2, sink["width"], "X")
-    _create_sink_and_faucet(sink["center_x"], depth, materials, root)
-    base("HV_NORTH_TRASH", trash["center_x"] - trash["width"] / 2, trash["width"], "X", doors=1)
+    _create_dishwasher(dishwasher["run_start"], dishwasher["width"], depth, materials, north_wall)
+    base("HV_NORTH_SINK_BASE", sink["run_start"], sink["width"], "X", parent=north_wall)
+    _create_sink_and_faucet(sink["run_start"] + sink["width"] / 2, depth, materials, north_wall)
+    base("HV_NORTH_TRASH", trash["run_start"], trash["width"], "X", doors=1, parent=north_wall)
 
-    # West run: uppers, range, uppers, refrigerator, north to south.
     counter = west["counter"]
-    create_box("HV_WEST_COUNTER", (depth, counter["end"] - counter["start"], 0.04),
-               (depth / 2, (counter["start"] + counter["end"]) / 2, 0.89),
-               material=materials["stone"], parent=root, bevel=0.006, bevel_segments=4)
+    create_box("HV_WEST_COUNTER", (counter["end"] - counter["start"], depth, 0.04),
+               ((counter["start"] + counter["end"]) / 2, depth / 2, 0.89),
+               material=materials["stone"], parent=west_wall, bevel=0.006, bevel_segments=4)
     for index, upper in enumerate(west["uppers"], start=1):
         create_cabinet_unit(
-            f"HV_WEST_UPPER_{index}", start=upper["center_y"] - upper["width"] / 2,
-            width=upper["width"], depth=0.39, base_z=1.42, height=0.90, run_axis="Y",
+            f"HV_WEST_UPPER_{index}", start=upper["run_start"],
+            width=upper["width"], depth=0.39, base_z=1.42, height=0.90, run_axis="X",
             body_material=materials["cabinet_body"], front_material=materials["cabinet"],
-            hardware_material=materials["bronze"], parent=root, doors=2, toe_kick=False,
+            hardware_material=materials["bronze"], parent=west_wall, doors=2, toe_kick=False,
         )
-        base(f"HV_WEST_BASE_{index}", upper["center_y"] - upper["width"] / 2,
-             upper["width"], "Y")
-    span = spec["envelope"]["span"]
-    _create_range_and_hood(west["range"]["center_y"] - west["range"]["width"] / 2,
-                           west["range"]["width"], depth, materials, root, wall_x=span)
-    _create_refrigerator(west["fridge"]["center_y"] - west["fridge"]["width"] / 2,
-                         west["fridge"]["width"], west["fridge"]["depth"], materials, root,
-                         wall_x=span)
+        base(f"HV_WEST_BASE_{index}", upper["run_start"], upper["width"], "X", parent=west_wall)
+    _create_range_and_hood(west["range"]["run_start"], west["range"]["width"], depth,
+                           materials, west_wall)
+    _create_refrigerator(west["fridge"]["run_start"], west["fridge"]["width"],
+                         west["fridge"]["depth"], materials, west_wall)
 
     # Island: printed 8'-7" x 4'-3", placed where the trace found it.
     min_x, min_y, max_x, max_y = kitchen["island"]
@@ -1102,7 +1126,11 @@ def _build_kitchen(contract: Any, materials: dict[str, bpy.types.Material], root
         parent=root,
     )
     create_box("HV_WEST_COUNTER_NORTH", (counter_depth, 0.70, 0.04), (counter_depth / 2, 0.35, 0.89), material=materials["stone"], parent=root, bevel=0.006, bevel_segments=4)
-    _create_range_and_hood(0.72, 0.9144, counter_depth, materials, root)
+    # The appliance builders work in one canonical run frame (wall at local
+    # y=0, room toward +y, run along +x), so this west run gets a station empty
+    # rotated onto the wall. Run coordinates are measured from the south end.
+    west_station = _station("HV_SPIKE_STATION_WEST", [0.0, _SPIKE_WEST_RUN], -90.0, root)
+    _create_range_and_hood(_SPIKE_WEST_RUN - 0.72 - 0.9144, 0.9144, counter_depth, materials, west_station)
     create_cabinet_unit(
         "HV_WEST_UPPER_SOUTH",
         start=1.66,
@@ -1132,7 +1160,7 @@ def _build_kitchen(contract: Any, materials: dict[str, bpy.types.Material], root
         parent=root,
     )
     create_box("HV_WEST_COUNTER_SOUTH", (counter_depth, 0.34, 0.04), (counter_depth / 2, 1.83, 0.89), material=materials["stone"], parent=root, bevel=0.006, bevel_segments=4)
-    _create_refrigerator(2.00, 0.75, counter_depth, materials, root)
+    _create_refrigerator(_SPIKE_WEST_RUN - 2.00 - 0.75, 0.75, counter_depth, materials, west_station)
 
     # Crown/filler closes the cabinetry composition without implying measured BIM detail.
     create_box("HV_NORTH_CABINET_CROWN", (2.98, 0.075, 0.075), (4.49, 0.10, 2.39), material=materials["cabinet"], parent=root, bevel=0.003)
@@ -1200,32 +1228,38 @@ def _create_sink_and_faucet(center_x: float, depth: float, materials: dict[str, 
     create_cylinder("HV_FAUCET_HANDLE", radius=0.012, depth=0.14, location=(center_x + 0.29, 0.18, 1.08), material=materials["bronze"], parent=root, vertices=24)
 
 
-def _create_range_and_hood(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object, wall_x: float | None = None) -> None:
-    """Range against the x=0 wall, or mirrored against the wall at ``wall_x``."""
-    fx = (lambda value: value) if wall_x is None else (lambda value: wall_x - value)
-    center_y = start + width / 2
-    create_box("HV_RANGE_BODY", (depth - 0.02, width - 0.02, 0.89), (fx((depth - 0.02) / 2), center_y, 0.445), material=materials["black"], parent=root, bevel=0.006)
-    create_box("HV_RANGE_OVEN_GLASS", (0.025, width * 0.67, 0.43), (fx(depth + 0.006), center_y, 0.42), material=materials["screen"], parent=root, bevel=0.018)
-    create_cylinder("HV_RANGE_HANDLE", radius=0.012, depth=width * 0.72, location=(fx(depth + 0.032), center_y, 0.68), rotation=(math.pi / 2, 0.0, 0.0), material=materials["steel"], parent=root, vertices=24)
-    for row, x in enumerate((0.19, 0.46)):
-        for col, y_offset in enumerate((-0.25, 0.25)):
-            create_cylinder(f"HV_RANGE_BURNER_{row}_{col}", radius=0.105, depth=0.018, location=(fx(x), center_y + y_offset, 0.908), material=materials["black"], parent=root, vertices=40, bevel=0.002)
+def _create_range_and_hood(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
+    """Range in the canonical run frame: wall at local y=0, room toward +y.
+
+    Every cabinetry builder in this module works in that one frame, so a run on
+    any wall is a rotated station empty (see ``_station``) and never a mirror.
+    """
+    center_x = start + width / 2
+    create_box("HV_RANGE_BODY", (width - 0.02, depth - 0.02, 0.89), (center_x, (depth - 0.02) / 2, 0.445), material=materials["black"], parent=root, bevel=0.006)
+    create_box("HV_RANGE_OVEN_GLASS", (width * 0.67, 0.025, 0.43), (center_x, depth + 0.006, 0.42), material=materials["screen"], parent=root, bevel=0.018)
+    create_cylinder("HV_RANGE_HANDLE", radius=0.012, depth=width * 0.72, location=(center_x, depth + 0.032, 0.68), rotation=(0.0, math.pi / 2, 0.0), material=materials["steel"], parent=root, vertices=24)
+    for row, y in enumerate((0.19, 0.46)):
+        for col, x_offset in enumerate((-0.25, 0.25)):
+            create_cylinder(f"HV_RANGE_BURNER_{row}_{col}", radius=0.105, depth=0.018, location=(center_x + x_offset, y, 0.908), material=materials["black"], parent=root, vertices=40, bevel=0.002)
     for index, offset in enumerate((-0.28, -0.14, 0.0, 0.14, 0.28)):
-        create_cylinder(f"HV_RANGE_KNOB_{index + 1}", radius=0.027, depth=0.025, location=(fx(depth + 0.032), center_y + offset, 0.79), rotation=(0.0, math.pi / 2, 0.0), material=materials["bronze"], parent=root, vertices=28)
-    create_box("HV_RANGE_HOOD", (0.58, width + 0.10, 0.19), (fx(0.30), center_y, 1.73), material=materials["cabinet"], parent=root, bevel=0.025, bevel_segments=5)
-    create_box("HV_RANGE_HOOD_CHIMNEY", (0.35, 0.44, 0.66), (fx(0.18), center_y, 2.12), material=materials["cabinet"], parent=root, bevel=0.008)
+        create_cylinder(f"HV_RANGE_KNOB_{index + 1}", radius=0.027, depth=0.025, location=(center_x + offset, depth + 0.032, 0.79), rotation=(math.pi / 2, 0.0, 0.0), material=materials["bronze"], parent=root, vertices=28)
+    create_box("HV_RANGE_HOOD", (width + 0.10, 0.58, 0.19), (center_x, 0.30, 1.73), material=materials["cabinet"], parent=root, bevel=0.025, bevel_segments=5)
+    create_box("HV_RANGE_HOOD_CHIMNEY", (0.44, 0.35, 0.66), (center_x, 0.18, 2.12), material=materials["cabinet"], parent=root, bevel=0.008)
 
 
-def _create_refrigerator(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object, wall_x: float | None = None) -> None:
-    """Refrigerator against the x=0 wall, or mirrored against ``wall_x``."""
-    fx = (lambda value: value) if wall_x is None else (lambda value: wall_x - value)
-    center_y = start + width / 2
-    create_box("HV_REFRIGERATOR_BODY", (depth - 0.015, width - 0.015, 2.28), (fx((depth - 0.015) / 2), center_y, 1.14), material=materials["steel"], parent=root, bevel=0.015, bevel_segments=4)
-    create_box("HV_REFRIGERATOR_DOOR_N", (0.026, width / 2 - 0.012, 1.58), (fx(depth + 0.007), start + width * 0.25, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
-    create_box("HV_REFRIGERATOR_DOOR_S", (0.026, width / 2 - 0.012, 1.58), (fx(depth + 0.007), start + width * 0.75, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
-    create_box("HV_REFRIGERATOR_FREEZER", (0.026, width - 0.025, 0.50), (fx(depth + 0.007), center_y, 0.36), material=materials["cabinet"], parent=root, bevel=0.006)
-    for index, y in enumerate((start + width * 0.39, start + width * 0.61)):
-        create_cylinder(f"HV_REFRIGERATOR_HANDLE_{index + 1}", radius=0.011, depth=0.74, location=(fx(depth + 0.045), y, 1.46), material=materials["bronze"], parent=root, vertices=24)
+def _create_refrigerator(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
+    """Refrigerator in the canonical run frame (wall at local y=0, room +y).
+
+    Door leaves are named A/B along the run rather than by compass point: the
+    builder is not told which wall its station sits on.
+    """
+    center_x = start + width / 2
+    create_box("HV_REFRIGERATOR_BODY", (width - 0.015, depth - 0.015, 2.28), (center_x, (depth - 0.015) / 2, 1.14), material=materials["steel"], parent=root, bevel=0.015, bevel_segments=4)
+    create_box("HV_REFRIGERATOR_DOOR_A", (width / 2 - 0.012, 0.026, 1.58), (start + width * 0.25, depth + 0.007, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
+    create_box("HV_REFRIGERATOR_DOOR_B", (width / 2 - 0.012, 0.026, 1.58), (start + width * 0.75, depth + 0.007, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
+    create_box("HV_REFRIGERATOR_FREEZER", (width - 0.025, 0.026, 0.50), (center_x, depth + 0.007, 0.36), material=materials["cabinet"], parent=root, bevel=0.006)
+    for index, x in enumerate((start + width * 0.39, start + width * 0.61)):
+        create_cylinder(f"HV_REFRIGERATOR_HANDLE_{index + 1}", radius=0.011, depth=0.74, location=(x, depth + 0.045, 1.46), material=materials["bronze"], parent=root, vertices=24)
 
 
 def _panel_island(island: Any, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
@@ -1640,7 +1674,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         depth_meters = contract_module.ROOM_DEPTH_METERS
     else:
         span_meters = spec["envelope"]["span"]
-        depth_meters = spec["envelope"]["arm_south"]
+        depth_meters = spec["envelope"]["arm_north"]
     materials = _create_materials(assets, span_meters, depth_meters)
     canonical_root = create_root("HV_CANONICAL")
     staging_root = create_root("HV_STAGING")

@@ -44,7 +44,10 @@ const sharedSchema = z.object({
     regions: z.array(rectangleSchema).min(2),
     openings: z.array(openingSchema).min(1),
   }).superRefine((orientation, context) => {
-    if (orientation.north_vector[0] !== 0 || orientation.north_vector[1] !== -1) {
+    // North must lie on the plan's vertical axis so the minimap can be drawn
+    // north-up. Which sign points north is the authoring frame's business: the
+    // traced pipeline is +y north, the older spike frame is -y north.
+    if (orientation.north_vector[0] !== 0 || Math.abs(orientation.north_vector[1]) !== 1) {
       context.addIssue({ code: "custom", message: "tour orientation must use canonical north" });
     }
   }),

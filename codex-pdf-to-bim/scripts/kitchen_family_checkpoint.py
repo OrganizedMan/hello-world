@@ -138,11 +138,12 @@ def main() -> int:
         validate += ["--spec", str(SPEC)]
     _run("2/3 validate_artifact", validate, logs / "validate_artifact.log")
 
-    _run(
-        "3/3 measure_glb",
-        [sys.executable, str(REPO / "scripts/measure_glb.py"), str(glb)],
-        logs / "measure_glb.log",
-    )
+    measure = [sys.executable, str(REPO / "scripts/measure_glb.py"), str(glb)]
+    if not args.spike:
+        # The traced build gets the full artifact-versus-trace diff, not just
+        # the three-landmark handedness check.
+        measure += ["--spec", str(SPEC)]
+    _run("3/3 measure_glb", measure, logs / "measure_glb.log")
     verdict = (logs / "measure_glb.log").read_text(encoding="utf-8")
     print("\n--- does the built GLB match the drawing? ---")
     for line in verdict.splitlines():

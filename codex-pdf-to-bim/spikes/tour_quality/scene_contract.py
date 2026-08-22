@@ -176,7 +176,11 @@ class OrientationSpec:
         return {
             "bounds": self.bounds.to_manifest(),
             "north_vector": list(self.north_vector),
-            "north_up": self.north_vector == (0, -1),
+            # North lies along the plan's vertical axis, so the browser can draw
+            # a north-up minimap. Which sign points north depends on the
+            # authoring frame -- the traced frame is +y north, the legacy spike
+            # frame is -y north -- and `north_vector` is what says which.
+            "north_up": self.north_vector[0] == 0 and self.north_vector[1] != 0,
             "regions": [region.to_manifest() for region in self.regions],
             "openings": [opening.to_manifest() for opening in self.openings],
         }
@@ -550,7 +554,8 @@ def build_scene_contract_from_spec(spec: dict) -> SceneContract:
     span = envelope["span"]
     depth_east = envelope["depth_east"]
     arm_east = envelope["arm_east"]
-    arm_south = envelope["arm_south"]
+    arm_north = envelope["arm_north"]
+    living_south = envelope["living_south"]
     ceiling = spec["ceiling"]
     kitchen = spec["kitchen"]
     island = kitchen["island"]
@@ -580,14 +585,19 @@ def build_scene_contract_from_spec(spec: dict) -> SceneContract:
         for item in [*spec["windows"], *spec["doors"]]
     )
 
-    towers = sorted(t["center_x"] for t in kitchen["north_run"]["towers"])
     counter_depth = kitchen["counter_depth"]
+    north_counter = kitchen["north_run"]["counter"]
+    west_counter = kitchen["west_run"]["counter"]
+    # Counter runs are emitted in each station's local run coordinates; the
+    # station rotation is what puts them on a wall, so convert back to world
+    # here rather than assuming a run direction.
+    north_x = sorted((span - north_counter["start"], span - north_counter["end"]))
+    west_y = sorted((arm_north - west_counter["start"], arm_north - west_counter["end"]))
     collision = (
         Rectangle("island", island[0], island[1], island[2], island[3]),
-        Rectangle("north_counter", max(0.0, towers[0] - 0.31), 0.0,
-                  min(span, towers[-1] + 0.31), counter_depth),
-        Rectangle("west_counter", 0.0, kitchen["west_run"]["counter"]["start"],
-                  counter_depth, arm_south - 0.05),
+        Rectangle("north_counter", north_x[0], arm_north - counter_depth,
+                  north_x[1], arm_north),
+        Rectangle("west_counter", 0.0, west_y[0], counter_depth, west_y[1]),
         Rectangle("media_wall", span - 0.5,
                   max(0.0, spec["living"]["tv"]["center_y"] - 1.0),
                   span, spec["living"]["tv"]["center_y"] + 1.0),
@@ -613,13 +623,13 @@ def build_scene_contract_from_spec(spec: dict) -> SceneContract:
         canonical_geometry=True,
         canonical_model_hash=spec_hash,
         canonical_geometry_hash=spec_hash,
-        envelope=Bounds(0.0, 0.0, 0.0, span, arm_south, ceiling),
+        envelope=Bounds(0.0, 0.0, 0.0, span, arm_north, ceiling),
         wall_thickness=0.1524,
         counter_zone_depth=counter_depth,
         printed_dimensions=(
             PrintedDimension("span_interior", round(span, 4), "A-1 traced interior span"),
             PrintedDimension("depth_east_interior", round(depth_east, 4), "A-1 traced interior depth"),
-            PrintedDimension("west_run", round(arm_south, 4), "A-1 printed dimension 19'-7\""),
+            PrintedDimension("west_run", round(arm_north, 4), "A-1 printed dimension 19'-7\""),
             PrintedDimension("ceiling", round(ceiling, 4), "A-1 printed dimension 8'-5\""),
             PrintedDimension("island_width", round(island[2] - island[0], 4), "A-1 printed dimension 8'-7\""),
             PrintedDimension("island_depth", round(island[3] - island[1], 4), "A-1 printed dimension 4'-3\""),
@@ -632,21 +642,24 @@ def build_scene_contract_from_spec(spec: dict) -> SceneContract:
             OrderedWallItems("north_sink_wall", ("tower", "dishwasher", "sink", "trash", "tower")),
             OrderedWallItems("west_wall", ("upper_cabinets", "range", "upper_cabinets", "refrigerator")),
         ),
+        # L-shaped floor: the west kitchen arm below `living_south`, the full
+        # span above it. Wound anticlockwise from the arm's south-west corner.
         walkable_polygon=(
             (margin, margin),
-            (span - margin, margin),
-            (span - margin, depth_east - margin),
-            (arm_east - margin, depth_east - margin),
-            (arm_east - margin, arm_south - margin),
-            (margin, arm_south - margin),
+            (arm_east - margin, margin),
+            (arm_east - margin, living_south + margin),
+            (span - margin, living_south + margin),
+            (span - margin, arm_north - margin),
+            (margin, arm_north - margin),
         ),
         collision_rectangles=collision,
         camera_presets=presets,
         orientation=OrientationSpec(
-            bounds=Rectangle("kitchen_family", 0.0, 0.0, span, arm_south),
-            north_vector=(0, -1),
+            bounds=Rectangle("kitchen_family", 0.0, 0.0, span, arm_north),
+            # +y is north in the traced frame, so the compass points up-screen.
+            north_vector=(0, 1),
             regions=(
-                Rectangle("Kitchen", 0.0, 0.0, arm_east, arm_south),
+                Rectangle("Kitchen", 0.0, 0.0, arm_east, arm_north),
                 Rectangle("Living Room", clear[0], clear[1], clear[2], clear[3]),
             ),
             openings=wall_openings,

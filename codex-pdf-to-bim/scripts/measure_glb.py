@@ -5,7 +5,13 @@ stub, all inside one coordinate frame, so those checks can agree with each other
 and still disagree with the drawing. This reads the exported artifact itself and
 reports where things actually ended up, in glTF world space.
 
-    uv run python scripts/measure_glb.py apps/web/public/tour-spike/hearthview-kitchen-family.glb
+    uv run python scripts/measure_glb.py <glb>
+    uv run python scripts/measure_glb.py <glb> --spec spikes/tour_quality/a1_kitchen_scene_spec.json
+
+With --spec it does the thing the pipeline was missing: for every landmark the
+spec places, it reports where the exported artifact actually put it and how far
+that is from the traced position. Checking the spec against itself is what let
+three separate placement bugs ship looking green.
 """
 
 from __future__ import annotations
@@ -20,13 +26,71 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "services"))
 from hearthview.chirality import matches_drawing, model_turn, plan_turn
 
 FT = 0.3048
-# glTF Y-up: +x, +z horizontal, +y up. A plan point (east, south) exports to
-# (east, ., -south), so -z is south and +x is east *if* the scene is authored
-# in Blender's own convention.
+# The authoring frame is (x east, y north, z up) and Blender exports it Y-up as
+# (x, z, -y). So in the artifact +x is east and -z is north.
 WANTED = (
     "HV_SINK_RIM", "HV_RANGE_BODY", "HV_REFRIGERATOR_BODY", "HV_DISHWASHER_BODY",
     "HV_ISLAND_STRUCTURE", "HV_TV_SCREEN", "HV_FLOOR",
 )
+TOLERANCE = 0.15   # metres; below this a difference is builder detail, not drift
+
+
+def to_gltf(point: tuple[float, float]) -> tuple[float, float]:
+    """Authoring plan coords (east, north) to the glTF ground plane (x, z)."""
+    return (point[0], -point[1])
+
+
+def expected_from_spec(spec: dict) -> dict[str, tuple[float, float]]:
+    """Where the trace says each landmark belongs, in glTF ground coordinates.
+
+    Every entry is derived from the spec rather than written down here, so this
+    keeps working for any region on any floor the extractor emits.
+    """
+    envelope = spec["envelope"]
+    kitchen = spec["kitchen"]
+    north, west = kitchen["north_run"], kitchen["west_run"]
+    depth = kitchen["counter_depth"]
+    arm_north = envelope["arm_north"]
+    island = kitchen["island"]
+    main = next(s["rect"] for s in spec["slabs"] if s["name"] == "MAIN")
+
+    return {
+        "HV_SINK_RIM": to_gltf((north["sink"]["center_x"], arm_north - 0.37)),
+        "HV_DISHWASHER_BODY": to_gltf(
+            (north["dishwasher"]["center_x"], arm_north - (depth - 0.04) / 2)),
+        "HV_RANGE_BODY": to_gltf(((depth - 0.02) / 2, west["range"]["center_y"])),
+        "HV_REFRIGERATOR_BODY": to_gltf(
+            ((west["fridge"]["depth"] - 0.015) / 2, west["fridge"]["center_y"])),
+        "HV_ISLAND_STRUCTURE": to_gltf(
+            ((island[0] + island[2]) / 2, (island[1] + island[3]) / 2)),
+        "HV_TV_SCREEN": to_gltf(
+            (spec["living"]["tv"]["line"] - 0.055, spec["living"]["tv"]["center_y"])),
+        "HV_FLOOR": to_gltf(((main[0] + main[2]) / 2, (main[1] + main[3]) / 2)),
+    }
+
+
+def report_against_spec(found: dict[str, "np.ndarray"], spec: dict) -> bool:
+    """Print the artifact-versus-trace diff. True when everything is in place."""
+    expected = expected_from_spec(spec)
+    print("\n--- artifact vs trace (glTF ground plane, metres) ---")
+    print(f"  {'landmark':<24} {'traced x,z':>18} {'built x,z':>18} {'off by':>8}")
+    worst = 0.0
+    missing: list[str] = []
+    for name, (ex, ez) in sorted(expected.items()):
+        if name not in found:
+            missing.append(name)
+            print(f"  {name:<24} {ex:8.2f},{ez:8.2f} {'NOT IN GLB':>18}")
+            continue
+        bx, bz = float(found[name][0]), float(found[name][2])
+        offset = ((bx - ex) ** 2 + (bz - ez) ** 2) ** 0.5
+        worst = max(worst, offset)
+        flag = "  <-- off" if offset > TOLERANCE else ""
+        print(f"  {name:<24} {ex:8.2f},{ez:8.2f} {bx:8.2f},{bz:8.2f} {offset:8.2f}{flag}")
+    ok = not missing and worst <= TOLERANCE
+    print(f"  => worst offset {worst:.2f} m "
+          f"({'within' if worst <= TOLERANCE else 'OUTSIDE'} the {TOLERANCE:.2f} m tolerance)"
+          + (f", {len(missing)} landmark(s) missing" if missing else ""))
+    return ok
 
 
 def centres(scene: trimesh.Scene) -> dict[str, np.ndarray]:
@@ -45,10 +109,19 @@ def centres(scene: trimesh.Scene) -> dict[str, np.ndarray]:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    spec_path: Path | None = None
+    if "--spec" in args:
+        index = args.index("--spec")
+        if index + 1 >= len(args):
+            print(__doc__.strip())
+            return 2
+        spec_path = Path(args[index + 1])
+        args = args[:index] + args[index + 2:]
+    if len(args) != 1:
         print(__doc__.strip())
         return 2
-    scene = trimesh.load(Path(sys.argv[1]), force="scene", process=False)
+    scene = trimesh.load(Path(args[0]), force="scene", process=False)
     found = centres(scene)
 
     lower, upper = scene.bounds
@@ -89,6 +162,12 @@ def main() -> int:
             side = float(np.dot(offset, right))
             print(f"  from the TV wall across the island, the sink is on the "
                   f"{'RIGHT' if side > 0 else 'LEFT'} (A-1 says RIGHT)")
+
+    if spec_path is not None:
+        import json
+
+        if not report_against_spec(found, json.loads(spec_path.read_text())):
+            return 1
     return 0
 
 
