@@ -120,7 +120,36 @@ drawing when it changes.
 
 ---
 
-## 5. Running it
+## 5. What is *not* in the repo
+
+Four things a fresh session cannot get from a clone:
+
+1. **The A-1 PDF.** Needed only to regenerate the spec. The generated
+   `a1_kitchen_scene_spec.json` *is* committed, so everything downstream of the
+   extractor works without it.
+2. **The tour-quality asset directory** (32 hash-pinned files listed in
+   `spikes/tour_quality/assets/provenance.json`). Only `provenance.json` and
+   `LICENSES.md` are tracked; the HDR, models and textures are not.
+3. **Blender.** Required to build the GLB and nothing else.
+4. **A current GLB.** `apps/web/public/tour-spike/hearthview-kitchen-family.glb`
+   is tracked but was built in the old mirrored frame, so it does *not* match
+   the committed spec. Do not trust it, and do not use it to judge the model.
+
+That last one is checkable rather than a matter of opinion:
+
+```
+$ uv run python scripts/measure_glb.py     apps/web/public/tour-spike/hearthview-kitchen-family.glb     --spec spikes/tour_quality/a1_kitchen_scene_spec.json
+
+  drawing turn   +73.64   model turn    -7.34
+  => MIRRORED versus the drawing
+  ...
+  => worst offset 5.90 m (OUTSIDE the 0.15 m tolerance)
+```
+
+Rebuilding on a machine with Blender replaces it. Until then that file is the
+last artifact of the frame this change removed.
+
+## 6. Running it
 
 The A-1 PDF is **not in the repository**. Point the tests at it:
 
@@ -166,7 +195,7 @@ npm --workspace apps/web run dev -- --port 5178 --host 0.0.0.0
 
 ---
 
-## 6. What is still unverified
+## 7. What is still unverified
 
 State these plainly rather than implying the model is finished:
 
