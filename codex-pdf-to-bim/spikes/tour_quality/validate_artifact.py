@@ -223,6 +223,20 @@ def _named_world_bounds(scene: trimesh.Scene, node_name: str) -> tuple[list[floa
     return mesh.bounds[0].tolist(), mesh.bounds[1].tolist()
 
 
+def _expected_floor_z(contract, depth: float) -> tuple[float, float]:
+    """The (min Z, max Z) the MAIN slab should occupy in the glTF ground plane.
+
+    HV_FLOOR is the MAIN slab on its own -- the other slabs are exported as
+    HV_FLOOR_<name>. On the L-shaped traced plan that slab does not reach the
+    frame origin: the west kitchen arm fills the strip south of it, so MAIN
+    starts at `living_south`, not at north 0. Anchor the expectation to the
+    slab's real north edge instead, which stays correct for the old
+    single-rectangle spike where the two happened to coincide.
+    """
+    north_edge = contract.envelope.max_y if contract.envelope else depth
+    return -north_edge, depth - north_edge
+
+
 def _validate_actual_geometry(glb_path: Path, errors: list[str], contract) -> None:
     span = _printed(contract, "span_interior", _printed(contract, "span", 0.0))
     depth = _printed(contract, "depth_east_interior", _printed(contract, "room_depth", 0.0))
@@ -239,11 +253,12 @@ def _validate_actual_geometry(glb_path: Path, errors: list[str], contract) -> No
         errors.append("actual GLB geometry is missing named mesh HV_FLOOR")
     else:
         lower, upper = floor_bounds
+        floor_min_z, floor_max_z = _expected_floor_z(contract, depth)
         checks = (
             ("HV_FLOOR min X", lower[0], 0.0),
             ("HV_FLOOR max X", upper[0], span),
-            ("HV_FLOOR min Z", lower[2], -depth),
-            ("HV_FLOOR max Z", upper[2], 0.0),
+            ("HV_FLOOR min Z", lower[2], floor_min_z),
+            ("HV_FLOOR max Z", upper[2], floor_max_z),
             ("HV_FLOOR X span", upper[0] - lower[0], span),
             ("HV_FLOOR depth", upper[2] - lower[2], depth),
         )
