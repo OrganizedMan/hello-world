@@ -38,13 +38,28 @@ _MATERIALS: dict[str, tuple[tuple[float, float, float], float, float]] = {
 }
 _FALLBACK = "wall"
 
-_FACES = (
-    ((0, 1, 2, 3), (0.0, 0.0, -1.0)),
-    ((5, 4, 7, 6), (0.0, 0.0, 1.0)),
-    ((4, 5, 1, 0), (0.0, -1.0, 0.0)),
-    ((3, 2, 6, 7), (0.0, 1.0, 0.0)),
-    ((4, 0, 3, 7), (-1.0, 0.0, 0.0)),
-    ((1, 5, 6, 2), (1.0, 0.0, 0.0)),
+# Normals live in the same frame as the corners, and `_corners` rewrites tick
+# space (z up) into glTF (y up) as (x, y, z) -> (x, z, -y). These were left in
+# tick space, so four of the six pointed the wrong way: floor and ceiling faces
+# carried horizontal normals and the north and south walls carried vertical
+# ones. Nothing failed -- the geometry was exactly right and every corner
+# measured true -- the model simply could not catch light, which is most of why
+# the massing read as flat grey paper.
+def _to_gltf_normal(tick_normal: tuple[float, float, float]) -> tuple[float, float, float]:
+    x, y, z = tick_normal
+    return (x, z, -y)
+
+
+_FACES = tuple(
+    (face, _to_gltf_normal(normal))
+    for face, normal in (
+        ((0, 1, 2, 3), (0.0, 0.0, -1.0)),   # underside
+        ((5, 4, 7, 6), (0.0, 0.0, 1.0)),    # top
+        ((4, 5, 1, 0), (0.0, -1.0, 0.0)),   # south
+        ((3, 2, 6, 7), (0.0, 1.0, 0.0)),    # north
+        ((4, 0, 3, 7), (-1.0, 0.0, 0.0)),   # west
+        ((1, 5, 6, 2), (1.0, 0.0, 0.0)),    # east
+    )
 )
 
 
@@ -130,7 +145,13 @@ def build_glb(
                 for corner_index in face:
                     positions.append(corners[corner_index])
                     normals.append(normal)
-                indices.extend((base, base + 1, base + 2, base, base + 2, base + 3))
+                # Wound so the front face is the outward one, which is what
+                # makes the supplied normal the one three.js actually shades
+                # with: on a DoubleSide material it flips the normal for a
+                # back-facing fragment, so an inside-out box lights as though
+                # every surface pointed into the solid. Floors came out black
+                # under a sun directly above them for exactly this reason.
+                indices.extend((base, base + 2, base + 1, base, base + 3, base + 2))
         if not positions:
             continue
 

@@ -3,11 +3,13 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber"
 import { AdaptiveDpr, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import {
   ACESFilmicToneMapping,
+  Box3,
   Camera,
+  DirectionalLight,
   Euler,
   Mesh,
   Object3D,
-  PCFShadowMap,
+  PCFSoftShadowMap,
   SRGBColorSpace,
   Vector3,
 } from "three";
@@ -96,6 +98,63 @@ export function prepareTourSceneForBrowser(source: Object3D): Object3D {
     }
   });
   return scene;
+}
+
+
+/**
+ * A sun fitted to whatever is currently on screen.
+ *
+ * A directional light's shadow camera is an orthographic box, and three.js
+ * defaults it to 5 metres either side of the origin. This house is 12 m by
+ * 16 m, so nearly all of it fell outside that box and cast no shadow at all --
+ * which is most of why the massing read as flat paper cutouts. Fitting the box
+ * to the visible bounds is what turns the light back on.
+ */
+function FittedSun({ scene, storeys }: { scene: Object3D; storeys: string[] }) {
+  const light = useRef<DirectionalLight>(null);
+
+  const fit = useMemo(() => {
+    const box = new Box3().setFromObject(scene);
+    const centre = box.getCenter(new Vector3());
+    const size = box.getSize(new Vector3());
+    // Half-diagonal of the ground plan, with headroom so a low sun still
+    // covers the far corner rather than clipping the shadow at the edge.
+    const reach = Math.max(1, Math.hypot(size.x, size.z) * 0.62);
+    return { centre, reach, height: Math.max(size.y, 3) };
+  // Storeys are in the deps because hiding floors changes the bounds.
+  }, [scene, storeys]);
+
+  useEffect(() => {
+    const current = light.current;
+    if (!current) return;
+    current.target.position.copy(fit.centre);
+    current.target.updateMatrixWorld();
+  }, [fit]);
+
+  return (
+    <directionalLight
+      ref={light}
+      position={[
+        fit.centre.x + fit.reach * 0.75,
+        fit.centre.y + fit.height * 1.6 + fit.reach * 0.55,
+        fit.centre.z + fit.reach * 0.95,
+      ]}
+      intensity={1.55}
+      color="#fff2e0"
+      castShadow
+      shadow-mapSize={[2048, 2048]}
+      shadow-camera-left={-fit.reach}
+      shadow-camera-right={fit.reach}
+      shadow-camera-top={fit.reach}
+      shadow-camera-bottom={-fit.reach}
+      shadow-camera-near={0.5}
+      shadow-camera-far={fit.reach * 6 + fit.height * 4}
+      // Walls here are thin boxes seen edge-on, which is the worst case for
+      // shadow acne; normalBias moves the sample off the surface instead.
+      shadow-bias={-0.0004}
+      shadow-normalBias={0.035}
+    />
+  );
 }
 
 
@@ -329,6 +388,7 @@ function TourExperience({
 
   return (
     <>
+      <FittedSun scene={scene} storeys={visibleStoreys} />
       <primitive object={scene} onClick={moveHere} />
       <OrbitControls
         makeDefault
@@ -359,15 +419,14 @@ export function TourViewer(props: TourViewerProps) {
           frameloop={frameLoopForMode(props.mode)}
           gl={{ antialias: true, outputColorSpace: SRGBColorSpace, toneMapping: ACESFilmicToneMapping }}
           onCreated={({ gl }) => {
-            gl.toneMappingExposure = 0.7;
+            gl.toneMappingExposure = 0.72;
           }}
-          shadows={{ type: PCFShadowMap }}
+          shadows={{ type: PCFSoftShadowMap }}
         >
           <color attach="background" args={["#d9d1c3"]} />
-          <hemisphereLight args={["#fff4df", "#7b746b", 0.65]} />
-          <directionalLight position={[3.8, 8.5, -1.5]} intensity={1.3} castShadow shadow-mapSize={[2048, 2048]} />
+          <hemisphereLight args={["#eaf0ff", "#6b6157", 0.22]} />
           <Suspense fallback={null}>
-            <Environment files={`${props.basePath}/${props.manifest.artifact.environment}`} environmentIntensity={0.28} />
+            <Environment files={`${props.basePath}/${props.manifest.artifact.environment}`} environmentIntensity={0.30} />
             <TourExperience {...props} />
           </Suspense>
           <AdaptiveDpr pixelated />

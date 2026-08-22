@@ -12,6 +12,7 @@ import pytest
 from hearthview.a1_extract import extract_a1
 from hearthview.a1_massing import build_a1_massing
 from hearthview.a1_tour import build_tour
+from hearthview.geometry import Primitive
 
 from hearthview.drawings import a1_source
 
@@ -85,3 +86,96 @@ def test_envelope_covers_the_deck_not_just_the_walls(tour) -> None:
     depth_feet = (envelope["max_z"] - envelope["min_z"]) / 0.3048
 
     assert depth_feet > 45.0
+
+
+def test_face_normals_are_in_the_same_frame_as_the_corners() -> None:
+    """Normals must be rewritten into glTF space like the positions are.
+
+    They were not, so the top and bottom of every solid carried a horizontal
+    normal and the north and south faces carried vertical ones. Geometry was
+    exact and every corner measured true; the model just could not catch light,
+    and floors came out black under a sun directly above them.
+    """
+    from hearthview.a1_tour import _FACES
+
+    up = [normal for _face, normal in _FACES if normal[1] > 0.5]
+    down = [normal for _face, normal in _FACES if normal[1] < -0.5]
+    horizontal = [normal for _face, normal in _FACES if abs(normal[1]) < 0.5]
+
+    # glTF is Y-up: exactly one face of a box points up and one points down.
+    assert len(up) == 1, "a box has one upward face"
+    assert len(down) == 1, "a box has one downward face"
+    assert len(horizontal) == 4, "the remaining four faces are walls"
+
+    # Every normal is a unit axis vector, not a diagonal left over from a
+    # partial transform.
+    for normal in (n for _f, n in _FACES):
+        assert sum(abs(component) for component in normal) == pytest.approx(1.0)
+
+
+def test_a_floor_slab_faces_the_sky() -> None:
+    """The end-to-end version: the widest solid's top normal must point up."""
+    from hearthview.a1_tour import _FACES, _corners
+
+    massing = build_a1_massing(extract_a1(Path(_SOURCE)))
+    slab = max(
+        massing.primitives,
+        key=lambda item: (item.x1_ticks - item.x0_ticks) * (item.y1_ticks - item.y0_ticks),
+    )
+    corners = _corners(slab)
+    top_face, top_normal = next(
+        (face, normal) for face, normal in _FACES if normal[1] > 0.5
+    )
+
+    heights = {round(corners[index][1], 6) for index in top_face}
+    lowest = min(corner[1] for corner in corners)
+
+    assert top_normal == (0.0, 1.0, -0.0)
+    assert len(heights) == 1, "the top face is level"
+    assert heights.pop() > lowest, "the upward face is the higher one"
+
+
+def test_faces_are_wound_outward_so_the_supplied_normal_is_the_shaded_one() -> None:
+    """Winding and normal must agree, or lighting uses the opposite of both.
+
+    three.js flips the normal for a back-facing fragment on a DoubleSide
+    material. Every box here was wound inside-out, so the flip applied
+    everywhere and each surface shaded as though it faced into the solid. The
+    positions were exact throughout -- all 4,224 traced corners measured true --
+    which is why nothing caught it until the model was looked at under a sun.
+    """
+    import numpy as np
+
+    from hearthview.a1_tour import _FACES, _corners
+    from hearthview.geometry import StationInterval
+
+    box = Primitive("probe", "wall", 0, 0, 0, 100, 200, 300, StationInterval(0, 100))
+    corners = _corners(box)
+
+    for face, normal in _FACES:
+        a, b, c = (np.array(corners[index]) for index in face[:3])
+        # Triangles are emitted as (0, 2, 1), so the winding normal is c x b.
+        winding = np.cross(c - a, b - a)
+        winding = winding / np.linalg.norm(winding)
+
+        assert float(np.dot(winding, np.array(normal))) > 0.99, (
+            f"face {face} is wound against its normal {normal}"
+        )
+
+
+def test_every_normal_points_away_from_the_centre_of_the_solid() -> None:
+    """Outward, not merely consistent: an inside-out box is self-consistent too."""
+    import numpy as np
+
+    from hearthview.a1_tour import _FACES, _corners
+    from hearthview.geometry import StationInterval
+
+    box = Primitive("probe", "wall", 0, 0, 0, 100, 200, 300, StationInterval(0, 100))
+    corners = _corners(box)
+    centre = np.mean([np.array(c) for c in corners], axis=0)
+
+    for face, normal in _FACES:
+        face_centre = np.mean([np.array(corners[index]) for index in face], axis=0)
+        assert float(np.dot(face_centre - centre, np.array(normal))) > 0, (
+            f"face {face} normal {normal} points into the solid"
+        )
