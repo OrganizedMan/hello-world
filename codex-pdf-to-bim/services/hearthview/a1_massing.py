@@ -147,6 +147,27 @@ def _classify(
     return ClassifiedOpening(opening, kind, opening.width_feet, on_exterior)
 
 
+def _points_to_ticks(points: float) -> int:
+    return int(round(points / POINTS_PER_INCH * TICKS_PER_INCH))
+
+
+def plan_from_pdf(footprint):
+    """Sheet coordinates to plan (east, north), in PDF points.
+
+    North-positive, so (east, north, up) is right-handed and the glTF export
+    lands the model the same way round as the drawing. This is a module-level
+    function rather than a closure so `chirality.mapping_preserves_handedness`
+    can be pointed at the conversion the build actually uses, instead of a copy
+    of it that can drift.
+    """
+    origin_x, base_y = footprint.x0, footprint.y1
+
+    def to_plan(pdf_x: float, pdf_y: float) -> tuple[float, float]:
+        return (pdf_x - origin_x, base_y - pdf_y)
+
+    return to_plan
+
+
 def build_a1_massing(extraction: A1Extraction) -> A1Massing:
     """Turn the extracted plan into first-floor wall solids."""
     walls = extraction.layer("wall_new") + extraction.layer("wall_existing")
@@ -157,12 +178,13 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
     footprint = extraction.footprint
     origin_x, base_y = footprint.x0, footprint.y1
 
+    to_plan = plan_from_pdf(footprint)
+
     def to_ticks_x(px: float) -> int:
-        return int(round((px - origin_x) / POINTS_PER_INCH * TICKS_PER_INCH))
+        return _points_to_ticks(to_plan(px, base_y)[0])
 
     def to_ticks_y(py: float) -> int:
-        # Flip so plan north is +Y in the model instead of mirrored.
-        return int(round((base_y - py) / POINTS_PER_INCH * TICKS_PER_INCH))
+        return _points_to_ticks(to_plan(origin_x, py)[1])
 
     def to_ticks_z(inches: float) -> int:
         return int(round(inches * TICKS_PER_INCH))

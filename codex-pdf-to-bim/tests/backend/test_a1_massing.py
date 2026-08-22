@@ -111,3 +111,35 @@ def test_openings_are_classified_and_doors_have_swings(massing) -> None:
     assert any(o.kind == "door" for o in massing.openings)
     # Every window must sit on the building's perimeter.
     assert all(o.on_exterior for o in massing.openings if o.kind == "window")
+
+
+def test_the_whole_floor_mapping_is_right_handed() -> None:
+    """The whole-floor path was never checked for this, and the kitchen's wasn't either.
+
+    `a1_massing` predates all three frame fixes and nothing here imported
+    `chirality` until now. Its tests passing said nothing about handedness --
+    which is precisely the state the kitchen's suite was in while the model it
+    produced was a reflection of the drawing.
+    """
+    from hearthview.a1_massing import plan_from_pdf
+    from hearthview.chirality import mapping_preserves_handedness
+
+    extraction = extract_a1(Path(_SOURCE))
+
+    assert mapping_preserves_handedness(plan_from_pdf(extraction.footprint))
+
+
+def test_north_in_the_model_is_north_on_the_sheet() -> None:
+    """Handedness alone allows a 180 turn; pin the direction too."""
+    from hearthview.a1_massing import plan_from_pdf
+
+    extraction = extract_a1(Path(_SOURCE))
+    to_plan = plan_from_pdf(extraction.footprint)
+    footprint = extraction.footprint
+
+    # PDF y grows downward, so the footprint's smaller y is its north edge.
+    _, north_edge = to_plan(footprint.x0, footprint.y0)
+    _, south_edge = to_plan(footprint.x0, footprint.y1)
+
+    assert north_edge > south_edge, "plan north must increase with model +y"
+    assert south_edge == 0.0, "the south edge anchors the frame origin"
