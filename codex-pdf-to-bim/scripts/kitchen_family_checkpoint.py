@@ -138,6 +138,17 @@ def main() -> int:
         validate += ["--spec", str(SPEC)]
     _run("2/3 validate_artifact", validate, logs / "validate_artifact.log")
 
+    _run(
+        "3/3 measure_glb",
+        [sys.executable, str(REPO / "scripts/measure_glb.py"), str(glb)],
+        logs / "measure_glb.log",
+    )
+    verdict = (logs / "measure_glb.log").read_text(encoding="utf-8")
+    print("\n--- does the built GLB match the drawing? ---")
+    for line in verdict.splitlines():
+        if any(k in line for k in ("HV_", "sink is on", "A-1 says", "=>", "footprint")):
+            print("   " + line.strip())
+
     if not args.stills:
         print("\n=== build complete (stills skipped; pass --stills to render them) ===")
         print(f"tour GLB   {glb}  {glb.stat().st_size:,} bytes  sha256:{_digest(glb)}")
@@ -158,7 +169,7 @@ def main() -> int:
         job_manifest = STILLS / f"{camera.lower()}.render.json"
         shutil.copyfile(manifest, job_manifest)
         _run(
-            f"3/3 render {camera} ({index}/{len(CAMERAS)})",
+            f"4/4 render {camera} ({index}/{len(CAMERAS)})",
             [
                 str(args.blender), "--background", "--factory-startup",
                 "--python", str(REPO / "services/blender/render_scene.py"), "--",
