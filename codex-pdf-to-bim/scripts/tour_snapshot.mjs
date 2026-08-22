@@ -105,6 +105,15 @@ await page.locator(".tour-storey").filter({ hasText: "Whole house" }).first().cl
 await page.getByRole("button", { name: "Overhead" }).click();
 await shot("whole-house-overhead");
 
+// Walking starts from the manifest's own vantage point, which is a spot on the
+// first floor chosen for the view rather than for where a click landed. It is
+// the interior shot worth judging the lighting by.
+await page.locator(".tour-storey").filter({ hasText: "First floor" }).first().click();
+await page.waitForTimeout(1200);
+await page.getByRole("button", { name: "Walk" }).first().click();
+await shot("walking");
+await page.getByRole("button", { name: "Orbit" }).first().click();
+
 // Move here has to land the camera somewhere sensible, at eye height, on the
 // floor that was clicked -- it was inert on the traced model until recently.
 await page.locator(".tour-storey").filter({ hasText: "First floor" }).first().click();

@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import bpy
@@ -997,6 +998,7 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
     if not meshes:
         return 0, 1.0
 
+    unwrap_started = time.monotonic()
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
         layers = obj.data.uv_layers
@@ -1023,6 +1025,7 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
         scale_to_bounds=False,
     )
     bpy.ops.object.mode_set(mode="OBJECT")
+    print(f"          unwrap took {time.monotonic() - unwrap_started:.0f}s", flush=True)
 
     lit = mode == "light"
     image = bpy.data.images.new(
@@ -1059,6 +1062,7 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
     scene.render.bake.use_selected_to_active = False
     scene.render.bake.margin = max(2, size // 256)
 
+    started = time.monotonic()
     if lit:
         scene.cycles.bake_type = "DIFFUSE"
         # Direct and indirect but *not* colour: the albedo is already in the
@@ -1075,6 +1079,8 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
             # turning a whole small room grey.
             scene.world.light_settings.distance = distance
         bpy.ops.object.bake(type="AO")
+
+    print(f"          bake took {time.monotonic() - started:.0f}s", flush=True)
 
     scale = 1.0
     if lit:
