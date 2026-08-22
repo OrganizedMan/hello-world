@@ -79,18 +79,41 @@ export function TourPage() {
     );
   }
 
+  const traced = manifest.schema === "hearthview-tour/v2";
+
   return (
     <main className="tour-page">
       <header className="tour-header">
         <div>
-          <p className="eyebrow">Unapproved prototype</p>
-          <h1>Explore the proposed kitchen and family room</h1>
-          <p>Compare the full A-1 trace before relying on this experimental room tour.</p>
+          <p className="eyebrow">{traced ? "Traced from A-1" : "Unapproved prototype"}</p>
+          <h1>{traced ? "Walk the proposed first floor" : "Explore the proposed kitchen and family room"}</h1>
+          <p>
+            {traced
+              ? "Every wall, opening and room position here is lifted from the A-1 proposed-plan linework."
+              : "Compare the full A-1 trace before relying on this experimental room tour."}
+          </p>
         </div>
         <aside className="tour-trust-note" aria-label="Tour trust note">
           <strong>{manifest.label}</strong>
-          <span>Unapproved prototype: its geometry must not be treated as A-1 accurate until the 2D trace review is approved.</span>
-          <span>Furniture, décor, and finishes are provisional visual choices—not measured construction details.</span>
+          {traced ? (
+            <>
+              <span>
+                {manifest.provenance.verified_percent}% of the solids stand on a dimension read from the
+                drawing: wall footprints and thicknesses, opening positions and widths, and the printed
+                ceiling height.
+              </span>
+              <span>{manifest.provenance.absent_from_drawing_set}</span>
+              <span>
+                Assumed instead: {manifest.provenance.assumed.join("; ")}. Finishes and lighting are
+                presentation, not measured detail.
+              </span>
+            </>
+          ) : (
+            <>
+              <span>Unapproved prototype: its geometry must not be treated as A-1 accurate until the 2D trace review is approved.</span>
+              <span>Furniture, décor, and finishes are provisional visual choices—not measured construction details.</span>
+            </>
+          )}
         </aside>
       </header>
 

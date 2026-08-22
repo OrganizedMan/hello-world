@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+
 from dataclasses import dataclass
 
 from hearthview.a1_spatial import A1SpatialModel, build_a1_spatial_model
@@ -173,7 +176,11 @@ class OrientationSpec:
         return {
             "bounds": self.bounds.to_manifest(),
             "north_vector": list(self.north_vector),
-            "north_up": self.north_vector == (0, -1),
+            # North lies along the plan's vertical axis, so the browser can draw
+            # a north-up minimap. Which sign points north depends on the
+            # authoring frame -- the traced frame is +y north, the legacy spike
+            # frame is -y north -- and `north_vector` is what says which.
+            "north_up": self.north_vector[0] == 0 and self.north_vector[1] != 0,
             "regions": [region.to_manifest() for region in self.regions],
             "openings": [opening.to_manifest() for opening in self.openings],
         }
@@ -209,6 +216,8 @@ class SceneContract:
     camera_presets: tuple[CameraPreset, ...]
     orientation: OrientationSpec
     provisional_categories: tuple[str, ...]
+    source: dict | None = None
+    provenance: dict | None = None
 
     def to_manifest(self) -> dict[str, object]:
         """Return a stable, primitive-only representation for Blender and the browser."""
@@ -235,6 +244,8 @@ class SceneContract:
             "camera_presets": [item.to_manifest() for item in self.camera_presets],
             "orientation": self.orientation.to_manifest(),
             "provisional_categories": list(self.provisional_categories),
+            **({"source": self.source} if self.source else {}),
+            **({"provenance": self.provenance} if self.provenance else {}),
         }
 
 
@@ -529,3 +540,148 @@ def _validate_dimension(
 ) -> None:
     if abs(actual - expected) > DIMENSION_TOLERANCE_METERS:
         errors.append(f"{name} must be {expected} m within 0.003 m")
+
+
+def build_scene_contract_from_spec(spec: dict) -> SceneContract:
+    """Project the A-1 kitchen scene spec into the established contract shape.
+
+    The spec (see hearthview.a1_kitchen_scene) is generated from the approved
+    trace, so a contract built here carries measured geometry rather than the
+    hand-transcribed spike layout. The browser manifest this produces follows
+    the hearthview-tour/v2 schema.
+    """
+    envelope = spec["envelope"]
+    span = envelope["span"]
+    depth_east = envelope["depth_east"]
+    arm_east = envelope["arm_east"]
+    arm_north = envelope["arm_north"]
+    living_south = envelope["living_south"]
+    ceiling = spec["ceiling"]
+    kitchen = spec["kitchen"]
+    island = kitchen["island"]
+    clear = spec["living"]["clear_area"]
+    margin = 0.35
+    # canonical_hash rejects floats by design (it guards the tick-based
+    # model); the spec's identity is the digest of its stable JSON form.
+    spec_hash = hashlib.sha256(
+        json.dumps(spec, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+    def opening_rect(item: dict) -> Rectangle:
+        low = item["line"] + min(0.0, item["outward"] * item["thickness"])
+        high = item["line"] + max(0.0, item["outward"] * item["thickness"])
+        if item["axis"] == "h":
+            return Rectangle(item["name"].lower(), item["start"], low, item["end"], high)
+        return Rectangle(item["name"].lower(), low, item["start"], high, item["end"])
+
+    def wall_of(name: str) -> str:
+        for direction in ("north", "west", "east", "south"):
+            if f"hv_{direction}" in name.lower():
+                return direction
+        return "north"
+
+    wall_openings = tuple(
+        WallOpening(item["name"].lower(), wall_of(item["name"]), opening_rect(item))
+        for item in [*spec["windows"], *spec["doors"]]
+    )
+
+    counter_depth = kitchen["counter_depth"]
+    north_counter = kitchen["north_run"]["counter"]
+    west_counter = kitchen["west_run"]["counter"]
+    # Counter runs are emitted in each station's local run coordinates; the
+    # station rotation is what puts them on a wall, so convert back to world
+    # here rather than assuming a run direction.
+    north_x = sorted((span - north_counter["start"], span - north_counter["end"]))
+    west_y = sorted((arm_north - west_counter["start"], arm_north - west_counter["end"]))
+    collision = (
+        Rectangle("island", island[0], island[1], island[2], island[3]),
+        Rectangle("north_counter", north_x[0], arm_north - counter_depth,
+                  north_x[1], arm_north),
+        Rectangle("west_counter", 0.0, west_y[0], counter_depth, west_y[1]),
+        Rectangle("media_wall", span - 0.5,
+                  max(0.0, spec["living"]["tv"]["center_y"] - 1.0),
+                  span, spec["living"]["tv"]["center_y"] + 1.0),
+    )
+
+    camera_names = {"KITCHEN": "kitchen_overview", "LIVING_ROOM": "walk_start", "PLAN": "overhead"}
+    presets = tuple(
+        CameraPreset(
+            camera_names[camera["name"]],
+            tuple(camera["location"]),
+            tuple(camera["target"]),
+            (0.0, 0.0, 1.0),
+        )
+        for camera in spec["cameras"]
+        if camera["name"] in camera_names
+    )
+
+    measured = spec["provenance"]["measured"]
+    assumed = spec["provenance"]["assumed"]
+    return SceneContract(
+        schema="hearthview-tour/v2",
+        label="Traced from A-1 · kitchen and family room",
+        canonical_geometry=True,
+        canonical_model_hash=spec_hash,
+        canonical_geometry_hash=spec_hash,
+        envelope=Bounds(0.0, 0.0, 0.0, span, arm_north, ceiling),
+        wall_thickness=0.1524,
+        counter_zone_depth=counter_depth,
+        printed_dimensions=(
+            PrintedDimension("span_interior", round(span, 4), "A-1 traced interior span"),
+            PrintedDimension("depth_east_interior", round(depth_east, 4), "A-1 traced interior depth"),
+            PrintedDimension("west_run", round(arm_north, 4), "A-1 printed dimension 19'-7\""),
+            PrintedDimension("ceiling", round(ceiling, 4), "A-1 printed dimension 8'-5\""),
+            PrintedDimension("island_width", round(island[2] - island[0], 4), "A-1 printed dimension 8'-7\""),
+            PrintedDimension("island_depth", round(island[3] - island[1], 4), "A-1 printed dimension 4'-3\""),
+            PrintedDimension("eye_height", 1.65, "tour navigation requirement"),
+        ),
+        wall_openings=wall_openings,
+        island_footprint=Rectangle("island", island[0], island[1], island[2], island[3]),
+        living_clear_area=Rectangle("living_clear", clear[0], clear[1], clear[2], clear[3]),
+        cabinet_appliance_order=(
+            OrderedWallItems("north_sink_wall", ("tower", "dishwasher", "sink", "trash", "tower")),
+            OrderedWallItems("west_wall", ("upper_cabinets", "range", "upper_cabinets", "refrigerator")),
+        ),
+        # L-shaped floor: the west kitchen arm below `living_south`, the full
+        # span above it. Wound anticlockwise from the arm's south-west corner.
+        walkable_polygon=(
+            (margin, margin),
+            (arm_east - margin, margin),
+            (arm_east - margin, living_south + margin),
+            (span - margin, living_south + margin),
+            (span - margin, arm_north - margin),
+            (margin, arm_north - margin),
+        ),
+        collision_rectangles=collision,
+        camera_presets=presets,
+        orientation=OrientationSpec(
+            bounds=Rectangle("kitchen_family", 0.0, 0.0, span, arm_north),
+            # +y is north in the traced frame, so the compass points up-screen.
+            north_vector=(0, 1),
+            regions=(
+                Rectangle("Kitchen", 0.0, 0.0, arm_east, arm_north),
+                Rectangle("Living Room", clear[0], clear[1], clear[2], clear[3]),
+            ),
+            openings=wall_openings,
+        ),
+        provisional_categories=(
+            "cabinetry_detail", "hardware", "finishes", "furniture", "decor",
+            "undimensioned_offsets", "opening_heights",
+        ),
+        source={
+            "sheet": spec["source"]["sheet"],
+            "page": spec["source"]["page"],
+            "view": spec["source"]["view"],
+            "points_per_foot": 18.0,
+        },
+        provenance={
+            "verified_percent": round(100 * len(measured) / (len(measured) + len(assumed)), 1),
+            "measured": measured,
+            "assumed": assumed,
+            "absent_from_drawing_set": (
+                "A-1, A-2 and A-3 are all plans; the set contains no elevation "
+                "or section, so no opening has a printed vertical dimension."
+            ),
+            "approximated_wall_segments": 0,
+        },
+    )

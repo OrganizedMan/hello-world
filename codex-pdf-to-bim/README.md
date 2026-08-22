@@ -50,6 +50,15 @@ npm run dev
 
 Draft renders use Eevee. Final renders use Cycles with denoising. The app preserves settings and an actionable log if Blender times out or fails.
 
+## Walkable tour from the A-1 trace
+
+The traced tour pipeline turns the approved 2D trace into a Blender-authored,
+walkable GLB. Its coordinate frame, the rotation-based wall placement rule, and
+the "measure the artifact, not the spec" rule are documented in
+[`docs/traced-tour-pipeline.md`](docs/traced-tour-pipeline.md). Read that before
+changing anything under `services/hearthview/a1_kitchen_scene.py` or
+`spikes/tour_quality/build_scene.py`.
+
 ## Accuracy and scope
 
 HearthView stores architectural dimensions as signed integer ticks at exactly 1/1024 inch. Validation blocks 3D compilation until the five required A-1 facts are confirmed and the island, wall intervals, openings, TV anchor, and provenance all pass exact checks. A model-bound validation token prevents stale or changed geometry from compiling.

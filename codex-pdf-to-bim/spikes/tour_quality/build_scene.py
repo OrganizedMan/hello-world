@@ -9,6 +9,7 @@ and invokes the existing pure-Python artifact validator.
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import hashlib
 import json
 import math
@@ -72,6 +73,24 @@ class BuildError(RuntimeError):
     """A plain, actionable scene-build failure."""
 
 
+@dataclass(frozen=True)
+class _Rect:
+    """Minimal stand-in for the contract Rectangle used by shared builders."""
+
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
+
+    @property
+    def width(self) -> float:
+        return self.max_x - self.min_x
+
+    @property
+    def depth(self) -> float:
+        return self.max_y - self.min_y
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -93,23 +112,42 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--repo", type=Path, required=True, help="Task 1 source repository")
     parser.add_argument("--assets", type=Path, required=True, help="Prepared local source assets")
     parser.add_argument("--output-dir", type=Path, required=True, help="Browser artifact directory")
+    parser.add_argument(
+        "--spec",
+        type=Path,
+        default=None,
+        help="A-1 traced scene spec; omit to build the original hand-built spike.",
+    )
     arguments = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     return parser.parse_args(arguments)
 
 
-def _load_contract(repo: Path) -> tuple[Any, Any]:
+def _load_contract(repo: Path, spec_path: Path | None) -> tuple[Any, Any, dict | None]:
     repo = repo.resolve()
     if not (repo / "spikes" / "tour_quality" / "scene_contract.py").is_file():
         raise BuildError(f"Task 1 scene contract is missing under repo: {repo}")
     sys.path.insert(0, str(repo))
     sys.path.insert(0, str(repo / "services"))
-    from spikes.tour_quality.scene_contract import build_scene_contract, validate_scene_contract
+    from spikes.tour_quality.scene_contract import (
+        build_scene_contract,
+        build_scene_contract_from_spec,
+        validate_scene_contract,
+    )
+
+    module = sys.modules["spikes.tour_quality.scene_contract"]
+    if spec_path is not None:
+        if not spec_path.is_file():
+            raise BuildError(f"traced scene spec is missing: {spec_path}")
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        if spec.get("schema") != "hearthview-kitchen-scene/v1":
+            raise BuildError(f"unexpected scene spec schema: {spec.get('schema')!r}")
+        return build_scene_contract_from_spec(spec), module, spec
 
     contract = build_scene_contract()
     errors = validate_scene_contract(contract)
     if errors:
         raise BuildError("Task 1 contract is invalid:\n" + "\n".join(f"- {error}" for error in errors))
-    return contract, sys.modules["spikes.tour_quality.scene_contract"]
+    return contract, module, None
 
 
 def _validate_blender_version() -> None:
@@ -374,6 +412,259 @@ def _create_materials(assets: Path, span: float, depth: float) -> dict[str, bpy.
         emission_strength=7.5,
     )
     return materials
+
+
+def _build_traced_architecture(
+    spec: dict, materials: dict[str, bpy.types.Material], root: bpy.types.Object
+) -> None:
+    """Build walls, slabs and glazing straight from the A-1 scene spec.
+
+    Every box here carries coordinates the extractor read off the drawing, so
+    unlike the hand-built path there is no transcribed layout to drift from it.
+    """
+    ceiling = spec["ceiling"]
+
+    for slab in spec["slabs"]:
+        min_x, min_y, max_x, max_y = slab["rect"]
+        width, depth = max_x - min_x, max_y - min_y
+        centre = ((min_x + max_x) / 2, (min_y + max_y) / 2)
+        name = "HV_FLOOR" if slab["name"] == "MAIN" else f"HV_FLOOR_{slab['name']}"
+        floor = create_box(
+            name, (width, depth, 0.045), (centre[0], centre[1], -0.0225),
+            material=materials["floor"], parent=root, bevel=0.0,
+        )
+        floor["traced_from"] = "A-1"
+        create_box(
+            f"HV_CEILING_{slab['name']}", (width, depth, 0.055),
+            (centre[0], centre[1], ceiling + 0.0275),
+            material=materials["plaster"], parent=root, bevel=0.001,
+        )
+
+    for box in spec["wall_boxes"]:
+        create_box(
+            box["name"], tuple(box["size"]), tuple(box["loc"]),
+            material=materials["plaster"], parent=root, bevel=0.002,
+        )
+
+    for window in spec["windows"]:
+        _build_traced_glazing(window, materials, root, sill=window["sill"], head=window["head"])
+    for door in spec["doors"]:
+        _build_traced_glazing(door, materials, root, sill=0.02, head=door["head"])
+
+
+def _build_traced_glazing(
+    item: dict,
+    materials: dict[str, bpy.types.Material],
+    root: bpy.types.Object,
+    *,
+    sill: float,
+    head: float,
+) -> None:
+    """Casing, glass and mullions inside one traced opening."""
+    thickness = item["thickness"]
+    face = item["line"] + item["outward"] * thickness / 2
+    span = item["end"] - item["start"]
+    centre = (item["start"] + item["end"]) / 2
+    height = head - sill
+    if span <= 0.02 or height <= 0.02:
+        return
+    group = create_root(f"HV_OPENING_{item['name']}", root)
+
+    def place(name: str, along: float, length: float, z_centre: float, z_size: float,
+              material: bpy.types.Material, depth: float) -> None:
+        if item["axis"] == "h":
+            create_box(name, (length, depth, z_size), (along, face, z_centre),
+                       material=material, parent=group, bevel=0.004)
+        else:
+            create_box(name, (depth, length, z_size), (face, along, z_centre),
+                       material=material, parent=group, bevel=0.004)
+
+    place(f"HV_GLASS_{item['name']}", centre, span - 0.10, (sill + head) / 2,
+          height - 0.10, materials["glass"], thickness * 0.35)
+    place(f"HV_CASING_HEAD_{item['name']}", centre, span, head - 0.03,
+          0.06, materials["trim"], thickness + 0.02)
+    place(f"HV_CASING_SILL_{item['name']}", centre, span, sill + 0.03,
+          0.06, materials["trim"], thickness + 0.02)
+    for side, along in (("A", item["start"] + 0.03), ("B", item["end"] - 0.03)):
+        place(f"HV_CASING_JAMB_{side}_{item['name']}", along, 0.06,
+              (sill + head) / 2, height, materials["trim"], thickness + 0.02)
+    mullions = max(0, int(span // 0.95) - 1)
+    for index in range(1, mullions + 1):
+        along = item["start"] + span * index / (mullions + 1)
+        place(f"HV_MULLION_{index}_{item['name']}", along, 0.05,
+              (sill + head) / 2, height - 0.10, materials["trim"], thickness + 0.01)
+
+
+def _build_traced_living(
+    spec: dict,
+    assets: Path,
+    materials: dict[str, bpy.types.Material],
+    root: bpy.types.Object,
+) -> None:
+    """Stage the family room inside the traced clear area.
+
+    Positions are proportional to that rectangle rather than absolute, so the
+    furniture cannot land inside a wall the way fixed spike coordinates did.
+    """
+    min_x, min_y, max_x, max_y = spec["living"]["clear_area"]
+    width, depth = max_x - min_x, max_y - min_y
+    centre_x, centre_y = (min_x + max_x) / 2, (min_y + max_y) / 2
+    tv = spec["living"]["tv"]
+
+    create_box(
+        "HV_LIVING_RUG", (min(2.72, width * 0.78), min(2.62, depth * 0.72), 0.018),
+        (centre_x, centre_y, 0.018), material=materials["rug"], parent=root,
+        bevel=0.012, bevel_segments=4,
+    )
+    create_sofa(
+        "HV_LINEN_SOFA", location=(min_x + width * 0.22, centre_y + depth * 0.18, 0.0),
+        upholstery=materials["linen"], wood=materials["oak"], parent=root,
+    )
+    import_gltf_asset(
+        assets / "models" / "modern_arm_chair_01" / "modern_arm_chair_01_1k.gltf",
+        name="HV_IMPORTED_MODERN_ARM_CHAIR_01", parent=root,
+        floor_center=(min_x + width * 0.30, min_y + depth * 0.18, 0.0),
+        target_max_extent=1.02, rotation_z=math.radians(28.0),
+        material_overrides={"pillow": materials["linen"], "legs": materials["oak"]},
+    )
+    import_gltf_asset(
+        assets / "models" / "modern_coffee_table_01" / "modern_coffee_table_01_1k.gltf",
+        name="HV_IMPORTED_MODERN_COFFEE_TABLE_01", parent=root,
+        floor_center=(centre_x, centre_y, 0.0),
+        target_max_extent=1.20, rotation_z=math.radians(90.0),
+        material_overrides={"table": materials["oak"], "wood": materials["oak"]},
+    )
+    # The 60" TV hangs on the east wall where A-1 marks it. `tv["line"]` is
+    # that wall's interior face, so both boxes are offset inward (west of it)
+    # rather than sitting at a hardcoded x the way the spike's did.
+    face = tv["line"]
+    create_box(
+        "HV_MEDIA_CONSOLE", (0.42, 1.72, 0.44), (face - 0.21, tv["center_y"], 0.24),
+        material=materials["oak"], parent=root, bevel=0.015, bevel_segments=4,
+    )
+    create_box(
+        "HV_TV_SCREEN", (0.045, tv["width"], 0.80),
+        (face - 0.055, tv["center_y"], 1.23),
+        material=materials["screen"], parent=root, bevel=0.018, bevel_segments=5,
+    )
+    planter = (max_x - 0.35, min_y + 0.35)
+    create_cylinder("HV_PLANTER", radius=0.22, depth=0.42, location=(planter[0], planter[1], 0.21), material=materials["ceramic"], parent=root, vertices=48, bevel=0.012)
+    create_cylinder("HV_PLANT_TRUNK", radius=0.035, depth=1.15, location=(planter[0], planter[1], 0.90), material=materials["oak"], parent=root, vertices=24)
+    for index, (dx, dy, dz, scale) in enumerate(
+        ((-0.18, 0.02, 1.18, (1.0, 0.45, 0.32)), (0.18, -0.05, 1.32, (0.95, 0.42, 0.30)),
+         (0.05, 0.18, 1.52, (1.05, 0.48, 0.34)), (-0.10, -0.15, 1.65, (0.82, 0.38, 0.28)))
+    ):
+        create_sphere(f"HV_PLANT_LEAF_{index + 1}", radius=0.30, location=(planter[0] + dx, planter[1] + dy, dz), scale=scale, material=materials["leaf"], parent=root, segments=32, rings=16)
+
+
+# South end of the hand-built spike's west cabinet run, in spike coordinates.
+_SPIKE_WEST_RUN = 2.75
+
+
+def _station(name: str, anchor: list[float], rotation_deg: float,
+             parent: bpy.types.Object) -> bpy.types.Object:
+    """An empty at a wall point, rotated so the canonical local frame lands on it.
+
+    Builders below work in one frame only — wall at local y=0, room toward +y,
+    run along +x. Every wall on the plan is reachable from that by a rotation
+    about the vertical axis, so nothing needs a mirror and no builder has to
+    know which wall it sits on. Children are parented, so Blender applies the
+    transform and the local coordinates never touch world space.
+    """
+    empty = create_root(name, parent)
+    empty.location = (anchor[0], anchor[1], 0.0)
+    empty.rotation_euler = (0.0, 0.0, math.radians(rotation_deg))
+    return empty
+
+
+def _build_traced_kitchen(
+    spec: dict, materials: dict[str, bpy.types.Material], root: bpy.types.Object
+) -> None:
+    """Cabinetry and appliances at the stations printed on A-1."""
+    kitchen = spec["kitchen"]
+    depth = kitchen["counter_depth"]
+    north = kitchen["north_run"]
+    west = kitchen["west_run"]
+
+    def base(name: str, start: float, width: float, run_axis: str, unit_depth: float = None,
+             doors: int = 2, parent: bpy.types.Object = None) -> None:
+        create_cabinet_unit(
+            name, start=start, width=width, depth=unit_depth or depth,
+            base_z=0.095, height=0.775, run_axis=run_axis,
+            body_material=materials["cabinet_body"], front_material=materials["cabinet"],
+            hardware_material=materials["bronze"], parent=parent or root, doors=doors,
+        )
+
+    # Every station below is built in the canonical local frame under its own
+    # rotated empty, so the same code serves any wall on any floor.
+    north_wall = _station("HV_STATION_NORTH", north["station"]["anchor"],
+                          north["station"]["rotation_deg"], root)
+    west_wall = _station("HV_STATION_WEST", west["station"]["anchor"],
+                         west["station"]["rotation_deg"], root)
+
+    run = north["counter"]
+    create_box("HV_NORTH_COUNTER", (run["end"] - run["start"], depth, 0.04),
+               ((run["start"] + run["end"]) / 2, depth / 2, 0.89),
+               material=materials["stone"], parent=north_wall, bevel=0.006, bevel_segments=4)
+    for index, tower in enumerate(north["towers"], start=1):
+        create_cabinet_unit(
+            f"HV_NORTH_TOWER_{index}", start=tower["run_start"],
+            width=tower["width"], depth=tower["depth"], base_z=0.095, height=2.26,
+            run_axis="X", body_material=materials["cabinet_body"],
+            front_material=materials["cabinet"], hardware_material=materials["bronze"],
+            parent=north_wall, doors=2,
+        )
+    dishwasher, sink, trash = north["dishwasher"], north["sink"], north["trash"]
+    _create_dishwasher(dishwasher["run_start"], dishwasher["width"], depth, materials, north_wall)
+    base("HV_NORTH_SINK_BASE", sink["run_start"], sink["width"], "X", parent=north_wall)
+    _create_sink_and_faucet(sink["run_start"] + sink["width"] / 2, depth, materials, north_wall)
+    base("HV_NORTH_TRASH", trash["run_start"], trash["width"], "X", doors=1, parent=north_wall)
+
+    counter = west["counter"]
+    create_box("HV_WEST_COUNTER", (counter["end"] - counter["start"], depth, 0.04),
+               ((counter["start"] + counter["end"]) / 2, depth / 2, 0.89),
+               material=materials["stone"], parent=west_wall, bevel=0.006, bevel_segments=4)
+    for index, upper in enumerate(west["uppers"], start=1):
+        create_cabinet_unit(
+            f"HV_WEST_UPPER_{index}", start=upper["run_start"],
+            width=upper["width"], depth=0.39, base_z=1.42, height=0.90, run_axis="X",
+            body_material=materials["cabinet_body"], front_material=materials["cabinet"],
+            hardware_material=materials["bronze"], parent=west_wall, doors=2, toe_kick=False,
+        )
+        base(f"HV_WEST_BASE_{index}", upper["run_start"], upper["width"], "X", parent=west_wall)
+    _create_range_and_hood(west["range"]["run_start"], west["range"]["width"], depth,
+                           materials, west_wall)
+    _create_refrigerator(west["fridge"]["run_start"], west["fridge"]["width"],
+                         west["fridge"]["depth"], materials, west_wall)
+
+    # Island: printed 8'-7" x 4'-3", placed where the trace found it.
+    min_x, min_y, max_x, max_y = kitchen["island"]
+    island = _Rect(min_x, min_y, max_x, max_y)
+    centre = ((min_x + max_x) / 2, (min_y + max_y) / 2)
+    structure = create_box(
+        "HV_ISLAND_STRUCTURE", (island.width, island.depth, 0.91),
+        (centre[0], centre[1], 0.455), material=materials["cabinet_body"],
+        parent=root, bevel=0.004, bevel_segments=4,
+    )
+    structure["footprint_min_x"] = min_x
+    structure["footprint_max_x"] = max_x
+    structure["footprint_min_y"] = min_y
+    structure["footprint_max_y"] = max_y
+    _panel_island(island, materials, root)
+    create_box(
+        "HV_ISLAND_COUNTER_SLAB",
+        (island.width + 0.08, island.depth + 0.31, 0.042),
+        (centre[0], centre[1] + 0.115, 0.931),
+        material=materials["stone"], parent=root, bevel=0.009, bevel_segments=5,
+    )
+    stool_y = max_y + 0.34
+    stool_count = 4
+    for index in range(1, stool_count + 1):
+        x = min_x + island.width * index / (stool_count + 1)
+        create_stool(
+            f"HV_ISLAND_STOOL_{index}", location=(x, stool_y, 0.0),
+            upholstery=materials["linen"], metal=materials["bronze"], parent=root,
+        )
 
 
 def _build_architecture(contract: Any, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
@@ -835,7 +1126,11 @@ def _build_kitchen(contract: Any, materials: dict[str, bpy.types.Material], root
         parent=root,
     )
     create_box("HV_WEST_COUNTER_NORTH", (counter_depth, 0.70, 0.04), (counter_depth / 2, 0.35, 0.89), material=materials["stone"], parent=root, bevel=0.006, bevel_segments=4)
-    _create_range_and_hood(0.72, 0.9144, counter_depth, materials, root)
+    # The appliance builders work in one canonical run frame (wall at local
+    # y=0, room toward +y, run along +x), so this west run gets a station empty
+    # rotated onto the wall. Run coordinates are measured from the south end.
+    west_station = _station("HV_SPIKE_STATION_WEST", [0.0, _SPIKE_WEST_RUN], -90.0, root)
+    _create_range_and_hood(_SPIKE_WEST_RUN - 0.72 - 0.9144, 0.9144, counter_depth, materials, west_station)
     create_cabinet_unit(
         "HV_WEST_UPPER_SOUTH",
         start=1.66,
@@ -865,7 +1160,7 @@ def _build_kitchen(contract: Any, materials: dict[str, bpy.types.Material], root
         parent=root,
     )
     create_box("HV_WEST_COUNTER_SOUTH", (counter_depth, 0.34, 0.04), (counter_depth / 2, 1.83, 0.89), material=materials["stone"], parent=root, bevel=0.006, bevel_segments=4)
-    _create_refrigerator(2.00, 0.75, counter_depth, materials, root)
+    _create_refrigerator(_SPIKE_WEST_RUN - 2.00 - 0.75, 0.75, counter_depth, materials, west_station)
 
     # Crown/filler closes the cabinetry composition without implying measured BIM detail.
     create_box("HV_NORTH_CABINET_CROWN", (2.98, 0.075, 0.075), (4.49, 0.10, 2.39), material=materials["cabinet"], parent=root, bevel=0.003)
@@ -934,27 +1229,37 @@ def _create_sink_and_faucet(center_x: float, depth: float, materials: dict[str, 
 
 
 def _create_range_and_hood(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
-    center_y = start + width / 2
-    create_box("HV_RANGE_BODY", (depth - 0.02, width - 0.02, 0.89), ((depth - 0.02) / 2, center_y, 0.445), material=materials["black"], parent=root, bevel=0.006)
-    create_box("HV_RANGE_OVEN_GLASS", (0.025, width * 0.67, 0.43), (depth + 0.006, center_y, 0.42), material=materials["screen"], parent=root, bevel=0.018)
-    create_cylinder("HV_RANGE_HANDLE", radius=0.012, depth=width * 0.72, location=(depth + 0.032, center_y, 0.68), rotation=(math.pi / 2, 0.0, 0.0), material=materials["steel"], parent=root, vertices=24)
-    for row, x in enumerate((0.19, 0.46)):
-        for col, y_offset in enumerate((-0.25, 0.25)):
-            create_cylinder(f"HV_RANGE_BURNER_{row}_{col}", radius=0.105, depth=0.018, location=(x, center_y + y_offset, 0.908), material=materials["black"], parent=root, vertices=40, bevel=0.002)
+    """Range in the canonical run frame: wall at local y=0, room toward +y.
+
+    Every cabinetry builder in this module works in that one frame, so a run on
+    any wall is a rotated station empty (see ``_station``) and never a mirror.
+    """
+    center_x = start + width / 2
+    create_box("HV_RANGE_BODY", (width - 0.02, depth - 0.02, 0.89), (center_x, (depth - 0.02) / 2, 0.445), material=materials["black"], parent=root, bevel=0.006)
+    create_box("HV_RANGE_OVEN_GLASS", (width * 0.67, 0.025, 0.43), (center_x, depth + 0.006, 0.42), material=materials["screen"], parent=root, bevel=0.018)
+    create_cylinder("HV_RANGE_HANDLE", radius=0.012, depth=width * 0.72, location=(center_x, depth + 0.032, 0.68), rotation=(0.0, math.pi / 2, 0.0), material=materials["steel"], parent=root, vertices=24)
+    for row, y in enumerate((0.19, 0.46)):
+        for col, x_offset in enumerate((-0.25, 0.25)):
+            create_cylinder(f"HV_RANGE_BURNER_{row}_{col}", radius=0.105, depth=0.018, location=(center_x + x_offset, y, 0.908), material=materials["black"], parent=root, vertices=40, bevel=0.002)
     for index, offset in enumerate((-0.28, -0.14, 0.0, 0.14, 0.28)):
-        create_cylinder(f"HV_RANGE_KNOB_{index + 1}", radius=0.027, depth=0.025, location=(depth + 0.032, center_y + offset, 0.79), rotation=(0.0, math.pi / 2, 0.0), material=materials["bronze"], parent=root, vertices=28)
-    create_box("HV_RANGE_HOOD", (0.58, width + 0.10, 0.19), (0.30, center_y, 1.73), material=materials["cabinet"], parent=root, bevel=0.025, bevel_segments=5)
-    create_box("HV_RANGE_HOOD_CHIMNEY", (0.35, 0.44, 0.66), (0.18, center_y, 2.12), material=materials["cabinet"], parent=root, bevel=0.008)
+        create_cylinder(f"HV_RANGE_KNOB_{index + 1}", radius=0.027, depth=0.025, location=(center_x + offset, depth + 0.032, 0.79), rotation=(math.pi / 2, 0.0, 0.0), material=materials["bronze"], parent=root, vertices=28)
+    create_box("HV_RANGE_HOOD", (width + 0.10, 0.58, 0.19), (center_x, 0.30, 1.73), material=materials["cabinet"], parent=root, bevel=0.025, bevel_segments=5)
+    create_box("HV_RANGE_HOOD_CHIMNEY", (0.44, 0.35, 0.66), (center_x, 0.18, 2.12), material=materials["cabinet"], parent=root, bevel=0.008)
 
 
 def _create_refrigerator(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
-    center_y = start + width / 2
-    create_box("HV_REFRIGERATOR_BODY", (depth - 0.015, width - 0.015, 2.28), ((depth - 0.015) / 2, center_y, 1.14), material=materials["steel"], parent=root, bevel=0.015, bevel_segments=4)
-    create_box("HV_REFRIGERATOR_DOOR_N", (0.026, width / 2 - 0.012, 1.58), (depth + 0.007, start + width * 0.25, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
-    create_box("HV_REFRIGERATOR_DOOR_S", (0.026, width / 2 - 0.012, 1.58), (depth + 0.007, start + width * 0.75, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
-    create_box("HV_REFRIGERATOR_FREEZER", (0.026, width - 0.025, 0.50), (depth + 0.007, center_y, 0.36), material=materials["cabinet"], parent=root, bevel=0.006)
-    for index, y in enumerate((start + width * 0.39, start + width * 0.61)):
-        create_cylinder(f"HV_REFRIGERATOR_HANDLE_{index + 1}", radius=0.011, depth=0.74, location=(depth + 0.045, y, 1.46), material=materials["bronze"], parent=root, vertices=24)
+    """Refrigerator in the canonical run frame (wall at local y=0, room +y).
+
+    Door leaves are named A/B along the run rather than by compass point: the
+    builder is not told which wall its station sits on.
+    """
+    center_x = start + width / 2
+    create_box("HV_REFRIGERATOR_BODY", (width - 0.015, depth - 0.015, 2.28), (center_x, (depth - 0.015) / 2, 1.14), material=materials["steel"], parent=root, bevel=0.015, bevel_segments=4)
+    create_box("HV_REFRIGERATOR_DOOR_A", (width / 2 - 0.012, 0.026, 1.58), (start + width * 0.25, depth + 0.007, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
+    create_box("HV_REFRIGERATOR_DOOR_B", (width / 2 - 0.012, 0.026, 1.58), (start + width * 0.75, depth + 0.007, 1.43), material=materials["cabinet"], parent=root, bevel=0.006)
+    create_box("HV_REFRIGERATOR_FREEZER", (width - 0.025, 0.026, 0.50), (center_x, depth + 0.007, 0.36), material=materials["cabinet"], parent=root, bevel=0.006)
+    for index, x in enumerate((start + width * 0.39, start + width * 0.61)):
+        create_cylinder(f"HV_REFRIGERATOR_HANDLE_{index + 1}", radius=0.011, depth=0.74, location=(x, depth + 0.045, 1.46), material=materials["bronze"], parent=root, vertices=24)
 
 
 def _panel_island(island: Any, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
@@ -993,7 +1298,15 @@ def _panel_island(island: Any, materials: dict[str, bpy.types.Material], root: b
     create_box("HV_ISLAND_PLINTH", (island.width - 0.12, island.depth - 0.12, 0.095), (center_x, center_y, 0.0475), material=materials["cabinet_body"], parent=root, bevel=0.002)
 
 
-def _build_living(assets: Path, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
+def _build_living(
+    assets: Path,
+    materials: dict[str, bpy.types.Material],
+    root: bpy.types.Object,
+    spec: dict | None = None,
+) -> None:
+    if spec is not None:
+        _build_traced_living(spec, assets, materials, root)
+        return
     create_box("HV_LIVING_RUG", (2.72, 2.62, 0.018), (7.32, 2.62, 0.018), material=materials["rug"], parent=root, bevel=0.012, bevel_segments=4)
     create_sofa("HV_LINEN_SOFA", location=(6.12, 3.55, 0.0), upholstery=materials["linen"], wood=materials["oak"], parent=root)
     import_gltf_asset(
@@ -1033,23 +1346,52 @@ def _build_lighting_and_cameras(
     lighting_root: bpy.types.Object,
     navigation_root: bpy.types.Object,
     contract: Any,
+    spec: dict | None = None,
 ) -> bpy.types.Object:
-    # Imported real-scale pendants plus emissive bulbs and corresponding warm lights.
-    for index, x in enumerate((2.05, 3.04, 4.03), start=1):
+    # Pendants hang over the island; daylight enters at the traced north
+    # openings. With no spec these keep the original hand-placed positions.
+    if spec is None:
+        pendant_xs = (2.05, 3.04, 4.03)
+        pendant_y = 2.375
+        north_light = ((4.62, -0.42, 1.52), (4.30, 2.00, 0.88))
+        deck_light = ((7.42, -0.48, 1.38), (6.80, 2.70, 0.90))
+        bounce = ((5.30, 2.75, 2.42), (5.30, 2.75, 0.0))
+        hero_position = (0.72, 4.38, 1.68)
+        hero_target = (5.00, 1.92, 1.02)
+    else:
+        min_x, min_y, max_x, max_y = spec["kitchen"]["island"]
+        island_cy = (min_y + max_y) / 2
+        pendant_xs = tuple(min_x + (max_x - min_x) * f for f in (0.22, 0.5, 0.78))
+        pendant_y = island_cy
+        windows = [w for w in spec["windows"] if w["name"].startswith("HV_NORTH")]
+        doors = [d for d in spec["doors"] if d["name"].startswith("HV_NORTH")]
+        widest = max(windows, key=lambda w: w["end"] - w["start"]) if windows else None
+        span = spec["envelope"]["span"]
+        depth_east = spec["envelope"]["depth_east"]
+        wx = ((widest["start"] + widest["end"]) / 2) if widest else span * 0.3
+        north_light = ((wx, -0.42, 1.52), (wx, 2.0, 0.88))
+        dx = ((doors[0]["start"] + doors[0]["end"]) / 2) if doors else span * 0.65
+        deck_light = ((dx, -0.48, 1.38), (dx, 2.7, 0.9))
+        bounce = ((span / 2, depth_east / 2, 2.42), (span / 2, depth_east / 2, 0.0))
+        kitchen_camera = next(c for c in spec["cameras"] if c["name"] == "KITCHEN")
+        hero_position = tuple(kitchen_camera["location"])
+        hero_target = tuple(kitchen_camera["target"])
+
+    for index, x in enumerate(pendant_xs, start=1):
         import_gltf_asset(
             assets / "models" / "modern_ceiling_lamp_01" / "modern_ceiling_lamp_01_1k.gltf",
             name=f"HV_IMPORTED_MODERN_CEILING_LAMP_01_{index}",
             parent=lighting_root,
-            floor_center=(x, 2.375, 1.48),
+            floor_center=(x, pendant_y, 1.48),
             target_max_extent=0.90,
             rotation_z=math.radians(12.0 * (index - 2)),
         )
-        create_sphere(f"HV_PENDANT_BULB_{index}", radius=0.055, location=(x, 2.375, 1.56), scale=(1.0, 1.0, 1.18), material=materials["bulb"], parent=lighting_root, segments=32, rings=16)
-        add_point_light(f"HV_PENDANT_LIGHT_{index}", location=(x, 2.375, 1.55), energy=88.0, color=(1.0, 0.46, 0.20), parent=lighting_root, radius=0.20)
+        create_sphere(f"HV_PENDANT_BULB_{index}", radius=0.055, location=(x, pendant_y, 1.56), scale=(1.0, 1.0, 1.18), material=materials["bulb"], parent=lighting_root, segments=32, rings=16)
+        add_point_light(f"HV_PENDANT_LIGHT_{index}", location=(x, pendant_y, 1.55), energy=88.0, color=(1.0, 0.46, 0.20), parent=lighting_root, radius=0.20)
 
-    add_area_light("HV_NORTH_WINDOW_DAYLIGHT", location=(4.62, -0.42, 1.52), energy=720.0, size=1.30, color=(0.78, 0.88, 1.0), target=(4.30, 2.00, 0.88), parent=lighting_root)
-    add_area_light("HV_DECK_DOOR_DAYLIGHT", location=(7.42, -0.48, 1.38), energy=960.0, size=2.35, color=(0.82, 0.90, 1.0), target=(6.80, 2.70, 0.90), parent=lighting_root)
-    add_area_light("HV_CEILING_BOUNCE", location=(5.30, 2.75, 2.42), energy=430.0, size=4.20, color=(1.0, 0.70, 0.48), target=(5.30, 2.75, 0.0), parent=lighting_root)
+    add_area_light("HV_NORTH_WINDOW_DAYLIGHT", location=north_light[0], energy=720.0, size=1.30, color=(0.78, 0.88, 1.0), target=north_light[1], parent=lighting_root)
+    add_area_light("HV_DECK_DOOR_DAYLIGHT", location=deck_light[0], energy=960.0, size=2.35, color=(0.82, 0.90, 1.0), target=deck_light[1], parent=lighting_root)
+    add_area_light("HV_CEILING_BOUNCE", location=bounce[0], energy=430.0, size=4.20, color=(1.0, 0.70, 0.48), target=bounce[1], parent=lighting_root)
 
     sun_data = bpy.data.lights.new(name="HV_SUN_DATA", type="SUN")
     sun_data.energy = 1.55
@@ -1062,8 +1404,8 @@ def _build_lighting_and_cameras(
 
     hero = add_camera(
         "HV_CAMERA_HERO",
-        position=(0.72, 4.38, 1.68),
-        target=(5.00, 1.92, 1.02),
+        position=hero_position,
+        target=hero_target,
         lens_mm=34.0,
         parent=navigation_root,
     )
@@ -1134,16 +1476,9 @@ def _export_glb(glb_path: Path, contract: Any) -> float:
     _inject_glb_asset_extras(
         glb_path,
         {
-            "label": "Quality spike · visual staging",
-            "canonical_geometry": False,
-            "provisional_categories": [
-                "cabinetry_detail",
-                "hardware",
-                "finishes",
-                "furniture",
-                "decor",
-                "undimensioned_offsets",
-            ],
+            "label": contract.label,
+            "canonical_geometry": contract.canonical_geometry,
+            "provisional_categories": list(contract.provisional_categories),
             "canonical_model_hash": contract.canonical_model_hash,
             "canonical_geometry_hash": contract.canonical_geometry_hash,
         },
@@ -1262,7 +1597,7 @@ def _write_manifest(contract: Any, output_dir: Path) -> dict[str, Any]:
     return manifest
 
 
-def _run_validator(repo: Path, output_dir: Path) -> str:
+def _run_validator(repo: Path, output_dir: Path, spec_path: Path | None = None) -> str:
     uv = shutil.which("uv")
     if not uv:
         raise BuildError("uv is required to run the pure-Python artifact validator")
@@ -1284,6 +1619,8 @@ def _run_validator(repo: Path, output_dir: Path) -> str:
         "--public-dir",
         str(output_dir),
     ]
+    if spec_path is not None:
+        command += ["--spec", str(spec_path)]
     result = subprocess.run(command, cwd=repo, env=env, text=True, capture_output=True, check=False)
     combined = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
     if result.returncode != 0:
@@ -1323,7 +1660,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     assets = args.assets.resolve()
     output_dir = args.output_dir.resolve()
     _validate_blender_version()
-    contract, contract_module = _load_contract(repo)
+    contract, contract_module, spec = _load_contract(repo, args.spec)
     provenance = _validate_authoring_inputs(assets)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_paths = [output_dir / name for name in (GLB_NAME, POSTER_NAME, ENVIRONMENT_NAME, MANIFEST_NAME)]
@@ -1332,7 +1669,13 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             path.unlink()
 
     scene = _configure_scene(assets / "drackenstein_quarry_puresky_1k.hdr")
-    materials = _create_materials(assets, contract_module.SPAN_METERS, contract_module.ROOM_DEPTH_METERS)
+    if spec is None:
+        span_meters = contract_module.SPAN_METERS
+        depth_meters = contract_module.ROOM_DEPTH_METERS
+    else:
+        span_meters = spec["envelope"]["span"]
+        depth_meters = spec["envelope"]["arm_north"]
+    materials = _create_materials(assets, span_meters, depth_meters)
     canonical_root = create_root("HV_CANONICAL")
     staging_root = create_root("HV_STAGING")
     canonical_root["canonical_model_hash"] = contract.canonical_model_hash
@@ -1360,11 +1703,17 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             categories=contract.provisional_categories,
         )
 
-    _build_architecture(contract, materials, architecture)
+    if spec is None:
+        _build_architecture(contract, materials, architecture)
+        _build_kitchen(contract, materials, cabinetry)
+    else:
+        _build_traced_architecture(spec, materials, architecture)
+        _build_traced_kitchen(spec, materials, cabinetry)
     _build_navigation(contract, materials, navigation)
-    _build_kitchen(contract, materials, cabinetry)
-    _build_living(assets, materials, furniture)
-    hero_camera = _build_lighting_and_cameras(assets, materials, lighting, navigation, contract)
+    _build_living(assets, materials, furniture, spec)
+    hero_camera = _build_lighting_and_cameras(
+        assets, materials, lighting, navigation, contract, spec
+    )
     scene.camera = hero_camera
     _convert_curves_to_mesh()
     bpy.context.view_layer.update()
@@ -1374,7 +1723,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     render_seconds = _render_poster(scene, output_dir / POSTER_NAME)
     export_seconds = _export_glb(output_dir / GLB_NAME, contract)
     manifest = _write_manifest(contract, output_dir)
-    validator_output = _run_validator(repo, output_dir)
+    validator_output = _run_validator(repo, output_dir, args.spec)
     metrics = _scene_metrics()
     metrics.update(
         {

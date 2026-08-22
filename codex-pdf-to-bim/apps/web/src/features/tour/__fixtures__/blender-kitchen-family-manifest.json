@@ -1,0 +1,518 @@
+{
+  "schema": "hearthview-tour-spike/v1",
+  "label": "Quality spike · visual staging",
+  "canonical_geometry": false,
+  "canonical_model_hash": "a7b695f5ba7099e07c0af714e9c98b18446e4918525521469c870a77193328f6",
+  "canonical_geometry_hash": "eafe8a0af126b56885a526597b15fe7c63184ff0790e9b9420204d6850e7395b",
+  "envelope": {
+    "min_x": 0.0,
+    "min_y": 0.0,
+    "min_z": 0.0,
+    "max_x": 9.1694,
+    "max_y": 4.8514,
+    "max_z": 2.5654
+  },
+  "wall_thickness_meters": 0.1524,
+  "counter_zone_depth_meters": 0.6604,
+  "printed_dimensions": [
+    {
+      "name": "span",
+      "meters": 9.1694,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "room_depth",
+      "meters": 4.8514,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "counter_zone_depth",
+      "meters": 0.6604,
+      "source": "A-1 derived dimension"
+    },
+    {
+      "name": "ceiling",
+      "meters": 2.5654,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "island_width",
+      "meters": 2.6162,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "island_depth",
+      "meters": 1.2954,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "west_clearance",
+      "meters": 1.0668,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "north_clearance",
+      "meters": 1.0668,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "south_transition",
+      "meters": 1.8288,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "living_clear_width",
+      "meters": 4.4958,
+      "source": "A-1 printed dimension"
+    },
+    {
+      "name": "eye_height",
+      "meters": 1.65,
+      "source": "tour navigation requirement"
+    }
+  ],
+  "wall_openings": [
+    {
+      "name": "kitchen_window_group",
+      "wall": "north",
+      "footprint": {
+        "name": "kitchen_window_group",
+        "min_x": 3.937,
+        "min_y": 0.0,
+        "max_x": 5.3086,
+        "max_y": 0.1524
+      }
+    },
+    {
+      "name": "deck_door_group",
+      "wall": "north",
+      "footprint": {
+        "name": "deck_door_group",
+        "min_x": 6.0452,
+        "min_y": 0.0,
+        "max_x": 8.7884,
+        "max_y": 0.1524
+      }
+    },
+    {
+      "name": "family_east_window",
+      "wall": "east",
+      "footprint": {
+        "name": "family_east_window",
+        "min_x": 9.1694,
+        "min_y": 0.3048,
+        "max_x": 9.3218,
+        "max_y": 1.524
+      }
+    },
+    {
+      "name": "mudroom_opening",
+      "wall": "east",
+      "footprint": {
+        "name": "mudroom_opening",
+        "min_x": 9.1694,
+        "min_y": 3.3528,
+        "max_x": 9.3218,
+        "max_y": 5.7912
+      }
+    },
+    {
+      "name": "south_living_opening",
+      "wall": "south",
+      "footprint": {
+        "name": "south_living_opening",
+        "min_x": 6.6802,
+        "min_y": 4.699,
+        "max_x": 8.2042,
+        "max_y": 4.8514
+      }
+    }
+  ],
+  "island_footprint": {
+    "name": "island",
+    "min_x": 1.7272,
+    "min_y": 1.7272,
+    "max_x": 4.3434,
+    "max_y": 3.0226
+  },
+  "living_clear_area": {
+    "name": "living_clear_area",
+    "min_x": 4.6735999999999995,
+    "min_y": 0.0,
+    "max_x": 9.1694,
+    "max_y": 4.8514
+  },
+  "cabinet_appliance_order": [
+    {
+      "name": "north_sink_wall",
+      "items": [
+        "tower",
+        "dishwasher",
+        "sink",
+        "trash",
+        "tower"
+      ]
+    },
+    {
+      "name": "west_wall",
+      "items": [
+        "upper_cabinets",
+        "range",
+        "upper_cabinets",
+        "refrigerator"
+      ]
+    },
+    {
+      "name": "north_glazing",
+      "items": [
+        "kitchen_window_group",
+        "deck_door_group"
+      ]
+    },
+    {
+      "name": "east_south_transitions",
+      "items": [
+        "family_east_window",
+        "tv_wall",
+        "mudroom_opening",
+        "south_living_opening"
+      ]
+    }
+  ],
+  "walkable_polygon": [
+    [
+      0.18,
+      0.18
+    ],
+    [
+      8.9894,
+      0.18
+    ],
+    [
+      8.9894,
+      4.6714
+    ],
+    [
+      0.18,
+      4.6714
+    ]
+  ],
+  "collision_rectangles": [
+    {
+      "name": "west_counter",
+      "min_x": 0.0,
+      "min_y": 0.0,
+      "max_x": 0.6604,
+      "max_y": 2.75
+    },
+    {
+      "name": "north_counter",
+      "min_x": 0.0,
+      "min_y": 0.0,
+      "max_x": 3.7,
+      "max_y": 0.6604
+    },
+    {
+      "name": "island",
+      "min_x": 1.7272,
+      "min_y": 1.7272,
+      "max_x": 4.3434,
+      "max_y": 3.0226
+    },
+    {
+      "name": "tv_wall",
+      "min_x": 8.9894,
+      "min_y": 1.524,
+      "max_x": 9.1694,
+      "max_y": 3.3528
+    }
+  ],
+  "camera_presets": [
+    {
+      "name": "kitchen_overview",
+      "position": [
+        0.7,
+        4.3014,
+        1.65
+      ],
+      "target": [
+        4.3434,
+        3.0226,
+        0.9
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "walk_start",
+      "position": [
+        4.15,
+        4.2014,
+        1.65
+      ],
+      "target": [
+        5.2,
+        2.1,
+        1.65
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "overhead",
+      "position": [
+        5.4991,
+        3.3401,
+        11.5
+      ],
+      "target": [
+        5.4991,
+        3.3401,
+        0.0
+      ],
+      "up": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    }
+  ],
+  "orientation": {
+    "bounds": {
+      "name": "focused_a1",
+      "min_x": 0.0,
+      "min_y": 0.0,
+      "max_x": 9.1694,
+      "max_y": 4.8514
+    },
+    "north_vector": [
+      0,
+      -1
+    ],
+    "north_up": true,
+    "regions": [
+      {
+        "name": "kitchen",
+        "min_x": 0.0,
+        "min_y": 0.0,
+        "max_x": 4.6736,
+        "max_y": 4.8514
+      },
+      {
+        "name": "family_room",
+        "min_x": 4.6736,
+        "min_y": 0.0,
+        "max_x": 9.1694,
+        "max_y": 4.8514
+      },
+      {
+        "name": "mudroom_context",
+        "min_x": 9.1694,
+        "min_y": 3.3528,
+        "max_x": 10.9982,
+        "max_y": 5.7912
+      },
+      {
+        "name": "existing_living_context",
+        "min_x": 5.7404,
+        "min_y": 4.8514,
+        "max_x": 9.144,
+        "max_y": 6.6802
+      }
+    ],
+    "openings": [
+      {
+        "name": "kitchen_window_group",
+        "wall": "north",
+        "footprint": {
+          "name": "kitchen_window_group",
+          "min_x": 3.937,
+          "min_y": 0.0,
+          "max_x": 5.3086,
+          "max_y": 0.1524
+        }
+      },
+      {
+        "name": "deck_door_group",
+        "wall": "north",
+        "footprint": {
+          "name": "deck_door_group",
+          "min_x": 6.0452,
+          "min_y": 0.0,
+          "max_x": 8.7884,
+          "max_y": 0.1524
+        }
+      },
+      {
+        "name": "family_east_window",
+        "wall": "east",
+        "footprint": {
+          "name": "family_east_window",
+          "min_x": 9.1694,
+          "min_y": 0.3048,
+          "max_x": 9.3218,
+          "max_y": 1.524
+        }
+      },
+      {
+        "name": "mudroom_opening",
+        "wall": "east",
+        "footprint": {
+          "name": "mudroom_opening",
+          "min_x": 9.1694,
+          "min_y": 3.3528,
+          "max_x": 9.3218,
+          "max_y": 5.7912
+        }
+      },
+      {
+        "name": "south_living_opening",
+        "wall": "south",
+        "footprint": {
+          "name": "south_living_opening",
+          "min_x": 6.6802,
+          "min_y": 4.699,
+          "max_x": 8.2042,
+          "max_y": 4.8514
+        }
+      }
+    ]
+  },
+  "provisional_categories": [
+    "cabinetry_detail",
+    "hardware",
+    "finishes",
+    "furniture",
+    "decor",
+    "undimensioned_offsets"
+  ],
+  "artifact": {
+    "glb": "hearthview-kitchen-family.glb",
+    "poster": "poster.webp",
+    "environment": "environment.hdr",
+    "sha256": {
+      "glb": "b5a343c87d9b6d1714ad7ec1e4f8e18c1de8f8b69115435ec1dc0c37f57eba78",
+      "poster": "0eb6f0fc962fb4e9657838f9b597e887357bbbfa596ff7426e909eb841fc2036",
+      "environment": "3c5a3b5efba3de62a845bf21fe7cb88e9657845ea5cf2b90a0158717f19aedfd"
+    },
+    "bytes": {
+      "glb": 22995428,
+      "poster": 293020,
+      "environment": 1332398,
+      "manifest": 10139
+    },
+    "total_browser_bytes": 24630985
+  },
+  "runtime": {
+    "coordinate_rule": "three_x=source_x;three_y=source_z;three_z=-source_y",
+    "eye_height_meters": 1.65,
+    "walkable": {
+      "min_x": 0.18,
+      "max_x": 8.9894,
+      "min_z": -4.6714,
+      "max_z": -0.18
+    },
+    "barriers": [
+      {
+        "name": "west_counter",
+        "min_x": 0.0,
+        "max_x": 0.6604,
+        "min_z": -2.75,
+        "max_z": -0.0
+      },
+      {
+        "name": "north_counter",
+        "min_x": 0.0,
+        "max_x": 3.7,
+        "min_z": -0.6604,
+        "max_z": -0.0
+      },
+      {
+        "name": "island",
+        "min_x": 1.7272,
+        "max_x": 4.3434,
+        "min_z": -3.0226,
+        "max_z": -1.7272
+      },
+      {
+        "name": "tv_wall",
+        "min_x": 8.9894,
+        "max_x": 9.1694,
+        "min_z": -3.3528,
+        "max_z": -1.524
+      }
+    ],
+    "camera_presets": [
+      {
+        "name": "kitchen_overview",
+        "position": [
+          0.7,
+          1.65,
+          -4.3014
+        ],
+        "target": [
+          4.3434,
+          0.9,
+          -3.0226
+        ],
+        "up": [
+          0.0,
+          1.0,
+          -0.0
+        ]
+      },
+      {
+        "name": "walk_start",
+        "position": [
+          4.15,
+          1.65,
+          -4.2014
+        ],
+        "target": [
+          5.2,
+          1.65,
+          -2.1
+        ],
+        "up": [
+          0.0,
+          1.0,
+          -0.0
+        ]
+      },
+      {
+        "name": "overhead",
+        "position": [
+          5.4991,
+          11.5,
+          -3.3401
+        ],
+        "target": [
+          5.4991,
+          0.0,
+          -3.3401
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  "scene_nodes": [
+    "HV_ARCHITECTURE",
+    "HV_CABINETRY",
+    "HV_FURNITURE",
+    "HV_LIGHTING",
+    "HV_NAVIGATION",
+    "HV_FLOOR",
+    "HV_ISLAND_STRUCTURE",
+    "HV_WALKABLE"
+  ]
+}

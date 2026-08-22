@@ -28,13 +28,15 @@ const cameraPresetSchema = z.object({
   up: vector3Schema,
 });
 
-export const manifestSchema = z.object({
-  schema: z.literal("hearthview-tour-spike/v1"),
-  label: z.literal("Quality spike · visual staging"),
-  canonical_geometry: z.literal(false),
-  canonical_model_hash: hashSchema,
-  canonical_geometry_hash: hashSchema,
-  island_footprint: rectangleSchema,
+const provenanceSchema = z.object({
+  verified_percent: z.number().min(0).max(100),
+  measured: z.array(z.string().min(1)).min(1),
+  assumed: z.array(z.string().min(1)),
+  absent_from_drawing_set: z.string().min(1),
+  approximated_wall_segments: z.number().int().nonnegative(),
+});
+
+const sharedSchema = z.object({
   orientation: z.object({
     bounds: rectangleSchema,
     north_vector: vector2Schema,
@@ -42,7 +44,10 @@ export const manifestSchema = z.object({
     regions: z.array(rectangleSchema).min(2),
     openings: z.array(openingSchema).min(1),
   }).superRefine((orientation, context) => {
-    if (orientation.north_vector[0] !== 0 || orientation.north_vector[1] !== -1) {
+    // North must lie on the plan's vertical axis so the minimap can be drawn
+    // north-up. Which sign points north is the authoring frame's business: the
+    // traced pipeline is +y north, the older spike frame is -y north.
+    if (orientation.north_vector[0] !== 0 || Math.abs(orientation.north_vector[1]) !== 1) {
       context.addIssue({ code: "custom", message: "tour orientation must use canonical north" });
     }
   }),
@@ -54,13 +59,13 @@ export const manifestSchema = z.object({
     }
   }),
   artifact: z.object({
-    glb: z.literal("hearthview-kitchen-family.glb"),
-    poster: z.literal("poster.webp"),
-    environment: z.literal("environment.hdr"),
+    glb: z.string().min(1).regex(/^[\w.-]+\.glb$/),
+    poster: z.string().min(1),
+    environment: z.string().min(1),
     total_browser_bytes: z.number().int().positive().max(45_000_000),
   }),
   runtime: z.object({
-    eye_height_meters: z.literal(1.65),
+    eye_height_meters: z.number().positive().max(2.2),
     walkable: z.object({
       min_x: z.number().finite(),
       max_x: z.number().finite(),
@@ -83,6 +88,36 @@ export const manifestSchema = z.object({
     }),
   }),
 }).passthrough();
+
+/** The original hand-built kitchen spike: staging, explicitly not measured. */
+const spikeManifestSchema = sharedSchema.extend({
+  schema: z.literal("hearthview-tour-spike/v1"),
+  label: z.literal("Quality spike · visual staging"),
+  canonical_geometry: z.literal(false),
+  canonical_model_hash: hashSchema,
+  canonical_geometry_hash: hashSchema,
+  island_footprint: rectangleSchema,
+});
+
+/** The A-1 trace tour: geometry lifted from the drawing, provenance declared. */
+const tracedManifestSchema = sharedSchema.extend({
+  schema: z.literal("hearthview-tour/v2"),
+  label: z.string().min(1),
+  canonical_geometry: z.literal(true),
+  source: z.object({
+    sheet: z.string().min(1),
+    page: z.number().int().positive(),
+    view: z.string().min(1),
+    points_per_foot: z.number().positive(),
+  }),
+  provenance: provenanceSchema,
+  island_footprint: rectangleSchema.optional(),
+});
+
+export const manifestSchema = z.discriminatedUnion("schema", [
+  spikeManifestSchema,
+  tracedManifestSchema,
+]);
 
 
 export type TourManifest = z.infer<typeof manifestSchema>;

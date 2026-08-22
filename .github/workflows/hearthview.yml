@@ -1,0 +1,45 @@
+# Runs the checks that the traced-tour pipeline relies on.
+#
+# The point of the backend job is not only the unit tests: it is
+# tests/backend/test_committed_tour_artifact.py, which opens the committed GLB
+# and measures it against the committed spec. Building a GLB needs Blender, but
+# reading one needs only trimesh, so that check runs here like any other.
+name: hearthview
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: codex-pdf-to-bim
+
+jobs:
+  backend:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          # setup-uv has no working-directory input; scope the cache key instead.
+          cache-dependency-glob: codex-pdf-to-bim/uv.lock
+      # uv reads requires-python from pyproject.toml and fetches that Python.
+      - run: uv sync --group dev
+      - run: uv run pytest tests/backend -q
+
+  web:
+    name: vitest + tsc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: codex-pdf-to-bim/package-lock.json
+      - run: npm ci
+      - run: npm --workspace apps/web test -- --run
+      - run: npx tsc -p apps/web --noEmit
