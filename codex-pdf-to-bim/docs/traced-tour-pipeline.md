@@ -244,8 +244,31 @@ State these plainly rather than implying the model is finished:
 - **Multi-floor vertical alignment is untested.** Nothing has yet checked that
   floor 2's walls land over floor 1's.
 - **Scope is the kitchen/family checkpoint region only** — the main kitchen and
-  living rectangle plus the west kitchen arm. Whole-floor generalisation was
-  deliberately deferred pending approval of this region.
+  living rectangle plus the west kitchen arm. The region was approved on
+  2026-08-22, so whole-floor generalisation is now in scope; see §8.
+- **The whole-floor path is outside the contract that fixed the kitchen.**
+  `a1_massing.py` and `a1_tour.py` build the whole traced first floor, but were
+  last touched at `ed8ec06`, before all three frame fixes. Nothing in them
+  imports `chirality`, nothing measures the GLB they write, and all 14 of their
+  tests need `HEARTHVIEW_A1_PDF` — so they skip in CI. That is the same three
+  weaknesses that let the kitchen ship mirrored.
 
-Deferred by agreement until the geometry is approved: lighting/finishes/furniture
-toggles, the stock-furniture placement UI, and the other three levels.
+---
+
+## 8. Agreed next, in order
+
+1. **The rest of the first floor**, under the §1–§3 contract rather than
+   alongside it. The blocking step is a committed whole-floor spec: the kitchen
+   path works without the PDF because `a1_kitchen_scene_spec.json` is committed,
+   and the whole-floor path has no equivalent, which is why it cannot be checked
+   here or in CI.
+2. **Overhead view must drop the ceiling.** It currently reads as a solid shape
+   the size of the footprint rather than an open dolls'-house view down onto the
+   plan.
+3. **A floor switcher in the browser UI**, needed before more than one level is
+   worth building.
+4. **Photorealism**, deliberately after the layout is right — materials,
+   lighting and finishes on geometry that is already known to match the drawing.
+
+Still deferred: the stock-furniture placement UI, and the levels above the
+first.
