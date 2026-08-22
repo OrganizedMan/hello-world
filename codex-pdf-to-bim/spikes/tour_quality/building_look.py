@@ -519,6 +519,312 @@ def painted_cabinet() -> bpy.types.Material:
     return material
 
 
+def painted_trim() -> bpy.types.Material:
+    """Whiter and slightly glossier than the cabinets: it is joinery, not a wall."""
+    material = bpy.data.materials.new("HV_LOOK_TRIM")
+    _tree, shader = _clear_nodes(material)
+    shader.inputs["Base Color"].default_value = (0.918, 0.911, 0.894, 1.0)
+    shader.inputs["Roughness"].default_value = 0.33
+    return material
+
+
+def glazing() -> bpy.types.Material:
+    """Glass as a blended surface, not as transmission.
+
+    Real transmission would export as KHR_materials_transmission and force the
+    browser into a separate render pass for every one of the thirty-six windows
+    in this house. A mostly transparent, very smooth surface picks up the sky
+    from the environment map and reads as glass at a fraction of the cost.
+    """
+    material = bpy.data.materials.new("HV_LOOK_GLASS")
+    _tree, shader = _clear_nodes(material)
+    shader.inputs["Base Color"].default_value = (0.74, 0.80, 0.86, 1.0)
+    shader.inputs["Roughness"].default_value = 0.04
+    shader.inputs["Metallic"].default_value = 0.0
+    # The exporter reads alphaMode off this socket: anything between 0 and 1
+    # becomes BLEND.
+    shader.inputs["Alpha"].default_value = 0.17
+    return material
+
+
+# Which stock pieces belong in which kind of room. Bathrooms, cupboards and
+# circulation get nothing but a light: furniture there would be invention, not
+# staging. Nothing here is measured -- it is declared provisional in the
+# manifest, like every other finish.
+ROOM_FURNITURE: dict[str, tuple[str, ...]] = {
+    "living": ("modern_coffee_table_01", "modern_arm_chair_01"),
+    "dining": ("modern_arm_chair_01",),
+    "bedroom": ("modern_arm_chair_01",),
+    "office": ("modern_arm_chair_01",),
+}
+CEILING_LAMP = "modern_ceiling_lamp_01"
+LAMP_ROOM_KINDS = frozenset({
+    "living", "dining", "bedroom", "office", "kitchen", "bathroom", "utility",
+})
+
+
+def _room_clearance(owner: list[int], columns: int, rows: int) -> list[int]:
+    """How many cells each cell is from the edge of its own room.
+
+    A chamfer transform in two passes. It answers the only question placement
+    really has -- where is there room to stand something -- without needing to
+    know anything about the shape of the room, which on a traced plan is
+    frequently not a rectangle.
+    """
+    far = columns + rows
+    distance = [0] * (columns * rows)
+    for y in range(rows):
+        base = y * columns
+        for x in range(columns):
+            index = base + x
+            if owner[index] < 0:
+                continue
+            best = far
+            for nx, ny in ((x - 1, y), (x, y - 1)):
+                if 0 <= nx < columns and 0 <= ny < rows and owner[ny * columns + nx] == owner[index]:
+                    best = min(best, distance[ny * columns + nx])
+                else:
+                    best = 0
+            distance[index] = best + 1
+    for y in range(rows - 1, -1, -1):
+        base = y * columns
+        for x in range(columns - 1, -1, -1):
+            index = base + x
+            if owner[index] < 0:
+                continue
+            best = distance[index]
+            for nx, ny in ((x + 1, y), (x, y + 1)):
+                if 0 <= nx < columns and 0 <= ny < rows and owner[ny * columns + nx] == owner[index]:
+                    best = min(best, distance[ny * columns + nx] + 1)
+                else:
+                    best = min(best, 1)
+            distance[index] = best
+    return distance
+
+
+def _load_piece(assets: Path, name: str):
+    """Import one stock model once and return its objects, hidden as a library."""
+    path = assets / "models" / name / f"{name}_1k.gltf"
+    if not path.is_file():
+        return None
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    arrived = [obj for obj in bpy.data.objects if obj not in before]
+    for obj in arrived:
+        obj.hide_render = True
+        obj.hide_viewport = True
+    return [obj for obj in arrived if obj.type == "MESH"]
+
+
+def _place_piece(pieces, name: str, location, yaw: float, parent):
+    """Copy an imported piece into the room, sharing its mesh and materials.
+
+    The copy carries the original's own world matrix, turned and moved into
+    place. Reading `location` alone would lose whatever transform the imported
+    model arrived with -- and glTF models routinely arrive parented to an empty
+    that holds the whole of it.
+    """
+    from mathutils import Matrix
+
+    placement = Matrix.Translation(location) @ Matrix.Rotation(yaw, 4, "Z")
+    made = []
+    for index, source in enumerate(pieces):
+        copy = source.copy()
+        copy.data = source.data
+        copy.name = f"HV_FURN_{name}_{index:02d}"
+        copy.hide_render = False
+        copy.hide_viewport = False
+        copy.parent = None
+        bpy.context.collection.objects.link(copy)
+        copy.matrix_world = placement @ source.matrix_world
+        if parent is not None:
+            world = copy.matrix_world.copy()
+            copy.parent = parent
+            copy.matrix_world = world
+        made.append(copy)
+    return made
+
+
+def build_furniture(rooms_block: dict, datum_origin, storeys: list[dict], assets: Path) -> dict:
+    """Stand a few stock pieces in the rooms that would have them.
+
+    Empty rooms are the last thing that stops a lit, textured, glazed model
+    reading as a house: there is nothing in them at human scale to judge the
+    room against. Placement is derived, not authored -- the clearance transform
+    finds the most open point in each room, whatever shape the trace gave it --
+    and what goes there is decided by the room's kind, exactly as the floor
+    finish and the worktop already are.
+    """
+    import math
+
+    FT = 0.3048
+    POINTS_PER_FOOT = 18.0
+    cell = rooms_block["cell_points"]
+    datum_x, datum_y1 = datum_origin
+    elevations = {s["node"]: s for s in storeys}
+
+    library: dict[str, list] = {}
+
+    def pieces_for(name: str):
+        if name not in library:
+            library[name] = _load_piece(assets, name) or []
+        return library[name]
+
+    placed: dict[str, int] = {}
+
+    for storey in rooms_block["storeys"]:
+        node = storey["node"]
+        parent = bpy.data.objects.get(node)
+        elevation = elevations.get(node)
+        if elevation is None:
+            continue
+        base = elevation["base_meters"]
+        ceiling = base + elevation["ceiling_meters"]
+
+        columns, rows = storey["columns"], storey["rows"]
+        owner = [-1] * (columns * rows)
+        for who, row, first, last in storey["runs"]:
+            line = row * columns
+            for column in range(first, last + 1):
+                owner[line + column] = who
+        clearance = _room_clearance(owner, columns, rows)
+        origin_x, origin_y = storey["origin_pdf"]
+
+        best: dict[int, tuple[int, int, int]] = {}
+        for index, room in enumerate(clearance):
+            if room <= 0:
+                continue
+            who = owner[index]
+            if who < 0:
+                continue
+            if who not in best or room > best[who][0]:
+                best[who] = (room, index % columns, index // columns)
+
+        metres_per_cell = cell / POINTS_PER_FOOT * FT
+        for who, (room_clearance, column, row) in sorted(best.items()):
+            room = storey["rooms"][who]
+            kind = room["kind"]
+            east = (origin_x + (column + 0.5) * cell - datum_x) / POINTS_PER_FOOT * FT
+            north = (datum_y1 - (origin_y + (row + 0.5) * cell)) / POINTS_PER_FOOT * FT
+            open_radius = room_clearance * metres_per_cell
+
+            if kind in LAMP_ROOM_KINDS and room["area_square_feet"] >= 30.0:
+                lamp = pieces_for(CEILING_LAMP)
+                if lamp:
+                    _place_piece(lamp, f"{node}_{who:02d}_lamp",
+                                 (east, north, ceiling - 0.42), 0.0, parent)
+                    placed["lamp"] = placed.get("lamp", 0) + 1
+
+            # Only stand something on the floor where a person could stand.
+            if open_radius < 0.75:
+                continue
+            for offset, name in enumerate(ROOM_FURNITURE.get(kind, ())):
+                pieces = pieces_for(name)
+                if not pieces:
+                    continue
+                angle = math.radians(35.0 + offset * 150.0)
+                reach = min(open_radius - 0.45, 0.9) * offset
+                spot = (east + math.cos(angle) * reach, north + math.sin(angle) * reach, base)
+                _place_piece(pieces, f"{node}_{who:02d}_{name}", spot,
+                             angle + math.pi, parent)
+                placed[name] = placed.get(name, 0) + 1
+
+    # The imported originals are a library, not part of the house. Left behind
+    # they would export -- glTF export does not skip hidden objects -- and pile
+    # every stock model on top of itself at the world origin.
+    for pieces in library.values():
+        for source in pieces:
+            root = source
+            while root.parent is not None:
+                root = root.parent
+            for obj in [root, *root.children_recursive]:
+                if obj.name in bpy.data.objects:
+                    bpy.data.objects.remove(obj, do_unlink=True)
+
+    return placed
+
+
+def _clear_of_rays(obj):
+    """Let light through this object when Cycles bakes occlusion.
+
+    The occlusion bake treats every surface as an occluder, so a pane of glass
+    would darken the room behind the window it was put there to open up. The
+    browser still draws it; only the bake looks through it.
+    """
+    obj.visible_diffuse = False
+    obj.visible_glossy = False
+    obj.visible_shadow = False
+    return obj
+
+
+def build_openings(entries: list[dict]) -> int:
+    """Line every traced opening and glaze the windows.
+
+    A hole cut in a wall reads as a hole. What makes it a window is the reveal
+    around it, the sill it sits on and the glass in it -- and every one of
+    those is derived from the void the trace already cut, so a window in a
+    bathroom is built exactly like a window in a bedroom.
+
+    Nothing here closes a door: the leaves are left off deliberately, because a
+    walkable tour whose doors are shut is a tour of one room.
+    """
+    trim = painted_trim()
+    glass = glazing()
+    made = 0
+
+    for entry in entries:
+        width_x, width_y, height = entry["size"]
+        cx, cy, cz = entry["centre"]
+        storey = bpy.data.objects.get(entry.get("node", ""))
+        along_x = entry["run_axis"] == "X"
+        along = width_x if along_x else width_y
+        through = width_y if along_x else width_x
+        if along < 0.25 or height < 0.4 or through < 0.05:
+            continue
+
+        board = min(0.06, height / 6.0, along / 6.0)
+        reveal = max(0.02, through * 0.9)
+
+        def lining(name, size, location):
+            _box(f"HV_OPEN_{entry['id']}_{name}", size, location, trim, parent=storey)
+
+        # Head and jambs, lining the thickness of the wall.
+        head_z = cz + height / 2.0 - board / 2.0
+        foot_z = cz - height / 2.0 + board / 2.0
+        if along_x:
+            lining("HEAD", (along, reveal, board), (cx, cy, head_z))
+            for side in (-1.0, 1.0):
+                lining("JAMB" + ("A" if side < 0 else "B"),
+                       (board, reveal, height - board * 2),
+                       (cx + side * (along / 2.0 - board / 2.0), cy, cz))
+        else:
+            lining("HEAD", (reveal, along, board), (cx, cy, head_z))
+            for side in (-1.0, 1.0):
+                lining("JAMB" + ("A" if side < 0 else "B"),
+                       (reveal, board, height - board * 2),
+                       (cx, cy + side * (along / 2.0 - board / 2.0), cz))
+
+        if entry["kind"] == "window":
+            # A sill wide enough to overhang the reveal on both faces, because
+            # which face is the room is not something this pass knows.
+            sill = through + 0.06
+            if along_x:
+                lining("SILL", (along + 0.08, sill, board * 0.8), (cx, cy, foot_z))
+                _clear_of_rays(_box(f"HV_OPEN_{entry['id']}_GLASS",
+                                    (along - board * 2.2, 0.014, height - board * 2.4),
+                                    (cx, cy, cz), glass, parent=storey))
+                lining("MUNTIN", (0.028, 0.024, height - board * 2.4), (cx, cy, cz))
+            else:
+                lining("SILL", (sill, along + 0.08, board * 0.8), (cx, cy, foot_z))
+                _clear_of_rays(_box(f"HV_OPEN_{entry['id']}_GLASS",
+                                    (0.014, along - board * 2.2, height - board * 2.4),
+                                    (cx, cy, cz), glass, parent=storey))
+                lining("MUNTIN", (0.024, 0.028, height - board * 2.4), (cx, cy, cz))
+        made += 1
+
+    return made
+
+
 def _drop_faces(node_name: str, material_hint: str) -> int:
     """Remove the canvas's placeholder solids for a part kind.
 
@@ -928,6 +1234,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="vary floor finish by room kind, read from the sheets")
     parser.add_argument("--tile", type=float, default=1.0,
                         help="metres per texture tile for the cube projection")
+    parser.add_argument("--furniture", type=Path,
+                        help="asset folder holding models/, to stage rooms with")
+    parser.add_argument("--openings", action="store_true",
+                        help="line every traced opening and glaze the windows")
     parser.add_argument("--occlusion", action="store_true",
                         help="bake contact shadow into a glTF occlusion map")
     parser.add_argument("--occlusion-size", type=int, default=2048)
@@ -965,6 +1275,25 @@ def main(argv: list[str] | None = None) -> int:
                     _drop_faces(node, "APPLIANCE")
                 casework = build_casework(entries)
 
+    openings = 0
+    if args.openings:
+        manifest_path = args.canvas.with_name("manifest.json")
+        if manifest_path.is_file():
+            entries = json.loads(manifest_path.read_text()).get("openings", [])
+            if entries:
+                openings = build_openings(entries)
+
+    furniture: dict[str, int] = {}
+    if args.furniture:
+        manifest_path = args.canvas.with_name("manifest.json")
+        if manifest_path.is_file():
+            manifest = json.loads(manifest_path.read_text())
+            block = manifest.get("rooms")
+            envelope = manifest.get("datum_pdf_origin")
+            storeys = manifest.get("storeys", [])
+            if block and envelope and storeys:
+                furniture = build_furniture(block, tuple(envelope), storeys, args.furniture)
+
     build_world(args.hdri, strength=args.sky)
     add_sun(strength=args.sun)
 
@@ -978,6 +1307,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"unwrapped {unwrapped} meshes at {args.tile} m per tile")
     if casework:
         print(f"casework  {casework} runs built as cabinetry")
+    if openings:
+        print(f"openings  {openings} lined, windows glazed")
+    if furniture:
+        print("furniture " + ", ".join(f"{k}:{v}" for k, v in sorted(furniture.items())))
     if finishes:
         print("finishes  " + ", ".join(f"{k}:{v} faces" for k, v in sorted(finishes.items())))
     if occluded:

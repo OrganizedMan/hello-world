@@ -378,3 +378,23 @@ Two things about that bake are load-bearing:
 The browser side matters too, and had been fighting it: the environment was
 loaded at 0.3 strength and hidden behind a flat page colour, so the sky was
 neither the outdoor view through the windows nor the light in the room.
+
+### What fills the openings
+
+The trace cuts every door, window and cased opening as a void: the wall run is
+split around it and a sill and a lintel are built back in. Nothing stands *in*
+the void, and an empty rectangle never reads as a window however well it is
+lit. So the void travels with the artifact -- `manifest["openings"]`, recovered
+from the sill and lintel solids rather than re-read from the sheet, because
+reading the sheet twice is how two frames drift apart -- and the look pass
+lines it with a head, two jambs and, for a window, a sill board and glass.
+
+Glass is a blended surface, not transmission. Real transmission exports as
+`KHR_materials_transmission` and forces the browser into a separate render pass
+for each of the thirty-six windows; a nearly transparent, very smooth surface
+picks the sky up out of the environment map and costs nothing. It is also
+hidden from the occlusion bake, which would otherwise treat a pane of glass as
+a wall and darken the room the window was cut to light.
+
+Door leaves are deliberately absent. A walkable tour whose doors are shut is a
+tour of one room.

@@ -479,6 +479,70 @@ def _casework_block(building) -> list[dict]:
     return out
 
 
+def _opening_block(building) -> list[dict]:
+    """Every door, window and cased opening, as a void in a wall.
+
+    The trace already cuts these holes -- the wall run is split around them and
+    a sill and a lintel are built back in. What the massing has no opinion
+    about is what stands *in* the hole, and an empty rectangle never reads as a
+    window however well it is lit. So the void itself travels with the
+    artifact, and the look pass fills it with glazing and trim.
+
+    The extent is recovered from the sill and lintel solids rather than from
+    the sheet: they are already in the storey's frame, elevation included, and
+    reading the sheet twice is how the two frames drift apart.
+    """
+    from hearthview.units import TICKS_PER_INCH
+
+    FT = 0.3048
+    out: list[dict] = []
+
+    def metres(ticks: int) -> float:
+        return ticks / TICKS_PER_INCH / 12 * FT
+
+    for storey in building.storeys:
+        node = storey_node_name(storey.sheet)
+        by_id = {item.element_id: item for item in storey.primitives}
+        base = metres(int(round(storey.base_inches * TICKS_PER_INCH)))
+        ceiling = base + storey.ceiling_inches / 12 * FT
+
+        for index, item in enumerate(storey.massing.openings):
+            lintel = by_id.get(f"lintel.{index:03d}")
+            sill = by_id.get(f"sill.{index:03d}")
+            frame = lintel or sill
+            if frame is None:
+                # Head at or above the ceiling and no sill: nothing was built
+                # back in, so there is no void to measure.
+                continue
+
+            east0, east1 = metres(frame.x0_ticks), metres(frame.x1_ticks)
+            north0, north1 = metres(frame.y0_ticks), metres(frame.y1_ticks)
+            head = metres(lintel.z0_ticks) if lintel else ceiling
+            foot = metres(sill.z1_ticks) if sill else base
+            if head <= foot:
+                continue
+
+            width, depth = east1 - east0, north1 - north0
+            out.append({
+                "id": f"opening.{storey.sheet}.{index:03d}",
+                "node": node,
+                "kind": item.kind,
+                "on_exterior": bool(item.on_exterior),
+                "centre": [
+                    round((east0 + east1) / 2, 4),
+                    round((north0 + north1) / 2, 4),
+                    round((foot + head) / 2, 4),
+                ],
+                "size": [round(width, 4), round(depth, 4), round(head - foot, 4)],
+                # Which way the hole runs through the wall: a run along X is a
+                # hole in a wall that faces north or south.
+                "run_axis": "X" if width >= depth else "Y",
+                "sill_meters": round(foot, 4),
+                "head_meters": round(head, 4),
+            })
+    return out
+
+
 def _cell_points() -> float:
     from hearthview.a1_rooms import CELL_POINTS
 
@@ -578,6 +642,7 @@ def build_building_tour(building) -> TourArtifact:
     # needing the extractor -- Blender's Python has no PDF stack.
     manifest["rooms"] = _room_block(building)
     manifest["casework"] = _casework_block(building)
+    manifest["openings"] = _opening_block(building)
     # Sheet coordinates of the datum the canvas was built on, so the look pass
     # can convert a point in the model back to a point on the drawing.
     manifest["datum_pdf_origin"] = [building.datum.x0, building.datum.y1]

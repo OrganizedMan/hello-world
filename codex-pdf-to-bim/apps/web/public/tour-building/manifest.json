@@ -642,7 +642,7 @@
     "glb": "a1-building-look.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 15061540,
+    "total_browser_bytes": 14198208,
     "canvas_glb": "a1-building.glb"
   },
   "runtime": {
@@ -18193,6 +18193,1680 @@
       ],
       "run_axis": "X",
       "facing_degrees": 90.0
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening.A-0.000",
+      "node": "storey_a0",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        2.4851,
+        1.2437,
+        -1.3462
+      ],
+      "size": [
+        1.1697,
+        0.3556,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.001",
+      "node": "storey_a0",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        7.9014,
+        1.2437,
+        -1.3462
+      ],
+      "size": [
+        1.1697,
+        0.3556,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.002",
+      "node": "storey_a0",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        10.8511,
+        1.7517,
+        -1.3462
+      ],
+      "size": [
+        0.9663,
+        0.4572,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.003",
+      "node": "storey_a0",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        9.834,
+        3.9141,
+        -1.3462
+      ],
+      "size": [
+        0.1017,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.004",
+      "node": "storey_a0",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        4.5576,
+        7.4988,
+        -1.3462
+      ],
+      "size": [
+        0.7374,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.005",
+      "node": "storey_a0",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        4.0619,
+        4.8034,
+        -1.3462
+      ],
+      "size": [
+        0.1016,
+        0.8137,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.006",
+      "node": "storey_a0",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.7303,
+        8.5414,
+        -0.9652
+      ],
+      "size": [
+        0.4589,
+        1.1697,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": -1.6002,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.007",
+      "node": "storey_a0",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.7303,
+        5.7697,
+        -0.9652
+      ],
+      "size": [
+        0.4589,
+        1.1697,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": -1.6002,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.008",
+      "node": "storey_a0",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        11.9952,
+        4.4728,
+        -0.9652
+      ],
+      "size": [
+        0.254,
+        0.8646,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": -1.6002,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.009",
+      "node": "storey_a0",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.8582,
+        12.5925,
+        -0.9652
+      ],
+      "size": [
+        0.1016,
+        0.7215,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": -1.6002,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.010",
+      "node": "storey_a0",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        1.0106,
+        8.5414,
+        -1.3462
+      ],
+      "size": [
+        0.1016,
+        1.1697,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.011",
+      "node": "storey_a0",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        1.0106,
+        5.7697,
+        -1.3462
+      ],
+      "size": [
+        0.1016,
+        1.1697,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.012",
+      "node": "storey_a0",
+      "kind": "door",
+      "on_exterior": true,
+      "centre": [
+        3.9857,
+        12.5973,
+        -1.3462
+      ],
+      "size": [
+        0.1016,
+        0.712,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-0.013",
+      "node": "storey_a0",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        3.9857,
+        9.2661,
+        -1.3462
+      ],
+      "size": [
+        0.1016,
+        1.0426,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": -2.3622,
+      "head_meters": -0.3302
+    },
+    {
+      "id": "opening.A-1.000",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        2.2393,
+        5.2382,
+        1.016
+      ],
+      "size": [
+        0.8646,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.001",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        5.135,
+        5.0604,
+        1.016
+      ],
+      "size": [
+        1.2206,
+        0.1524,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.002",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        2.4014,
+        1.22,
+        1.016
+      ],
+      "size": [
+        1.1697,
+        0.3048,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.003",
+      "node": "storey_a1",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        5.1096,
+        1.22,
+        1.016
+      ],
+      "size": [
+        1.2206,
+        0.3048,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.004",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        7.805,
+        1.22,
+        1.016
+      ],
+      "size": [
+        1.1697,
+        0.3048,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.005",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        10.831,
+        1.6789,
+        1.016
+      ],
+      "size": [
+        1.8309,
+        0.3048,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.006",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        5.1096,
+        0.077,
+        1.016
+      ],
+      "size": [
+        1.7291,
+        0.1524,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.007",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        5.1096,
+        0.1659,
+        1.016
+      ],
+      "size": [
+        1.78,
+        0.0254,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.008",
+      "node": "storey_a1",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        5.1096,
+        1.0549,
+        1.016
+      ],
+      "size": [
+        1.78,
+        0.0254,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.009",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        5.1096,
+        0.1913,
+        1.016
+      ],
+      "size": [
+        1.78,
+        0.0254,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.010",
+      "node": "storey_a1",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        5.1096,
+        1.0295,
+        1.016
+      ],
+      "size": [
+        1.78,
+        0.0254,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.011",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        5.1096,
+        0.1015,
+        1.016
+      ],
+      "size": [
+        1.7037,
+        0.1778,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.012",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        5.5673,
+        8.442,
+        1.016
+      ],
+      "size": [
+        0.8137,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.013",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        2.2393,
+        7.3227,
+        1.016
+      ],
+      "size": [
+        0.8646,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.014",
+      "node": "storey_a1",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        1.7737,
+        13.4137,
+        1.397
+      ],
+      "size": [
+        0.6135,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.762,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.015",
+      "node": "storey_a1",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        2.9172,
+        13.4137,
+        1.397
+      ],
+      "size": [
+        1.343,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.762,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.016",
+      "node": "storey_a1",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        4.0607,
+        13.4137,
+        1.397
+      ],
+      "size": [
+        0.6134,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.762,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.017",
+      "node": "storey_a1",
+      "kind": "door",
+      "on_exterior": true,
+      "centre": [
+        6.1267,
+        13.4137,
+        1.016
+      ],
+      "size": [
+        0.9186,
+        0.1524,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.018",
+      "node": "storey_a1",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        7.271,
+        13.4137,
+        1.397
+      ],
+      "size": [
+        0.9186,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.762,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.019",
+      "node": "storey_a1",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        8.4153,
+        13.4137,
+        1.397
+      ],
+      "size": [
+        0.9186,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.762,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.020",
+      "node": "storey_a1",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        10.831,
+        11.1759,
+        1.016
+      ],
+      "size": [
+        0.9186,
+        0.1541,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.021",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        6.0753,
+        3.4074,
+        1.016
+      ],
+      "size": [
+        0.1016,
+        2.136,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.022",
+      "node": "storey_a1",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.622,
+        9.6501,
+        1.397
+      ],
+      "size": [
+        0.2286,
+        0.2288,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.762,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.023",
+      "node": "storey_a1",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.622,
+        8.0354,
+        1.397
+      ],
+      "size": [
+        0.2286,
+        0.9059,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.762,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.024",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        9.611,
+        12.371,
+        1.016
+      ],
+      "size": [
+        0.1524,
+        0.9059,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.025",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        9.611,
+        9.1797,
+        1.016
+      ],
+      "size": [
+        0.1524,
+        0.9663,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.026",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        9.611,
+        8.4677,
+        1.016
+      ],
+      "size": [
+        0.1524,
+        0.1526,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.027",
+      "node": "storey_a1",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        12.0511,
+        9.5993,
+        1.397
+      ],
+      "size": [
+        0.1524,
+        0.9059,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.762,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.028",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        9.5856,
+        6.9801,
+        1.016
+      ],
+      "size": [
+        0.1016,
+        1.246,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.029",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        9.5856,
+        2.9751,
+        1.016
+      ],
+      "size": [
+        0.1016,
+        1.1697,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.030",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        0.3426,
+        3.2803,
+        1.016
+      ],
+      "size": [
+        0.0627,
+        2.6897,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.031",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        0.2206,
+        3.2803,
+        1.016
+      ],
+      "size": [
+        0.0559,
+        1.7212,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.032",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        0.2672,
+        3.2803,
+        1.016
+      ],
+      "size": [
+        0.0542,
+        2.0598,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.033",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": true,
+      "centre": [
+        0.3138,
+        3.2803,
+        1.016
+      ],
+      "size": [
+        0.0559,
+        2.3861,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.034",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        4.1178,
+        3.1786,
+        1.016
+      ],
+      "size": [
+        0.1016,
+        1.7291,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.035",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        1.8191,
+        6.2808,
+        1.016
+      ],
+      "size": [
+        0.0254,
+        1.9834,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-1.036",
+      "node": "storey_a1",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        2.659,
+        6.2808,
+        1.016
+      ],
+      "size": [
+        0.0254,
+        1.9834,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 0.0,
+      "head_meters": 2.032
+    },
+    {
+      "id": "opening.A-2.000",
+      "node": "storey_a2",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        6.7219,
+        8.4657,
+        3.8862
+      ],
+      "size": [
+        1.1952,
+        0.1524,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.001",
+      "node": "storey_a2",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        3.6323,
+        4.7793,
+        3.8862
+      ],
+      "size": [
+        0.8137,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.002",
+      "node": "storey_a2",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        4.446,
+        4.7793,
+        3.8862
+      ],
+      "size": [
+        0.5086,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.003",
+      "node": "storey_a2",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        5.2851,
+        4.7793,
+        3.8862
+      ],
+      "size": [
+        0.8137,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.004",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        2.4117,
+        1.2183,
+        4.2672
+      ],
+      "size": [
+        1.1189,
+        0.3048,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.005",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        5.0563,
+        1.2183,
+        4.2672
+      ],
+      "size": [
+        1.1189,
+        0.3048,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.006",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        7.828,
+        1.2183,
+        4.2672
+      ],
+      "size": [
+        1.1189,
+        0.3048,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.007",
+      "node": "storey_a2",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        4.1917,
+        2.3122,
+        3.8862
+      ],
+      "size": [
+        0.7628,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.008",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        1.4963,
+        13.412,
+        4.2672
+      ],
+      "size": [
+        0.9568,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.009",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        4.179,
+        13.412,
+        4.2672
+      ],
+      "size": [
+        0.9567,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.010",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        6.0099,
+        13.412,
+        4.2672
+      ],
+      "size": [
+        0.9567,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.011",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        8.6926,
+        13.412,
+        4.2672
+      ],
+      "size": [
+        0.9567,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.012",
+      "node": "storey_a2",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        1.8523,
+        5.5921,
+        3.8862
+      ],
+      "size": [
+        0.7883,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.013",
+      "node": "storey_a2",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        4.2998,
+        9.5088,
+        3.8862
+      ],
+      "size": [
+        0.6611,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.014",
+      "node": "storey_a2",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        5.0309,
+        9.5088,
+        3.8862
+      ],
+      "size": [
+        0.5848,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.015",
+      "node": "storey_a2",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        5.8891,
+        9.5088,
+        3.8862
+      ],
+      "size": [
+        0.6611,
+        0.1016,
+        2.032
+      ],
+      "run_axis": "X",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.016",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        3.0474,
+        15.9537,
+        4.2672
+      ],
+      "size": [
+        0.1017,
+        0.1016,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.017",
+      "node": "storey_a2",
+      "kind": "cased_opening",
+      "on_exterior": false,
+      "centre": [
+        3.0477,
+        8.4913,
+        3.8862
+      ],
+      "size": [
+        0.1016,
+        0.1017,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.018",
+      "node": "storey_a2",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        3.0477,
+        6.5333,
+        3.8862
+      ],
+      "size": [
+        0.1016,
+        0.712,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.019",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        9.6076,
+        9.7071,
+        4.2672
+      ],
+      "size": [
+        0.1524,
+        0.9567,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.020",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        9.6076,
+        6.3044,
+        4.2672
+      ],
+      "size": [
+        0.1524,
+        0.8646,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.021",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        9.6076,
+        3.0496,
+        4.2672
+      ],
+      "size": [
+        0.1524,
+        0.8646,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.022",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.5805,
+        12.7299,
+        4.2672
+      ],
+      "size": [
+        0.1524,
+        0.9567,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.023",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.5805,
+        9.8724,
+        4.2672
+      ],
+      "size": [
+        0.1524,
+        0.6262,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.024",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.5805,
+        6.1773,
+        4.2672
+      ],
+      "size": [
+        0.1524,
+        0.6611,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.025",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.5805,
+        3.3802,
+        4.2672
+      ],
+      "size": [
+        0.1524,
+        0.6611,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.026",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        0.6541,
+        6.4952,
+        4.2672
+      ],
+      "size": [
+        0.0051,
+        0.8051,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.027",
+      "node": "storey_a2",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        4.7892,
+        12.6075,
+        4.2672
+      ],
+      "size": [
+        0.1033,
+        1.2206,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 3.6322,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.028",
+      "node": "storey_a2",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        7.1421,
+        5.3636,
+        3.8862
+      ],
+      "size": [
+        0.1016,
+        0.7628,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-2.029",
+      "node": "storey_a2",
+      "kind": "door",
+      "on_exterior": false,
+      "centre": [
+        5.3997,
+        11.0119,
+        3.8862
+      ],
+      "size": [
+        0.1016,
+        1.2206,
+        2.032
+      ],
+      "run_axis": "Y",
+      "sill_meters": 2.8702,
+      "head_meters": 4.9022
+    },
+    {
+      "id": "opening.A-3.000",
+      "node": "storey_a3",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        5.0752,
+        8.4674,
+        7.0104
+      ],
+      "size": [
+        1.0171,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 6.3754,
+      "head_meters": 7.6454
+    },
+    {
+      "id": "opening.A-3.001",
+      "node": "storey_a3",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        6.1241,
+        8.4674,
+        7.0104
+      ],
+      "size": [
+        0.1526,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 6.3754,
+      "head_meters": 7.6454
+    },
+    {
+      "id": "opening.A-3.002",
+      "node": "storey_a3",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        7.1921,
+        8.4674,
+        7.0104
+      ],
+      "size": [
+        1.0171,
+        0.1524,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 6.3754,
+      "head_meters": 7.6454
+    },
+    {
+      "id": "opening.A-3.004",
+      "node": "storey_a3",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        8.6557,
+        3.2283,
+        7.0104
+      ],
+      "size": [
+        1.0172,
+        0.1016,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 6.3754,
+      "head_meters": 7.6454
+    },
+    {
+      "id": "opening.A-3.006",
+      "node": "storey_a3",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        8.91,
+        6.305,
+        7.0104
+      ],
+      "size": [
+        1.0171,
+        0.1016,
+        1.27
+      ],
+      "run_axis": "X",
+      "sill_meters": 6.3754,
+      "head_meters": 7.6454
+    },
+    {
+      "id": "opening.A-3.007",
+      "node": "storey_a3",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        9.6076,
+        5.7928,
+        7.0104
+      ],
+      "size": [
+        0.1524,
+        0.7549,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 6.3754,
+      "head_meters": 7.6454
+    },
+    {
+      "id": "opening.A-3.008",
+      "node": "storey_a3",
+      "kind": "window",
+      "on_exterior": true,
+      "centre": [
+        9.6076,
+        4.0144,
+        7.0104
+      ],
+      "size": [
+        0.1524,
+        0.7676,
+        1.27
+      ],
+      "run_axis": "Y",
+      "sill_meters": 6.3754,
+      "head_meters": 7.6454
     }
   ],
   "datum_pdf_origin": [
