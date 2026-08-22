@@ -1,0 +1,14 @@
+{
+  "blockedBy": [
+    "T-002"
+  ],
+  "completedDate": null,
+  "createdDate": "2026-08-21",
+  "description": "Add the isolated tour-spike route and manifest parser, then provide Orbit, Move here, person-height Walk, Overhead, Reset, and Exit walk behavior. Navigation must use manifest-supplied walkable bounds, barriers, and cameras; remain local-only; and expose persistent homeowner labels, tooltips, focus behavior, live announcements, loading progress, and recoverable errors. Develop collision, placement, manifest trust, and page behavior test-first.",
+  "id": "T-003",
+  "order": 20,
+  "phase": "tour-quality",
+  "status": "open",
+  "title": "Build the homeowner hybrid tour controller",
+  "type": "feature"
+}

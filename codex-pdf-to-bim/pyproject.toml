@@ -1,0 +1,34 @@
+[project]
+name = "hearthview"
+version = "0.1.0"
+description = "Local-first homeowner PDF-to-3D modeling service"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.116,<1",
+  "httpx2>=2.12.0",
+  "pydantic>=2.11,<3",
+  "pymupdf>=1.26,<2",
+  "pypdf>=6,<7",
+  "python-multipart>=0.0.20,<1",
+  "sqlalchemy>=2.0,<3",
+  "trimesh>=4.8,<5",
+  "uvicorn>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+  "hypothesis>=6.138,<7",
+  "pytest>=8.4,<10",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "apps/api", "services"]
+testpaths = ["tests/backend"]
+filterwarnings = [
+  "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
+  "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
+  "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+]
+
+[tool.uv]
+package = false
