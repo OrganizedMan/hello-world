@@ -584,6 +584,13 @@ def build_casework(entries: list[dict], *, doors_every: float = 0.58) -> int:
         if along < 0.25 or across < 0.15:
             continue
 
+        # Everything built here hangs off the storey it stands on. Cabinets are
+        # exported as their own glTF nodes, and left at the top level they stay
+        # on screen when you switch to another floor -- a kitchen run hanging in
+        # the air over the basement. Parenting nests them inside the storey node
+        # instead, so hiding the floor hides its casework with it.
+        storey = bpy.data.objects.get(entry.get("node", ""))
+
         yaw = math.radians(entry["facing_degrees"])
         top_thickness = 0.038
         carcass_height = max(0.2, height - top_thickness)
@@ -592,16 +599,18 @@ def build_casework(entries: list[dict], *, doors_every: float = 0.58) -> int:
         # Carcass, held off the floor by a toe kick.
         _box(f"HV_CASE_{entry['id']}_BODY",
              (width_x - 0.01, width_y - 0.01, carcass_height - toe),
-             (cx, cy, base_z + toe + (carcass_height - toe) / 2.0), cabinet)
+             (cx, cy, base_z + toe + (carcass_height - toe) / 2.0), cabinet,
+             parent=storey)
         _box(f"HV_CASE_{entry['id']}_KICK",
              (width_x - 0.09, width_y - 0.09, toe),
-             (cx, cy, base_z + toe / 2.0), cabinet)
+             (cx, cy, base_z + toe / 2.0), cabinet, parent=storey)
 
         # Worktop, slightly proud of the carcass on every side.
         top_material = tops.get(entry["room_kind"], default_top)
         _box(f"HV_CASE_{entry['id']}_TOP",
              (width_x + 0.024, width_y + 0.024, top_thickness),
-             (cx, cy, base_z + carcass_height + top_thickness / 2.0), top_material)
+             (cx, cy, base_z + carcass_height + top_thickness / 2.0), top_material,
+             parent=storey)
 
         # Door fronts along the run, with a recessed panel each.
         count = max(1, int(round(along / doors_every)))
@@ -622,7 +631,8 @@ def build_casework(entries: list[dict], *, doors_every: float = 0.58) -> int:
                 door_centre[1] + face_shift[1] * sign,
                 door_centre[2],
             )
-            _box(f"HV_CASE_{entry['id']}_DOOR{index}", door_size, placed, cabinet)
+            _box(f"HV_CASE_{entry['id']}_DOOR{index}", door_size, placed, cabinet,
+                 parent=storey)
             # Shaker rail: a slightly proud frame reads as a panel edge.
             inset = 0.055
             if entry["run_axis"] == "X":
@@ -638,7 +648,8 @@ def build_casework(entries: list[dict], *, doors_every: float = 0.58) -> int:
                 proud * sign if entry["run_axis"] == "X" else 0.0,
             )
             _box(f"HV_CASE_{entry['id']}_PANEL{index}", panel,
-                 (placed[0] + nudge[0], placed[1] + nudge[1], placed[2]), cabinet)
+                 (placed[0] + nudge[0], placed[1] + nudge[1], placed[2]), cabinet,
+                 parent=storey)
         made += 1
     return made
 
@@ -786,7 +797,9 @@ def configure_render(width: int, height: int, samples: int, *, engine: str = "CY
 
 
 def main(argv: list[str] | None = None) -> int:
-    raw = argv if argv is not None else sys.argv
+    # sys.argv[0] is this script. Blender passes its own arguments first and
+    # separates ours with `--`; run as a plain script there is no separator.
+    raw = argv if argv is not None else sys.argv[1:]
     if "--" in raw:
         raw = raw[raw.index("--") + 1:]
     parser = argparse.ArgumentParser(description=__doc__)

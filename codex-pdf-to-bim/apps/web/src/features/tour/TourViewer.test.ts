@@ -46,7 +46,15 @@ describe("TourViewer browser scene preparation", () => {
     expect(ceiling.visible).toBe(true);
   });
 
-  it("applies the north-up vector before aiming an overhead camera", () => {
+  /**
+   * The overhead preset was authored with `up` along Z so a camera looking
+   * straight down had a defined roll. OrbitControls measures polar angle from
+   * the camera's up vector, so under that up an overhead camera sits at 90
+   * degrees -- past maxPolarAngle -- and the controls swung it off the plan the
+   * moment they took over. Leaning the camera south of vertical under a normal
+   * +Y up gives the same picture and a polar angle near zero.
+   */
+  it("keeps overhead cameras upright and off the vertical axis", () => {
     const camera = new PerspectiveCamera();
     let upAtLookAt: [number, number, number] | undefined;
     vi.spyOn(camera, "lookAt").mockImplementation(() => {
@@ -60,7 +68,23 @@ describe("TourViewer browser scene preparation", () => {
       up: [0, 0, 1],
     });
 
-    expect(camera.position.toArray()).toEqual([4.5847, 8, -2.4257]);
-    expect(upAtLookAt).toEqual([0, 0, 1]);
+    expect(upAtLookAt).toEqual([0, 1, 0]);
+    const [x, y, z] = camera.position.toArray();
+    expect([x, y]).toEqual([4.5847, 8]);
+    // South of the target, so the plan reads north-up.
+    expect(z).toBeGreaterThan(-2.4257);
+    expect(z).toBeLessThan(0);
+  });
+
+  it("leaves a preset that already looks sideways where it was", () => {
+    const camera = new PerspectiveCamera();
+    applyCameraPreset(camera, {
+      name: "kitchen_overview",
+      position: [19.3459, 14.804, 5.469],
+      target: [6.064, 2.6289, -7.8129],
+      up: [0, 1, 0],
+    });
+
+    expect(camera.position.toArray()).toEqual([19.3459, 14.804, 5.469]);
   });
 });

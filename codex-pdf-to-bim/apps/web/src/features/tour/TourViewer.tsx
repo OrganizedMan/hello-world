@@ -17,12 +17,25 @@ import {
 
 import type { TourCameraPreset, TourManifest } from "./tourManifest";
 import {
+  boundsOfStoreys,
+  ceilingsAreInTheWay,
+  isEffectivelyVisible,
+  framingForBounds,
+  floorBeneath,
+  isFloorHit,
+  resolvePreset,
+  setCeilingVisibility,
+  setStoreyVisibility,
+} from "./tourFraming";
+import {
   cameraPositionForFloor,
   isWalkablePlacement,
   resolveMovement,
   type Barrier,
   type WalkableBounds,
 } from "./tourNavigation";
+
+export { isPartOfStorey, setStoreyVisibility } from "./tourFraming";
 
 
 export type TourMode = "orbit" | "move" | "walk";
@@ -35,9 +48,10 @@ export function frameLoopForMode(mode: TourMode): "always" | "demand" {
 
 
 export function applyCameraPreset(camera: Camera, preset: TourCameraPreset): void {
-  camera.position.set(...preset.position);
-  camera.up.set(...preset.up);
-  camera.lookAt(new Vector3(...preset.target));
+  const usable = resolvePreset(preset);
+  camera.position.set(...usable.position);
+  camera.up.set(...usable.up);
+  camera.lookAt(new Vector3(...usable.target));
 }
 
 type TourViewerProps = {
@@ -74,16 +88,6 @@ class TourLoadBoundary extends Component<TourLoadBoundaryProps, { failed: boolea
   render() {
     return this.state.failed ? null : this.props.children;
   }
-}
-
-
-function isWalkableObject(object: Object3D | null): boolean {
-  let current = object;
-  while (current) {
-    if (current.name === "HV_WALKABLE") return true;
-    current = current.parent;
-  }
-  return false;
 }
 
 
@@ -176,29 +180,8 @@ const FIELD_OF_VIEW: Record<TourMode, number> = {
 };
 
 
-/** Does this object belong to the storey held in `node`? */
-function isPartOfStorey(name: string, node: string): boolean {
-  // A glTF mesh with several primitives -- ours has one per material -- is
-  // loaded as a Group named for the node, holding meshes named `<node>_0`,
-  // `<node>_1` and so on. Matching the node name alone leaves those children
-  // unmatched, and they are where all the geometry actually lives.
-  return name === node || name.startsWith(`${node}_`);
-}
-
-
-/** Show only the named storey nodes; an empty list shows every storey. */
-export function setStoreyVisibility(scene: Object3D, visible: string[]): void {
-  scene.traverse((child) => {
-    if (!child.name.startsWith("storey_")) return;
-    child.visible =
-      visible.length === 0 || visible.some((node) => isPartOfStorey(child.name, node));
-  });
-}
-
-
 export function setOverheadVisibility(scene: Object3D, overhead: boolean): void {
-  const ceiling = scene.getObjectByName("HV_CEILING");
-  if (ceiling) ceiling.visible = !overhead;
+  setCeilingVisibility(scene, overhead);
 }
 
 
@@ -215,6 +198,7 @@ function TourExperience({
   const { camera, gl } = useThree();
   const loaded = useGLTF(`${basePath}/${manifest.artifact.glb}`);
   const [orbitTarget, setOrbitTarget] = useState<[number, number, number]>([4.3434, 0.9, -3.0226]);
+  const [maxDistance, setMaxDistance] = useState(18);
   const pressedKeys = useRef(new Set<string>());
   const dragging = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
@@ -222,9 +206,20 @@ function TourExperience({
 
   const scene = useMemo(() => prepareTourSceneForBrowser(loaded.scene), [loaded.scene]);
 
+  // Held by value, not by identity. The page rebuilds this array on every
+  // render, so an effect keyed on the array alone re-ran whenever anything
+  // changed -- and the one below reframes the camera, which quietly undid the
+  // spot you had just chosen with Move here.
+  const storeyKey = visibleStoreys.join("|");
+  const storeys = useMemo(() => (storeyKey ? storeyKey.split("|") : []), [storeyKey]);
+
+  // Storeys and ceilings are decided together, in that order. Two effects
+  // writing the same `visible` flags would let whichever ran last win, and the
+  // ceiling nodes sit inside the storey names the first pass rewrites.
   useEffect(() => {
-    setStoreyVisibility(scene, visibleStoreys);
-  }, [scene, visibleStoreys]);
+    setStoreyVisibility(scene, storeys);
+    setCeilingVisibility(scene, ceilingsAreInTheWay(mode, preset, storeys), storeys);
+  }, [mode, preset, scene, storeys]);
 
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return;
@@ -251,20 +246,63 @@ function TourExperience({
     manifest.runtime.camera_presets.map((cameraPreset) => [cameraPreset.name, cameraPreset]),
   ), [manifest.runtime.camera_presets]);
 
+  // Every floor a person could be standing on. The single-storey tour has no
+  // storeys listed and only ever stands on zero.
+  const storeyBases = useMemo<number[]>(() => {
+    const storeys = manifest.schema === "hearthview-tour/v2" ? manifest.storeys ?? [] : [];
+    return storeys.length > 0 ? storeys.map((storey) => storey.base_meters) : [0];
+  }, [manifest]);
+
   useEffect(() => {
     onReady();
   }, [onReady]);
 
+  // A handle on the live scene while developing. Every recent defect here --
+  // storeys hiding their own geometry, ceilings that could not be switched off,
+  // walls wound inside out -- was invisible to the tests and obvious the moment
+  // someone opened the graph. Vite drops this from a production build.
   useEffect(() => {
-    setOverheadVisibility(scene, preset === "overhead" && mode === "orbit");
-  }, [mode, preset, scene]);
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __hvScene?: Object3D }).__hvScene = scene;
+  }, [scene]);
+
+  // Mode is read through a ref, not a dependency. "Move here" finishes by
+  // placing the camera and switching back to orbit; if the mode change also
+  // re-ran the framing below, it would throw that placement away immediately.
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   useEffect(() => {
-    const cameraPreset = presets.get(preset);
-    if (!cameraPreset) return;
-    applyCameraPreset(camera, cameraPreset);
-    setOrbitTarget([...cameraPreset.target]);
-  }, [camera, preset, presets, viewRevision]);
+    const box = boundsOfStoreys(scene, storeys);
+    if (modeRef.current === "walk") {
+      // Switching floors while walking should move you to that floor, not
+      // leave you standing at the old one's height inside its ceiling.
+      if (box) camera.position.setY(box.min.y + manifest.runtime.eye_height_meters);
+      return;
+    }
+
+    if (!box) {
+      const cameraPreset = presets.get(preset);
+      if (!cameraPreset) return;
+      applyCameraPreset(camera, cameraPreset);
+      setOrbitTarget([...cameraPreset.target]);
+      return;
+    }
+
+    const framing = framingForBounds(box, {
+      fovDegrees: FIELD_OF_VIEW.orbit,
+      aspect: camera instanceof PerspectiveCamera ? camera.aspect : 1.6,
+      overhead: preset === "overhead",
+    });
+    camera.up.set(0, 1, 0);
+    camera.position.set(...framing.position);
+    camera.lookAt(new Vector3(...framing.target));
+    setOrbitTarget(framing.target);
+    // The default 18m ceiling on orbit distance is shorter than the whole
+    // house needs, so the controls pulled the camera back in on the frame
+    // after it was placed.
+    setMaxDistance(Math.max(18, framing.distance * 1.6));
+  }, [camera, manifest.runtime.eye_height_meters, preset, presets, scene, storeys, viewRevision]);
 
   useEffect(() => {
     if (mode !== "walk") {
@@ -276,7 +314,12 @@ function TourExperience({
     const walkStart = presets.get("walk_start");
     if (!walkStart) return;
     applyCameraPreset(camera, walkStart);
-  }, [camera, gl.domElement, mode, presets]);
+    // walk_start is a spot on the first floor. Walking a storey you picked
+    // upstairs has to start on that storey's slab, or you spend the walk
+    // buried in the floor below.
+    const box = boundsOfStoreys(scene, storeys);
+    if (box) camera.position.setY(box.min.y + manifest.runtime.eye_height_meters);
+  }, [camera, gl.domElement, manifest.runtime.eye_height_meters, mode, presets, scene, storeys]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -385,13 +428,16 @@ function TourExperience({
       bounds,
       0.3,
     );
-    camera.position.set(next.x, manifest.runtime.eye_height_meters, next.z);
+    camera.position.set(next.x, camera.position.y, next.z);
   });
 
   function moveHere(event: ThreeEvent<MouseEvent>) {
-    if (mode !== "move" || !isWalkableObject(event.object)) return;
-    const floorPoint = { x: event.point.x, y: event.point.y, z: event.point.z };
-    if (!isWalkablePlacement(floorPoint, bounds, barriers)) return;
+    if (mode !== "move") return;
+    if (!isEffectivelyVisible(event.object)) return;
+    if (!isFloorHit(event.point, event.face?.normal, storeyBases)) return;
+    const floor = floorBeneath(event.point.y, storeyBases);
+    const floorPoint = { x: event.point.x, y: floor, z: event.point.z };
+    if (!isWalkablePlacement(floorPoint, bounds, barriers, floor)) return;
     event.stopPropagation();
 
     const nextPosition = cameraPositionForFloor(floorPoint, manifest.runtime.eye_height_meters);
@@ -412,7 +458,7 @@ function TourExperience({
 
   return (
     <>
-      <FittedSun scene={scene} storeys={visibleStoreys} />
+      <FittedSun scene={scene} storeys={storeys} />
       <primitive object={scene} onClick={moveHere} />
       <OrbitControls
         makeDefault
@@ -421,7 +467,7 @@ function TourExperience({
         dampingFactor={0.08}
         target={orbitTarget}
         minDistance={0.9}
-        maxDistance={18}
+        maxDistance={maxDistance}
         maxPolarAngle={Math.PI / 2.02}
       />
     </>

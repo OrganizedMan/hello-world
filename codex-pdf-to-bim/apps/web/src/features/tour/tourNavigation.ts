@@ -87,8 +87,12 @@ export function isWalkablePlacement(
   point: ScenePoint,
   bounds: WalkableBounds,
   obstacles: readonly Barrier[],
+  floorElevation = 0,
 ): boolean {
-  if (!Number.isFinite(point.y) || Math.abs(point.y) > FLOOR_TOLERANCE_METERS) {
+  // The point has to be on a floor rather than on top of something standing on
+  // one. Which floor is the caller's business: a house has four of them, and
+  // measuring against zero confined the whole tour to the first storey.
+  if (!Number.isFinite(point.y) || Math.abs(point.y - floorElevation) > FLOOR_TOLERANCE_METERS) {
     return false;
   }
   return canOccupy(point, obstacles, bounds, PLACEMENT_RADIUS_METERS);
@@ -99,5 +103,5 @@ export function cameraPositionForFloor(
   point: ScenePoint,
   eyeHeight = WALK_EYE_HEIGHT_METERS,
 ): ScenePoint {
-  return { x: point.x, y: eyeHeight, z: point.z };
+  return { x: point.x, y: point.y + eyeHeight, z: point.z };
 }

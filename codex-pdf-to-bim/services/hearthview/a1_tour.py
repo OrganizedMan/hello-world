@@ -520,10 +520,17 @@ def build_building_tour(building) -> TourArtifact:
     page prints. It gains a `storeys` block: what exists, how high each floor
     sits, and which node to show.
     """
-    groups = {
-        storey_node_name(storey.sheet): storey.primitives
-        for storey in building.storeys
-    }
+    # Ceilings go in their own node per storey. They have to be separable in the
+    # browser: overhead mode looks down into the plan, and a ceiling is exactly
+    # the thing in the way. A material cannot be hidden per-face in three.js, so
+    # this is a node or it is nothing.
+    groups: dict[str, tuple] = {}
+    for storey in building.storeys:
+        node = storey_node_name(storey.sheet)
+        groups[node] = tuple(p for p in storey.primitives if p.part_kind != "ceiling")
+        ceiling = tuple(p for p in storey.primitives if p.part_kind == "ceiling")
+        if ceiling:
+            groups[f"{node}_ceiling"] = ceiling
     glb = build_glb(building.primitives, groups=groups)
 
     datum = building.storey(DATUM_SHEET)
