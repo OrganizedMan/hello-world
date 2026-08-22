@@ -12,6 +12,7 @@ boxes rather than 7 points -- and it fails wholesale on a mirrored model, since
 a reflection moves every corner that is not on the mirror plane.
 
     uv run python scripts/measure_a1_tour.py <glb>
+    uv run python scripts/measure_a1_tour.py <glb> --building
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ import numpy as np
 import trimesh
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "services"))
+from hearthview.a1_building import build_building
 from hearthview.a1_extract import extract_a1
 from hearthview.a1_massing import build_a1_massing
 from hearthview.a1_tour import _corners
@@ -49,10 +51,12 @@ def corner_offsets(glb_vertices: np.ndarray, expected: np.ndarray) -> np.ndarray
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    args = [a for a in sys.argv[1:] if a != "--building"]
+    whole_building = "--building" in sys.argv[1:]
+    if len(args) != 1:
         print(__doc__.strip())
         return 2
-    glb_path = Path(sys.argv[1])
+    glb_path = Path(args[0])
     if not glb_path.is_file():
         print(f"No such GLB: {glb_path}")
         return 1
@@ -62,8 +66,13 @@ def main() -> int:
         print("No drawing set available; cannot measure against the trace.")
         return 1
 
-    massing = build_a1_massing(extract_a1(source))
-    expected = expected_corners(massing.primitives)
+    if whole_building:
+        traced = build_building(source)
+        label = f"{len(traced.storeys)} storeys"
+    else:
+        traced = build_a1_massing(extract_a1(source))
+        label = "first floor"
+    expected = expected_corners(traced.primitives)
 
     scene = trimesh.load(glb_path, force="scene", process=False)
     vertices = np.vstack([
@@ -73,7 +82,8 @@ def main() -> int:
     ])
 
     lower, upper = vertices.min(axis=0), vertices.max(axis=0)
-    print(f"exported   {len(vertices):,} vertices, {len(massing.primitives)} primitives traced")
+    print(f"exported   {len(vertices):,} vertices, "
+          f"{len(traced.primitives)} primitives traced ({label})")
     print(f"bounds     x {lower[0]:6.2f}..{upper[0]:6.2f}   "
           f"y {lower[1]:5.2f}..{upper[1]:5.2f}   z {lower[2]:7.2f}..{upper[2]:6.2f} (m)")
     print(f"footprint  {(upper[0]-lower[0])/FT:.1f} x {(upper[2]-lower[2])/FT:.1f} ft, "
@@ -91,7 +101,7 @@ def main() -> int:
         order = np.argsort(offsets)[::-1][:5]
         print("  worst corners:")
         for index in order:
-            item = massing.primitives[index // 8]
+            item = traced.primitives[index // 8]
             x, y, z = expected[index]
             print(f"    {item.element_id:<28} {item.part_kind:<10} "
                   f"({x:7.2f},{y:6.2f},{z:8.2f})  off by {offsets[index]:.3f} m")

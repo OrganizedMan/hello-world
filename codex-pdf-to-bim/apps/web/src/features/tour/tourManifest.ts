@@ -112,6 +112,21 @@ const tracedManifestSchema = sharedSchema.extend({
   }),
   provenance: provenanceSchema,
   island_footprint: rectangleSchema.optional(),
+  // Present when the model holds more than one drawn storey. Each entry names
+  // the GLB node to show, so the page can switch floors without reloading.
+  storeys: z
+    .array(
+      z.object({
+        sheet: z.string().min(1),
+        name: z.string().min(1),
+        node: z.string().min(1),
+        base_meters: z.number(),
+        ceiling_meters: z.number().positive(),
+        primitives: z.number().int().nonnegative(),
+        verified_fraction: z.number().min(0).max(1),
+      }),
+    )
+    .optional(),
 });
 
 export const manifestSchema = z.discriminatedUnion("schema", [

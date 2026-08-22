@@ -40,6 +40,8 @@ export function applyCameraPreset(camera: Camera, preset: TourCameraPreset): voi
 type TourViewerProps = {
   /** Public folder the manifest and its artifacts were served from. */
   basePath: string;
+  /** Storey nodes to show. Empty means the whole building. */
+  visibleStoreys: string[];
   manifest: TourManifest;
   mode: TourMode;
   preset: TourPresetName;
@@ -97,6 +99,26 @@ export function prepareTourSceneForBrowser(source: Object3D): Object3D {
 }
 
 
+/** Does this object belong to the storey held in `node`? */
+function isPartOfStorey(name: string, node: string): boolean {
+  // A glTF mesh with several primitives -- ours has one per material -- is
+  // loaded as a Group named for the node, holding meshes named `<node>_0`,
+  // `<node>_1` and so on. Matching the node name alone leaves those children
+  // unmatched, and they are where all the geometry actually lives.
+  return name === node || name.startsWith(`${node}_`);
+}
+
+
+/** Show only the named storey nodes; an empty list shows every storey. */
+export function setStoreyVisibility(scene: Object3D, visible: string[]): void {
+  scene.traverse((child) => {
+    if (!child.name.startsWith("storey_")) return;
+    child.visible =
+      visible.length === 0 || visible.some((node) => isPartOfStorey(child.name, node));
+  });
+}
+
+
 export function setOverheadVisibility(scene: Object3D, overhead: boolean): void {
   const ceiling = scene.getObjectByName("HV_CEILING");
   if (ceiling) ceiling.visible = !overhead;
@@ -105,13 +127,14 @@ export function setOverheadVisibility(scene: Object3D, overhead: boolean): void 
 
 function TourExperience({
   basePath,
+  visibleStoreys,
   manifest,
   mode,
   preset,
   viewRevision,
   onModeChange,
   onReady,
-}: Pick<TourViewerProps, "basePath" | "manifest" | "mode" | "preset" | "viewRevision" | "onModeChange" | "onReady">) {
+}: Pick<TourViewerProps, "basePath" | "visibleStoreys" | "manifest" | "mode" | "preset" | "viewRevision" | "onModeChange" | "onReady">) {
   const { camera, gl } = useThree();
   const loaded = useGLTF(`${basePath}/${manifest.artifact.glb}`);
   const [orbitTarget, setOrbitTarget] = useState<[number, number, number]>([4.3434, 0.9, -3.0226]);
@@ -121,6 +144,10 @@ function TourExperience({
   const heldPointerLock = useRef(false);
 
   const scene = useMemo(() => prepareTourSceneForBrowser(loaded.scene), [loaded.scene]);
+
+  useEffect(() => {
+    setStoreyVisibility(scene, visibleStoreys);
+  }, [scene, visibleStoreys]);
 
   const bounds = useMemo<WalkableBounds>(() => ({
     minX: manifest.runtime.walkable.min_x,

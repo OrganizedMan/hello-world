@@ -20,6 +20,7 @@ from hearthview.a1_massing import (
     ASSUMED_WINDOW_SILL_INCHES,
     A1Massing,
 )
+from hearthview.a1_building import ASSUMED_FLOOR_ASSEMBLY_INCHES, DATUM_SHEET
 from hearthview.geometry import Primitive
 from hearthview.units import TICKS_PER_INCH
 
@@ -64,18 +65,26 @@ def _corners(item: Primitive) -> list[tuple[float, float, float]]:
     ]
 
 
-def build_glb(primitives: tuple[Primitive, ...]) -> bytes:
-    by_material: dict[str, list[Primitive]] = {}
-    for item in primitives:
-        by_material.setdefault(
-            item.part_kind if item.part_kind in _MATERIALS else _FALLBACK, []
-        ).append(item)
+def build_glb(
+    primitives: tuple[Primitive, ...],
+    *,
+    groups: dict[str, tuple[Primitive, ...]] | None = None,
+) -> bytes:
+    """Pack primitives into a GLB, one mesh per material.
+
+    `groups` splits the model into a node each, so the browser can show and hide
+    them independently -- one per storey, which is what a floor switcher needs.
+    Without it everything lands in a single node, as before.
+    """
+    grouped = groups if groups is not None else {"a1_first_floor": tuple(primitives)}
 
     binary = bytearray()
     views: list[dict] = []
     accessors: list[dict] = []
-    mesh_primitives: list[dict] = []
     materials: list[dict] = []
+    material_index_by_name: dict[str, int] = {}
+    meshes: list[dict] = []
+    nodes: list[dict] = []
 
     def view(payload: bytes, target: int) -> int:
         while len(binary) % 4:
@@ -87,7 +96,30 @@ def build_glb(primitives: tuple[Primitive, ...]) -> bytes:
         )
         return len(views) - 1
 
-    for name, items in sorted(by_material.items()):
+    def material_for(name: str) -> int:
+        """One material entry per kind, shared across every node that uses it."""
+        if name not in material_index_by_name:
+            colour, metallic, roughness = _MATERIALS[name]
+            material_index_by_name[name] = len(materials)
+            materials.append({
+                "name": name,
+                "pbrMetallicRoughness": {
+                    "baseColorFactor": [*colour, 1.0],
+                    "metallicFactor": metallic,
+                    "roughnessFactor": roughness,
+                },
+                "doubleSided": True,
+            })
+        return material_index_by_name[name]
+
+    for group_name, group_items in grouped.items():
+      by_material: dict[str, list[Primitive]] = {}
+      for item in group_items:
+        by_material.setdefault(
+            item.part_kind if item.part_kind in _MATERIALS else _FALLBACK, []
+        ).append(item)
+      mesh_primitives: list[dict] = []
+      for name, items in sorted(by_material.items()):
         positions: list[tuple[float, float, float]] = []
         normals: list[tuple[float, float, float]] = []
         indices: list[int] = []
@@ -130,29 +162,21 @@ def build_glb(primitives: tuple[Primitive, ...]) -> bytes:
             "type": "SCALAR",
         })
 
-        colour, metallic, roughness = _MATERIALS[name]
-        material_index = len(materials)
-        materials.append({
-            "name": name,
-            "pbrMetallicRoughness": {
-                "baseColorFactor": [*colour, 1.0],
-                "metallicFactor": metallic,
-                "roughnessFactor": roughness,
-            },
-            "doubleSided": True,
-        })
         mesh_primitives.append({
             "attributes": {"POSITION": position_accessor, "NORMAL": normal_accessor},
             "indices": index_accessor,
-            "material": material_index,
+            "material": material_for(name),
         })
+      if mesh_primitives:
+        meshes.append({"name": group_name, "primitives": mesh_primitives})
+        nodes.append({"mesh": len(meshes) - 1, "name": group_name})
 
     gltf = {
         "asset": {"version": "2.0", "generator": "hearthview-a1-tour"},
         "scene": 0,
-        "scenes": [{"nodes": [0]}],
-        "nodes": [{"mesh": 0, "name": "a1_first_floor"}],
-        "meshes": [{"name": "a1_first_floor", "primitives": mesh_primitives}],
+        "scenes": [{"nodes": list(range(len(nodes)))}],
+        "nodes": nodes,
+        "meshes": meshes,
         "materials": materials,
         "accessors": accessors,
         "bufferViews": views,
@@ -351,3 +375,70 @@ def build_manifest(
 def build_tour(extraction: A1Extraction, massing: A1Massing) -> TourArtifact:
     glb = build_glb(massing.primitives)
     return TourArtifact(glb, build_manifest(extraction, massing, glb_bytes=len(glb)))
+
+
+def storey_node_name(sheet: str) -> str:
+    """GLB node holding one storey. The browser shows and hides these by name."""
+    return f"storey_{sheet.replace('-', '').lower()}"
+
+
+def build_building_tour(building) -> TourArtifact:
+    """Every drawn storey in one GLB, a node each so floors can be switched.
+
+    The manifest stays `hearthview-tour/v2` and keeps the datum storey's own
+    provenance, because that is what the browser already validates and what the
+    page prints. It gains a `storeys` block: what exists, how high each floor
+    sits, and which node to show.
+    """
+    groups = {
+        storey_node_name(storey.sheet): storey.primitives
+        for storey in building.storeys
+    }
+    glb = build_glb(building.primitives, groups=groups)
+
+    datum = building.storey(DATUM_SHEET)
+    manifest = build_manifest(datum.extraction, datum.massing, glb_bytes=len(glb))
+    manifest["label"] = "Traced from A-1 · every drawn storey"
+    manifest["artifact"]["glb"] = "a1-building.glb"
+
+    lowest = min(p.z0_ticks for p in building.primitives) * METERS_PER_TICK
+    highest = max(p.z1_ticks for p in building.primitives) * METERS_PER_TICK
+    manifest["envelope"]["min_y"] = round(lowest, 4)
+    manifest["envelope"]["max_y"] = round(highest, 4)
+
+    manifest["storeys"] = [
+        {
+            "sheet": storey.sheet,
+            "name": storey.name,
+            "node": storey_node_name(storey.sheet),
+            "base_meters": round(storey.base_inches * 0.0254, 4),
+            "ceiling_meters": round(storey.ceiling_inches * 0.0254, 4),
+            "primitives": len(storey.primitives),
+            "verified_fraction": round(storey.massing.verified_fraction, 4),
+        }
+        for storey in building.storeys
+    ]
+    # A-1's presets frame one floor from inside it, which puts the camera in the
+    # middle of a four-storey building. Reframe from the whole envelope instead.
+    east = (manifest["envelope"]["min_x"] + manifest["envelope"]["max_x"]) / 2
+    north = (manifest["envelope"]["min_z"] + manifest["envelope"]["max_z"]) / 2
+    width = manifest["envelope"]["max_x"] - manifest["envelope"]["min_x"]
+    depth = manifest["envelope"]["max_z"] - manifest["envelope"]["min_z"]
+    reach = max(width, depth)
+    for preset in manifest["runtime"]["camera_presets"]:
+        if preset["name"] == "kitchen_overview":
+            preset["position"] = [
+                round(east + reach * 0.85, 4),
+                round(highest + reach * 0.45, 4),
+                round(north + reach * 0.85, 4),
+            ]
+            preset["target"] = [round(east, 4), round((lowest + highest) / 2, 4), round(north, 4)]
+        elif preset["name"] == "overhead":
+            preset["position"] = [round(east, 4), round(highest + reach * 1.1, 4), round(north, 4)]
+            preset["target"] = [round(east, 4), round(lowest, 4), round(north, 4)]
+
+    manifest["provenance"]["assumed"].append(
+        f"floor assembly between storeys {ASSUMED_FLOOR_ASSEMBLY_INCHES:.0f}\" "
+        "(no section in the drawing set)"
+    )
+    return TourArtifact(glb, manifest)

@@ -29,6 +29,7 @@ export function App() {
             <Route path="/projects/:projectId/report" element={<ReportPage />} />
             <Route path="/tour-spike" element={<TourPage />} />
             <Route path="/tour/first-floor" element={<TourPage basePath="/tour-a1" />} />
+            <Route path="/tour/building" element={<TourPage basePath="/tour-building" />} />
             <Route path="*" element={<HomePage />} />
           </Routes>
         </Suspense>

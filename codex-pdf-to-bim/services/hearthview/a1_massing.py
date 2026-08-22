@@ -29,6 +29,7 @@ from hearthview.a1_extract import (
     Opening,
     Shape,
 )
+from hearthview.a1_trace import PdfRect
 from hearthview.geometry import Primitive, StationInterval
 from hearthview.units import TICKS_PER_INCH
 
@@ -168,17 +169,37 @@ def plan_from_pdf(footprint):
     return to_plan
 
 
-def build_a1_massing(extraction: A1Extraction) -> A1Massing:
-    """Turn the extracted plan into first-floor wall solids."""
+def build_a1_massing(
+    extraction: A1Extraction,
+    *,
+    datum: PdfRect | None = None,
+    base_elevation_ticks: int = 0,
+) -> A1Massing:
+    """Turn the extracted plan into wall solids.
+
+    `datum` sets the horizontal origin. A floor built on its own footprint
+    starts at (0, 0), which is right for one floor alone and wrong for a
+    building: it would stack every storey's south-west corner together no matter
+    where each sits on the plan. Passing one floor's footprint for all of them
+    keeps their true relative position, which the sheets support -- A-0's east
+    and west walls agree with A-1's to 0.02 ft, and A-2's north edge to 0.01 ft.
+
+    `base_elevation_ticks` lifts the storey to its height in the building.
+    """
     walls = extraction.layer("wall_new") + extraction.layer("wall_existing")
     if not walls:
         raise A1MassingError("The extraction contains no walls to extrude.")
 
     ceiling = parse_ceiling_height(extraction.ceiling_notes)
+    # Two different jobs, and conflating them is a bug: the datum fixes where
+    # this storey sits relative to the others, while the storey's own footprint
+    # is its actual extent -- what its floor slab spans, and which openings are
+    # close enough to an outside wall to be windows rather than cased openings.
+    origin = datum if datum is not None else extraction.footprint
     footprint = extraction.footprint
-    origin_x, base_y = footprint.x0, footprint.y1
+    origin_x, base_y = origin.x0, origin.y1
 
-    to_plan = plan_from_pdf(footprint)
+    to_plan = plan_from_pdf(origin)
 
     def to_ticks_x(px: float) -> int:
         return _points_to_ticks(to_plan(px, base_y)[0])
@@ -187,7 +208,7 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
         return _points_to_ticks(to_plan(origin_x, py)[1])
 
     def to_ticks_z(inches: float) -> int:
-        return int(round(inches * TICKS_PER_INCH))
+        return base_elevation_ticks + int(round(inches * TICKS_PER_INCH))
 
     primitives: list[Primitive] = []
     assumed: set[str] = set()
@@ -211,7 +232,7 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
                 part_kind="wall",
                 x0_ticks=x0,
                 y0_ticks=y0,
-                z0_ticks=0,
+                z0_ticks=base_elevation_ticks,
                 x1_ticks=x1,
                 y1_ticks=y1,
                 z1_ticks=ceiling_z,
@@ -226,10 +247,10 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
             "floor",
             to_ticks_x(footprint.x0),
             to_ticks_y(footprint.y1),
-            -to_ticks_z(FLOOR_SLAB_INCHES),
+            to_ticks_z(-FLOOR_SLAB_INCHES),
             to_ticks_x(footprint.x1),
             to_ticks_y(footprint.y0),
-            0,
+            to_ticks_z(0.0),
             StationInterval(0, to_ticks_x(footprint.x1)),
         )
     )
@@ -248,7 +269,7 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
                 continue
             primitives.append(
                 Primitive(
-                    element, kind, x0, y0, 0, x1, y1, to_ticks_z(height),
+                    element, kind, x0, y0, to_ticks_z(0.0), x1, y1, to_ticks_z(height),
                     StationInterval(0, x1 - x0),
                 )
             )
@@ -260,8 +281,8 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
         if x1 > x0 and y1 > y0:
             primitives.append(
                 Primitive(
-                    f"deck.{index:03d}", "deck", x0, y0, -to_ticks_z(DECK_SLAB_INCHES),
-                    x1, y1, 0, StationInterval(0, x1 - x0),
+                    f"deck.{index:03d}", "deck", x0, y0, to_ticks_z(-DECK_SLAB_INCHES),
+                    x1, y1, to_ticks_z(0.0), StationInterval(0, x1 - x0),
                 )
             )
 
@@ -282,11 +303,12 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
         y_mid = to_ticks_y((ay + by) / 2)
         depth = int(round(6.0 * TICKS_PER_INCH))
         z1 = to_ticks_z(rise * (index + 1))
-        if x1 <= x0 or z1 <= 0:
+        if x1 <= x0 or z1 <= base_elevation_ticks:
             continue
         primitives.append(
             Primitive(
-                element, "stair", x0, y_mid - depth, 0, x1, y_mid + depth, z1,
+                element, "stair", x0, y_mid - depth, base_elevation_ticks,
+                x1, y_mid + depth, z1,
                 StationInterval(0, x1 - x0),
             )
         )
@@ -309,7 +331,8 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
             below = f"sill.{index:03d}"
             assumed.add(below)
             primitives.append(
-                Primitive(below, "wall", x0, y0, 0, x1, y1, sill, StationInterval(0, x1 - x0))
+                Primitive(below, "wall", x0, y0, to_ticks_z(0.0), x1, y1, sill,
+                          StationInterval(0, x1 - x0))
             )
         else:
             head = to_ticks_z(ASSUMED_DOOR_HEAD_INCHES)

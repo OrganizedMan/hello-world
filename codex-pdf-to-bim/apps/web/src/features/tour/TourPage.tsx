@@ -29,6 +29,7 @@ export function TourPage({ basePath = "/tour-spike" }: TourPageProps = {}) {
   const [mode, setMode] = useState<TourMode>("orbit");
   const [preset, setPreset] = useState<TourPresetName>("kitchen_overview");
   const [viewRevision, setViewRevision] = useState(0);
+  const [activeStorey, setActiveStorey] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -86,17 +87,28 @@ export function TourPage({ basePath = "/tour-spike" }: TourPageProps = {}) {
   }
 
   const traced = manifest.schema === "hearthview-tour/v2";
+  // Only the traced manifest carries storeys, and only when more than one is
+  // drawn; the kitchen tour has none and shows no switcher.
+  const storeys = manifest.schema === "hearthview-tour/v2" ? manifest.storeys ?? [] : [];
 
   return (
     <main className="tour-page">
       <header className="tour-header">
         <div>
           <p className="eyebrow">{traced ? "Traced from A-1" : "Unapproved prototype"}</p>
-          <h1>{traced ? "Walk the proposed first floor" : "Explore the proposed kitchen and family room"}</h1>
+          <h1>
+            {storeys.length > 1
+              ? "Walk the proposed house"
+              : traced
+                ? "Walk the proposed first floor"
+                : "Explore the proposed kitchen and family room"}
+          </h1>
           <p>
-            {traced
-              ? "Every wall, opening and room position here is lifted from the A-1 proposed-plan linework."
-              : "Compare the full A-1 trace before relying on this experimental room tour."}
+            {storeys.length > 1
+              ? `Every wall, opening and room position across ${storeys.length} drawn storeys is lifted from the proposed-plan linework.`
+              : traced
+                ? "Every wall, opening and room position here is lifted from the A-1 proposed-plan linework."
+                : "Compare the full A-1 trace before relying on this experimental room tour."}
           </p>
         </div>
         <aside className="tour-trust-note" aria-label="Tour trust note">
@@ -127,6 +139,7 @@ export function TourPage({ basePath = "/tour-spike" }: TourPageProps = {}) {
         <div className="tour-stage">
           <TourViewer
             basePath={basePath}
+            visibleStoreys={activeStorey ? [activeStorey] : []}
             manifest={manifest}
             mode={mode}
             preset={preset}
@@ -150,6 +163,33 @@ export function TourPage({ basePath = "/tour-spike" }: TourPageProps = {}) {
         </div>
 
         <aside className="tour-panel" aria-label="Tour controls and help">
+          {storeys.length > 1 ? (
+            <div className="tour-storeys">
+              <span className="tour-storeys__label">Floor</span>
+              <div className="tour-storeys__buttons">
+                <button
+                  type="button"
+                  className="tour-storey"
+                  aria-pressed={activeStorey === null}
+                  onClick={() => setActiveStorey(null)}
+                >
+                  Whole house
+                </button>
+                {storeys.map((storey) => (
+                  <button
+                    key={storey.node}
+                    type="button"
+                    className="tour-storey"
+                    aria-pressed={activeStorey === storey.node}
+                    onClick={() => setActiveStorey(storey.node)}
+                  >
+                    {storey.name}
+                    <span className="tour-storey__sheet">{storey.sheet}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="tour-panel__heading">
             <div>
               <span>Choose how to explore</span>
