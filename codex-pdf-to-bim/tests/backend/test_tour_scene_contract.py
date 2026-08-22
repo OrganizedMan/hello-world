@@ -7,6 +7,7 @@ import pytest
 
 from hearthview.a1_spatial import build_a1_spatial_model
 from hearthview.units import TICKS_PER_INCH
+from spikes.tour_quality.scene_contract import EYE_HEIGHT_METERS
 
 
 def scene_contract_module():
@@ -128,7 +129,7 @@ def test_manifest_exposes_the_hand_derived_printed_dimensions_in_meters() -> Non
         {"name": "north_clearance", "meters": 1.0668, "source": "A-1 printed dimension"},
         {"name": "south_transition", "meters": 1.8288, "source": "A-1 printed dimension"},
         {"name": "living_clear_width", "meters": 4.4958, "source": "A-1 printed dimension"},
-        {"name": "eye_height", "meters": 1.65, "source": "tour navigation requirement"},
+        {"name": "eye_height", "meters": EYE_HEIGHT_METERS, "source": "tour navigation requirement"},
     ]
     assert manifest["canonical_geometry"] is False
     assert manifest["counter_zone_depth_meters"] == 0.6604

@@ -10,6 +10,7 @@ import {
   Mesh,
   Object3D,
   PCFSoftShadowMap,
+  PerspectiveCamera,
   SRGBColorSpace,
   Vector3,
 } from "three";
@@ -158,6 +159,23 @@ function FittedSun({ scene, storeys }: { scene: Object3D; storeys: string[] }) {
 }
 
 
+/**
+ * Vertical field of view per mode.
+ *
+ * 52 degrees vertical is about 76 across on this canvas, which is a portrait
+ * lens: standing in a room, a wall two metres away fills the frame and the
+ * space reads as a corridor you cannot look around in. Interiors are shot wide
+ * for the same reason -- the reference render is roughly a 20mm lens. Walking
+ * gets the widest, orbit stays tighter because it is looking at the model
+ * rather than standing in it.
+ */
+const FIELD_OF_VIEW: Record<TourMode, number> = {
+  orbit: 58,
+  move: 66,
+  walk: 75,
+};
+
+
 /** Does this object belong to the storey held in `node`? */
 function isPartOfStorey(name: string, node: string): boolean {
   // A glTF mesh with several primitives -- ours has one per material -- is
@@ -207,6 +225,12 @@ function TourExperience({
   useEffect(() => {
     setStoreyVisibility(scene, visibleStoreys);
   }, [scene, visibleStoreys]);
+
+  useEffect(() => {
+    if (!(camera instanceof PerspectiveCamera)) return;
+    camera.fov = FIELD_OF_VIEW[mode];
+    camera.updateProjectionMatrix();
+  }, [camera, mode]);
 
   const bounds = useMemo<WalkableBounds>(() => ({
     minX: manifest.runtime.walkable.min_x,
@@ -414,7 +438,7 @@ export function TourViewer(props: TourViewerProps) {
       <TourLoadBoundary onError={props.onLoadError}>
         <Canvas
           aria-label="Interactive tour of the proposed kitchen and family room"
-          camera={{ fov: 52, near: 0.05, far: 120, position: initialPosition }}
+          camera={{ fov: FIELD_OF_VIEW.orbit, near: 0.05, far: 160, position: initialPosition }}
           dpr={[1, 1.75]}
           frameloop={frameLoopForMode(props.mode)}
           gl={{ antialias: true, outputColorSpace: SRGBColorSpace, toneMapping: ACESFilmicToneMapping }}

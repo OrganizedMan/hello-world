@@ -311,14 +311,16 @@ def add_dollhouse_camera(lens: float = 38.0) -> bpy.types.Object:
 def add_interior_camera(
     storey_node: str,
     *,
-    eye_metres: float = 1.6,
+    eye_metres: float = 1.562,
     yaw_degrees: float = 0.0,
-    lens: float = 24.0,
+    lens: float = 16.0,
 ) -> bpy.types.Object:
     """Eye-height camera standing inside one storey.
 
-    A wide lens because rooms are small and an architectural interior is read
-    from a corner; 24 mm is about what these renders are drawn with.
+    16 mm, which is wide even for an interior. Rooms this size shot at 24 mm
+    read as corridors: a wall two metres away fills the frame and there is no
+    sense of being able to turn your head. The default eye height is a 5'6"
+    person, whose eyes sit about 4.5" below the top of their head.
     """
     import math
 

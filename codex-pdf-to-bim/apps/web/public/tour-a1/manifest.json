@@ -644,7 +644,7 @@
     "total_browser_bytes": 158484
   },
   "runtime": {
-    "eye_height_meters": 1.65,
+    "eye_height_meters": 1.562,
     "walkable": {
       "min_x": 0.3,
       "max_x": 11.8279,
@@ -2006,12 +2006,12 @@
         "name": "walk_start",
         "position": [
           3.504,
-          1.65,
+          1.562,
           -11.037
         ],
         "target": [
           5.72,
-          1.65,
+          1.562,
           -7.253
         ],
         "up": [

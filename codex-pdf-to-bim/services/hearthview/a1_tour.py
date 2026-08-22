@@ -25,7 +25,10 @@ from hearthview.geometry import Primitive
 from hearthview.units import TICKS_PER_INCH
 
 METERS_PER_TICK = 0.0254 / TICKS_PER_INCH
-EYE_HEIGHT_METERS = 1.65
+# Eye height for a 5'6" person: eyes sit roughly 4.5" below the top of the
+# head, so 61.5" rather than the 65" this used to stand at -- which was a
+# 5'9" viewer and made every room read slightly low.
+EYE_HEIGHT_METERS = 1.562
 
 # baseColorFactor, metallic, roughness
 _MATERIALS: dict[str, tuple[tuple[float, float, float], float, float]] = {
