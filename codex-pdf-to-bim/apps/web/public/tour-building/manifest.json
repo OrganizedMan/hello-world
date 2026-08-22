@@ -9,7 +9,7 @@
     "points_per_foot": 18.0
   },
   "provenance": {
-    "verified_percent": 72.2,
+    "verified_percent": 72.3,
     "measured": [
       "wall footprints and thicknesses (wall poche)",
       "opening positions and widths (gaps in the wall runs)",
@@ -29,7 +29,7 @@
     "min_y": -2.5146,
     "min_z": -15.6258,
     "max_x": 12.1279,
-    "max_y": 7.6454,
+    "max_y": 7.7724,
     "max_z": 0.0
   },
   "orientation": {
@@ -642,7 +642,7 @@
     "glb": "a1-building.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 390460
+    "total_browser_bytes": 395736
   },
   "runtime": {
     "eye_height_meters": 1.65,
@@ -1989,12 +1989,12 @@
         "name": "kitchen_overview",
         "position": [
           19.3459,
-          14.677,
+          14.804,
           5.469
         ],
         "target": [
           6.064,
-          2.5654,
+          2.6289,
           -7.8129
         ],
         "up": [
@@ -2025,7 +2025,7 @@
         "name": "overhead",
         "position": [
           6.064,
-          24.8338,
+          24.9608,
           -7.8129
         ],
         "target": [
@@ -2048,8 +2048,8 @@
       "node": "storey_a0",
       "base_meters": -2.3622,
       "ceiling_meters": 2.0574,
-      "primitives": 99,
-      "verified_fraction": 0.7879
+      "primitives": 100,
+      "verified_fraction": 0.79
     },
     {
       "sheet": "A-1",
@@ -2057,8 +2057,8 @@
       "node": "storey_a1",
       "base_meters": 0.0,
       "ceiling_meters": 2.5654,
-      "primitives": 212,
-      "verified_fraction": 0.7217
+      "primitives": 213,
+      "verified_fraction": 0.723
     },
     {
       "sheet": "A-2",
@@ -2066,8 +2066,8 @@
       "node": "storey_a2",
       "base_meters": 2.8702,
       "ceiling_meters": 2.4384,
-      "primitives": 149,
-      "verified_fraction": 0.6644
+      "primitives": 150,
+      "verified_fraction": 0.6667
     },
     {
       "sheet": "A-3",
@@ -2075,8 +2075,8 @@
       "node": "storey_a3",
       "base_meters": 5.6134,
       "ceiling_meters": 2.032,
-      "primitives": 68,
-      "verified_fraction": 0.75
+      "primitives": 69,
+      "verified_fraction": 0.7536
     }
   ]
 }

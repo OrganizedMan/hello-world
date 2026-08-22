@@ -43,6 +43,9 @@ ASSUMED_COUNTER_HEIGHT_INCHES = 36.0
 ASSUMED_FIXTURE_HEIGHT_INCHES = 32.0
 ASSUMED_STAIR_RISE_INCHES = 7.0  # matches the printed NEW STAIRS riser
 FLOOR_SLAB_INCHES = 6.0
+# Ceiling board. Like the floor slab this is a construction convention, not a
+# printed dimension; it only has to read as a surface overhead.
+CEILING_SLAB_INCHES = 5.0
 DECK_SLAB_INCHES = 7.0
 
 _AXIS_TOLERANCE = 0.75  # points; a bay wall's diagonals exceed this
@@ -251,6 +254,24 @@ def build_a1_massing(
             to_ticks_x(footprint.x1),
             to_ticks_y(footprint.y0),
             to_ticks_z(0.0),
+            StationInterval(0, to_ticks_x(footprint.x1)),
+        )
+    )
+
+    # Ceiling slab at the printed ceiling height. Without one every room is lit
+    # as though open to the sky, which is wrong indoors and is also why the
+    # overhead view had nothing to take away: it is a separate part kind so the
+    # browser can hide it and look down into the plan.
+    primitives.append(
+        Primitive(
+            "ceiling.slab",
+            "ceiling",
+            to_ticks_x(footprint.x0),
+            to_ticks_y(footprint.y1),
+            ceiling_z,
+            to_ticks_x(footprint.x1),
+            to_ticks_y(footprint.y0),
+            ceiling_z + _points_to_ticks(CEILING_SLAB_INCHES * POINTS_PER_INCH),
             StationInterval(0, to_ticks_x(footprint.x1)),
         )
     )

@@ -9,7 +9,7 @@
     "points_per_foot": 18.0
   },
   "provenance": {
-    "verified_percent": 72.2,
+    "verified_percent": 72.3,
     "measured": [
       "wall footprints and thicknesses (wall poche)",
       "opening positions and widths (gaps in the wall runs)",
@@ -28,7 +28,7 @@
     "min_y": -0.1778,
     "min_z": -15.6258,
     "max_x": 12.1279,
-    "max_y": 2.5654,
+    "max_y": 2.6924,
     "max_z": 0.0
   },
   "orientation": {
@@ -641,7 +641,7 @@
     "glb": "a1-first-floor.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 157080
+    "total_browser_bytes": 158484
   },
   "runtime": {
     "eye_height_meters": 1.65,
