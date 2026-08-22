@@ -2,7 +2,7 @@ import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNo
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { AdaptiveDpr, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import {
-  AgXToneMapping,
+  NeutralToneMapping,
   Box3,
   Camera,
   DirectionalLight,
@@ -559,9 +559,9 @@ export function TourViewer(props: TourViewerProps) {
           // pushed the warm plaster towards orange and clipped the daylight,
           // which is a large part of why the browser and the renders did not
           // look like the same building.
-          gl={{ antialias: true, outputColorSpace: SRGBColorSpace, toneMapping: AgXToneMapping }}
+          gl={{ antialias: true, outputColorSpace: SRGBColorSpace, toneMapping: NeutralToneMapping }}
           onCreated={({ gl }) => {
-            gl.toneMappingExposure = 0.95;
+            gl.toneMappingExposure = 1.5;
           }}
           shadows={{ type: PCFSoftShadowMap }}
         >

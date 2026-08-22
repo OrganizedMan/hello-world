@@ -77,6 +77,8 @@ def image_maps(
     normal: Path | None = None,
     scale: float = 1.0,
     tint: tuple[float, float, float, float] | None = None,
+    saturation: float | None = None,
+    value: float | None = None,
 ) -> None:
     """Wire real colour, roughness and normal maps onto a Principled shader.
 
@@ -93,15 +95,25 @@ def image_maps(
     base = tree.nodes.new("ShaderNodeTexImage")
     base.image = bpy.data.images.load(str(colour), check_existing=True)
     tree.links.new(mapping.outputs["Vector"], base.inputs["Vector"])
+    colour_out = base.outputs["Color"]
     if tint:
         multiply = tree.nodes.new("ShaderNodeMixRGB")
         multiply.blend_type = "MULTIPLY"
         multiply.inputs["Fac"].default_value = 1.0
         multiply.inputs["Color2"].default_value = tint
-        tree.links.new(base.outputs["Color"], multiply.inputs["Color1"])
-        tree.links.new(multiply.outputs["Color"], shader.inputs["Base Color"])
-    else:
-        tree.links.new(base.outputs["Color"], shader.inputs["Base Color"])
+        tree.links.new(colour_out, multiply.inputs["Color1"])
+        colour_out = multiply.outputs["Color"]
+    if saturation is not None or value is not None:
+        # A photographed surface is not the same thing as a painted one. The
+        # texture is kept for its grain and pulled towards the colour the
+        # material actually is -- which for interior plaster is a light
+        # near-neutral, not the mid-tan the photograph was shot on.
+        grade = tree.nodes.new("ShaderNodeHueSaturation")
+        grade.inputs["Saturation"].default_value = 1.0 if saturation is None else saturation
+        grade.inputs["Value"].default_value = 1.0 if value is None else value
+        tree.links.new(colour_out, grade.inputs["Color"])
+        colour_out = grade.outputs["Color"]
+    tree.links.new(colour_out, shader.inputs["Base Color"])
 
     if roughness is not None:
         rough = tree.nodes.new("ShaderNodeTexImage")
@@ -326,6 +338,12 @@ def textured_plaster() -> bpy.types.Material:
         normal=ASSETS / "beige_wall_001_nor_gl_1k.jpg",
         scale=1.6,
         tint=(1.06, 1.05, 1.02, 1.0),
+        # The photograph averages a mid-tan -- around a third of the light it
+        # receives -- and interior paint reflects three-quarters of it. Left as
+        # shot, every room came back brown and starved of bounce, because a
+        # dark wall is also a wall that passes almost nothing on.
+        saturation=0.34,
+        value=1.95,
     )
     return material
 
