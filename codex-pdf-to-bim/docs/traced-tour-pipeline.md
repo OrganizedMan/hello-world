@@ -234,7 +234,8 @@ other's `manifest.json`:
 
 | route | folder | what it is |
 | --- | --- | --- |
-| `/tour-spike` | `apps/web/public/tour-spike/` | Kitchen and family room, built in Blender against the quality assets. |
+| `/tour` | `apps/web/public/tour-building/` | The house. This is the live path. |
+| `/tour-spike` | `apps/web/public/tour-spike/` | The old kitchen spike, kept only for comparison. |
 | `/tour/first-floor` | `apps/web/public/tour-a1/` | The whole traced first floor, plain massing. |
 | `/tour/building` | `apps/web/public/tour-building/` | All four drawn storeys, one node each, with a floor switcher. |
 
@@ -308,6 +309,29 @@ State these plainly rather than implying the model is finished:
    switches between.
 4. **Photorealism**, deliberately after the layout is right — materials,
    lighting and finishes on geometry that is already known to match the drawing.
+
+---
+
+## 9. The kitchen is not a special case
+
+It was one for a long time: `a1_kitchen_scene.py` scoped a region with six
+hand-picked PDF coordinates and `build_scene.py` built it with named stations
+for the sink, the range and the island. Nothing else in the house had any of
+that, so the kitchen looked finished and every other room looked like massing.
+
+The unified path has no room-specific geometry in it at all. The trace already
+places counters and fixtures wherever the drawing draws them -- six runs in the
+kitchen, four in the two bathrooms, three in circulation, two in the mudroom --
+so `building_look.py` builds carcass, doors and worktop from *any* run, and the
+room only decides the worktop material. A kitchen is a room with more counter
+in it.
+
+Facing is derived rather than named: the vector from a run to its room's
+centroid points into the room, so the wall is the other way. That works on any
+wall of any storey without a station convention.
+
+`spikes/tour_quality/build_scene.py` still exists and still builds the old
+kitchen. It is the comparison, not the product.
 
 Still deferred: the stock-furniture placement UI, and the levels above the
 first.

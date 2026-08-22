@@ -17812,6 +17812,388 @@
       }
     ]
   },
+  "casework": [
+    {
+      "id": "counter.000",
+      "part": "counter",
+      "node": "storey_a0",
+      "room": "BATHROOM",
+      "room_kind": "bathroom",
+      "centre": [
+        2.5365,
+        7.9885,
+        -1.905
+      ],
+      "size": [
+        0.4224,
+        0.6222,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 0.0
+    },
+    {
+      "id": "counter.001",
+      "part": "counter",
+      "node": "storey_a0",
+      "room": "BATHROOM",
+      "room_kind": "bathroom",
+      "centre": [
+        2.536,
+        8.0454,
+        -1.905
+      ],
+      "size": [
+        0.3546,
+        0.503,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 0.0
+    },
+    {
+      "id": "counter.002",
+      "part": "counter",
+      "node": "storey_a0",
+      "room": "BATHROOM",
+      "room_kind": "bathroom",
+      "centre": [
+        2.536,
+        8.0672,
+        -1.905
+      ],
+      "size": [
+        0.3546,
+        0.4594,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 0.0
+    },
+    {
+      "id": "counter.000",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "KITCHEN",
+      "room_kind": "kitchen",
+      "centre": [
+        1.041,
+        10.2152,
+        0.4572
+      ],
+      "size": [
+        0.6103,
+        1.1301,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 0.0
+    },
+    {
+      "id": "counter.001",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "KITCHEN",
+      "room_kind": "kitchen",
+      "centre": [
+        1.041,
+        12.197,
+        0.4572
+      ],
+      "size": [
+        0.6103,
+        1.009,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 0.0
+    },
+    {
+      "id": "counter.002",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "MUDROOM",
+      "room_kind": "utility",
+      "centre": [
+        10.0046,
+        10.3812,
+        0.4572
+      ],
+      "size": [
+        0.6357,
+        1.4367,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 0.0
+    },
+    {
+      "id": "counter.003",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "MUDROOM",
+      "room_kind": "utility",
+      "centre": [
+        11.671,
+        9.5866,
+        0.4572
+      ],
+      "size": [
+        0.6087,
+        3.026,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 180.0
+    },
+    {
+      "id": "counter.004",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "KITCHEN",
+      "room_kind": "kitchen",
+      "centre": [
+        2.91,
+        13.0194,
+        0.4572
+      ],
+      "size": [
+        4.3483,
+        0.6357,
+        0.9144
+      ],
+      "run_axis": "X",
+      "facing_degrees": 270.0
+    },
+    {
+      "id": "counter.005",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "KITCHEN",
+      "room_kind": "kitchen",
+      "centre": [
+        2.9172,
+        12.9988,
+        0.4572
+      ],
+      "size": [
+        0.901,
+        0.5594,
+        0.9144
+      ],
+      "run_axis": "X",
+      "facing_degrees": 270.0
+    },
+    {
+      "id": "counter.006",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "POWDER ROOM",
+      "room_kind": "bathroom",
+      "centre": [
+        1.0537,
+        8.0291,
+        0.4572
+      ],
+      "size": [
+        0.6357,
+        1.3096,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 180.0
+    },
+    {
+      "id": "counter.007",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "KITCHEN",
+      "room_kind": "kitchen",
+      "centre": [
+        3.7492,
+        7.9337,
+        0.4572
+      ],
+      "size": [
+        0.6357,
+        1.1188,
+        0.9144
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 180.0
+    },
+    {
+      "id": "counter.008",
+      "part": "counter",
+      "node": "storey_a1",
+      "room": "KITCHEN",
+      "room_kind": "kitchen",
+      "centre": [
+        3.7237,
+        10.9797,
+        0.4572
+      ],
+      "size": [
+        2.6191,
+        1.3077,
+        0.9144
+      ],
+      "run_axis": "X",
+      "facing_degrees": 90.0
+    },
+    {
+      "id": "fixture.000",
+      "part": "fixture",
+      "node": "storey_a1",
+      "room": "KITCHEN",
+      "room_kind": "kitchen",
+      "centre": [
+        2.9172,
+        12.9988,
+        0.4064
+      ],
+      "size": [
+        0.901,
+        0.5594,
+        0.8128
+      ],
+      "run_axis": "X",
+      "facing_degrees": 270.0
+    },
+    {
+      "id": "fixture.001",
+      "part": "fixture",
+      "node": "storey_a1",
+      "room": "POWDER ROOM",
+      "room_kind": "bathroom",
+      "centre": [
+        1.2181,
+        5.702,
+        0.4064
+      ],
+      "size": [
+        0.5074,
+        0.8004,
+        0.8128
+      ],
+      "run_axis": "Y",
+      "facing_degrees": 180.0
+    },
+    {
+      "id": "fixture.002",
+      "part": "fixture",
+      "node": "storey_a1",
+      "room": "POWDER ROOM",
+      "room_kind": "bathroom",
+      "centre": [
+        1.1927,
+        7.0223,
+        0.4064
+      ],
+      "size": [
+        0.901,
+        0.5006,
+        0.8128
+      ],
+      "run_axis": "X",
+      "facing_degrees": 90.0
+    },
+    {
+      "id": "fixture.003",
+      "part": "fixture",
+      "node": "storey_a1",
+      "room": "POWDER ROOM",
+      "room_kind": "bathroom",
+      "centre": [
+        1.1927,
+        7.0368,
+        0.4064
+      ],
+      "size": [
+        0.4605,
+        0.4295,
+        0.8128
+      ],
+      "run_axis": "X",
+      "facing_degrees": 90.0
+    },
+    {
+      "id": "fixture.004",
+      "part": "fixture",
+      "node": "storey_a1",
+      "room": "POWDER ROOM",
+      "room_kind": "bathroom",
+      "centre": [
+        1.1927,
+        7.0023,
+        0.4064
+      ],
+      "size": [
+        0.378,
+        0.2779,
+        0.8128
+      ],
+      "run_axis": "X",
+      "facing_degrees": 90.0
+    },
+    {
+      "id": "counter.000",
+      "part": "counter",
+      "node": "storey_a2",
+      "room": "HALL",
+      "room_kind": "circulation",
+      "centre": [
+        1.0959,
+        5.0833,
+        3.3274
+      ],
+      "size": [
+        0.6222,
+        0.4224,
+        0.9144
+      ],
+      "run_axis": "X",
+      "facing_degrees": 90.0
+    },
+    {
+      "id": "counter.001",
+      "part": "counter",
+      "node": "storey_a2",
+      "room": "HALL",
+      "room_kind": "circulation",
+      "centre": [
+        1.1528,
+        5.0839,
+        3.3274
+      ],
+      "size": [
+        0.503,
+        0.3546,
+        0.9144
+      ],
+      "run_axis": "X",
+      "facing_degrees": 90.0
+    },
+    {
+      "id": "counter.002",
+      "part": "counter",
+      "node": "storey_a2",
+      "room": "HALL",
+      "room_kind": "circulation",
+      "centre": [
+        1.1746,
+        5.0839,
+        3.3274
+      ],
+      "size": [
+        0.4594,
+        0.3546,
+        0.9144
+      ],
+      "run_axis": "X",
+      "facing_degrees": 90.0
+    }
+  ],
   "datum_pdf_origin": [
     1418.720947265625,
     1382.244873046875

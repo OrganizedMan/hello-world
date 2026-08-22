@@ -511,6 +511,138 @@ def apply_room_finishes(rooms_block: dict, datum_origin: tuple[float, float]) ->
     return counted
 
 
+def painted_cabinet() -> bpy.types.Material:
+    material = bpy.data.materials.new("HV_LOOK_CABINET")
+    _tree, shader = _clear_nodes(material)
+    shader.inputs["Base Color"].default_value = (0.855, 0.833, 0.788, 1.0)
+    shader.inputs["Roughness"].default_value = 0.42
+    return material
+
+
+def _drop_faces(node_name: str, material_hint: str) -> int:
+    """Remove the canvas's placeholder solids for a part kind.
+
+    The canvas draws a counter as a plain box, which is the right thing for a
+    measured model and the wrong thing to look at. Once real casework stands in
+    its place the box has to go, or it sits inside the cabinet it represents.
+    """
+    import bmesh
+
+    obj = bpy.data.objects.get(node_name)
+    if obj is None:
+        return 0
+    slots = [
+        index for index, slot in enumerate(obj.material_slots)
+        if slot.material is not None and material_hint in slot.material.name
+    ]
+    if not slots:
+        return 0
+    mesh = bmesh.new()
+    mesh.from_mesh(obj.data)
+    doomed = [f for f in mesh.faces if f.material_index in slots]
+    count = len(doomed)
+    bmesh.ops.delete(mesh, geom=doomed, context="FACES")
+    mesh.to_mesh(obj.data)
+    mesh.free()
+    obj.data.update()
+    return count
+
+
+def _box(name, size, location, material, parent=None, rotation_z=0.0):
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0] / 2.0, size[1] / 2.0, size[2] / 2.0)
+    obj.rotation_euler = (0.0, 0.0, rotation_z)
+    obj.data.materials.append(material)
+    if parent is not None:
+        obj.parent = parent
+    return obj
+
+
+def build_casework(entries: list[dict], *, doors_every: float = 0.58) -> int:
+    """Turn every traced counter run into carcass, doors and a worktop.
+
+    Driven by the run and the room it stands in, not by which room it is: the
+    kitchen gets the same treatment as the mudroom and both bathrooms, with the
+    worktop material the only thing the room decides. That is the whole point --
+    a kitchen is a room with more counter in it, not a special case.
+    """
+    import math
+
+    cabinet = painted_cabinet()
+    tops = {"kitchen": honed_marble(), "bathroom": honed_marble()}
+    default_top = tiled_floor()
+    made = 0
+
+    for entry in entries:
+        width_x, width_y, height = entry["size"]
+        cx, cy, cz = entry["centre"]
+        base_z = cz - height / 2.0
+        along = width_x if entry["run_axis"] == "X" else width_y
+        across = width_y if entry["run_axis"] == "X" else width_x
+        if along < 0.25 or across < 0.15:
+            continue
+
+        yaw = math.radians(entry["facing_degrees"])
+        top_thickness = 0.038
+        carcass_height = max(0.2, height - top_thickness)
+        toe = 0.09
+
+        # Carcass, held off the floor by a toe kick.
+        _box(f"HV_CASE_{entry['id']}_BODY",
+             (width_x - 0.01, width_y - 0.01, carcass_height - toe),
+             (cx, cy, base_z + toe + (carcass_height - toe) / 2.0), cabinet)
+        _box(f"HV_CASE_{entry['id']}_KICK",
+             (width_x - 0.09, width_y - 0.09, toe),
+             (cx, cy, base_z + toe / 2.0), cabinet)
+
+        # Worktop, slightly proud of the carcass on every side.
+        top_material = tops.get(entry["room_kind"], default_top)
+        _box(f"HV_CASE_{entry['id']}_TOP",
+             (width_x + 0.024, width_y + 0.024, top_thickness),
+             (cx, cy, base_z + carcass_height + top_thickness / 2.0), top_material)
+
+        # Door fronts along the run, with a recessed panel each.
+        count = max(1, int(round(along / doors_every)))
+        door_width = along / count
+        for index in range(count):
+            offset = -along / 2.0 + door_width * (index + 0.5)
+            if entry["run_axis"] == "X":
+                door_centre = (cx + offset, cy, base_z + toe + (carcass_height - toe) / 2.0)
+                door_size = (door_width - 0.008, 0.02, carcass_height - toe - 0.012)
+                face_shift = (0.0, across / 2.0, 0.0)
+            else:
+                door_centre = (cx, cy + offset, base_z + toe + (carcass_height - toe) / 2.0)
+                door_size = (0.02, door_width - 0.008, carcass_height - toe - 0.012)
+                face_shift = (across / 2.0, 0.0, 0.0)
+            sign = -1.0 if entry["facing_degrees"] in (180.0, 270.0) else 1.0
+            placed = (
+                door_centre[0] + face_shift[0] * sign,
+                door_centre[1] + face_shift[1] * sign,
+                door_centre[2],
+            )
+            _box(f"HV_CASE_{entry['id']}_DOOR{index}", door_size, placed, cabinet)
+            # Shaker rail: a slightly proud frame reads as a panel edge.
+            inset = 0.055
+            if entry["run_axis"] == "X":
+                panel = (max(0.02, door_size[0] - inset), 0.008, max(0.02, door_size[2] - inset))
+            else:
+                panel = (0.008, max(0.02, door_size[1] - inset), max(0.02, door_size[2] - inset))
+            # Proud of the door by a few millimetres. Scaling this by the
+            # counter depth pushed the panel clear of the cabinet entirely, so
+            # deep runs grew a stack of floating fins instead of a door face.
+            proud = 0.012
+            nudge = (
+                0.0 if entry["run_axis"] == "X" else proud * sign,
+                proud * sign if entry["run_axis"] == "X" else 0.0,
+            )
+            _box(f"HV_CASE_{entry['id']}_PANEL{index}", panel,
+                 (placed[0] + nudge[0], placed[1] + nudge[1], placed[2]), cabinet)
+        made += 1
+    return made
+
+
 def build_world(hdri: Path, strength: float = 1.0, rotation: float = 0.0) -> None:
     """Sky and daylight from the HDRI, which is also what shows through windows."""
     world = bpy.data.worlds.new("HV_LOOK_WORLD")
@@ -670,6 +802,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interior", type=str, help="storey node to stand inside, e.g. storey_a1")
     parser.add_argument("--yaw", type=float, default=0.0)
     parser.add_argument("--eye", type=float, default=1.562)
+    parser.add_argument("--casework", action="store_true",
+                        help="build cabinetry from every traced counter run")
     parser.add_argument("--rooms", action="store_true",
                         help="vary floor finish by room kind, read from the sheets")
     parser.add_argument("--tile", type=float, default=1.0,
@@ -696,11 +830,24 @@ def main(argv: list[str] | None = None) -> int:
             if block and envelope:
                 finishes = apply_room_finishes(block, tuple(envelope))
 
+    casework = 0
+    if args.casework:
+        manifest_path = args.canvas.with_name("manifest.json")
+        if manifest_path.is_file():
+            entries = json.loads(manifest_path.read_text()).get("casework", [])
+            if entries:
+                for node in {e["node"] for e in entries}:
+                    _drop_faces(node, "MARBLE")
+                    _drop_faces(node, "APPLIANCE")
+                casework = build_casework(entries)
+
     build_world(args.hdri, strength=args.sky)
     add_sun(strength=args.sun)
 
     print(f"canvas    {args.canvas.name}")
     print(f"unwrapped {unwrapped} meshes at {args.tile} m per tile")
+    if casework:
+        print(f"casework  {casework} runs built as cabinetry")
     if finishes:
         print("finishes  " + ", ".join(f"{k}:{v} faces" for k, v in sorted(finishes.items())))
     print(f"materials {', '.join(f'{k} -> {v}' for k, v in sorted(applied.items()))}")

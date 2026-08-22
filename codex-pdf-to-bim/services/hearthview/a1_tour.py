@@ -402,6 +402,89 @@ def build_tour(extraction: A1Extraction, massing: A1Massing) -> TourArtifact:
     return TourArtifact(glb, build_manifest(extraction, massing, glb_bytes=len(glb)))
 
 
+def _casework_block(building) -> list[dict]:
+    """Every counter and fixture, with the room it stands in and its facing.
+
+    Cabinetry is not a kitchen feature. The trace puts counters in the mudroom,
+    the powder room and two bathrooms as well, so the look pass builds casework
+    from any run and lets the room decide what it should look like.
+
+    Facing is derived rather than guessed: the vector from a run to its room's
+    centroid points into the room, so the wall is the other way. That works on
+    any wall of any storey without naming one.
+    """
+    from hearthview.a1_extract import POINTS_PER_FOOT
+    from hearthview.a1_rooms import build_room_grid
+    from hearthview.units import TICKS_PER_INCH
+
+    FT = 0.3048
+    datum = building.datum
+    out: list[dict] = []
+
+    for storey in building.storeys:
+        grid = build_room_grid(storey.extraction)
+        centroids: dict[str, list[float]] = {}
+        for row in range(grid.rows):
+            for column in range(grid.columns):
+                who = grid.owner[row * grid.columns + column]
+                if who < 0:
+                    continue
+                name = grid.rooms[who].name
+                acc = centroids.setdefault(name, [0.0, 0.0, 0.0])
+                acc[0] += column
+                acc[1] += row
+                acc[2] += 1
+
+        for item in storey.primitives:
+            if item.part_kind not in ("counter", "fixture"):
+                continue
+            east0, east1 = (item.x0_ticks / TICKS_PER_INCH / 12 * FT,
+                            item.x1_ticks / TICKS_PER_INCH / 12 * FT)
+            north0, north1 = (item.y0_ticks / TICKS_PER_INCH / 12 * FT,
+                              item.y1_ticks / TICKS_PER_INCH / 12 * FT)
+            z0, z1 = (item.z0_ticks / TICKS_PER_INCH / 12 * FT,
+                      item.z1_ticks / TICKS_PER_INCH / 12 * FT)
+            centre_e, centre_n = (east0 + east1) / 2, (north0 + north1) / 2
+
+            pdf_x = datum.x0 + centre_e / FT * POINTS_PER_FOOT
+            pdf_y = datum.y1 - centre_n / FT * POINTS_PER_FOOT
+            room = grid.at(pdf_x, pdf_y)
+            if room is None:
+                continue
+
+            total = centroids[room.name]
+            room_e = (datum.x0 + (total[0] / total[2] + 0.5) * _cell_points()
+                      - datum.x0) / POINTS_PER_FOOT * FT
+            room_n = (datum.y1 - (grid.origin_y + (total[1] / total[2] + 0.5) * _cell_points())
+                      ) / POINTS_PER_FOOT * FT
+            room_e += (grid.origin_x - datum.x0) / POINTS_PER_FOOT * FT
+
+            toward = (room_e - centre_e, room_n - centre_n)
+            if abs(east1 - east0) >= abs(north1 - north0):
+                run_axis, facing = "X", (90.0 if toward[1] >= 0 else 270.0)
+            else:
+                run_axis, facing = "Y", (0.0 if toward[0] >= 0 else 180.0)
+
+            out.append({
+                "id": item.element_id,
+                "part": item.part_kind,
+                "node": storey_node_name(storey.sheet),
+                "room": room.name,
+                "room_kind": room.kind,
+                "centre": [round(centre_e, 4), round(centre_n, 4), round((z0 + z1) / 2, 4)],
+                "size": [round(east1 - east0, 4), round(north1 - north0, 4), round(z1 - z0, 4)],
+                "run_axis": run_axis,
+                "facing_degrees": facing,
+            })
+    return out
+
+
+def _cell_points() -> float:
+    from hearthview.a1_rooms import CELL_POINTS
+
+    return CELL_POINTS
+
+
 def _room_block(building) -> dict:
     """Per-storey room extents, in the grid the fill produced."""
     from hearthview.a1_rooms import CELL_POINTS, build_room_grid
@@ -487,6 +570,7 @@ def build_building_tour(building) -> TourArtifact:
     # Rooms travel with the artifact so the look pass can vary finishes without
     # needing the extractor -- Blender's Python has no PDF stack.
     manifest["rooms"] = _room_block(building)
+    manifest["casework"] = _casework_block(building)
     # Sheet coordinates of the datum the canvas was built on, so the look pass
     # can convert a point in the model back to a point on the drawing.
     manifest["datum_pdf_origin"] = [building.datum.x0, building.datum.y1]
