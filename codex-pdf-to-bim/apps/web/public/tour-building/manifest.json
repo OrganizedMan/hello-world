@@ -639,10 +639,15 @@
     "opening_heights"
   ],
   "artifact": {
-    "glb": "a1-building.glb",
+    "glb": "a1-building-look.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 418800
+    "total_browser_bytes": 20084900,
+    "canvas_glb": "a1-building.glb",
+    "lightmap": {
+      "carried_as": "emissive",
+      "scale": 2.9503
+    }
   },
   "runtime": {
     "eye_height_meters": 1.562,
