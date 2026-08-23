@@ -300,6 +300,16 @@ uv run python scripts/check_export.py \
 node scripts/tour_snapshot.mjs http://localhost:5173/tour ./tour-snapshots
 ```
 
+`tests/backend/test_committed_look_artifact.py` runs the same checks against
+whatever is committed, so the suite fails rather than the phone. Revert the
+manifest to the canvas and all four of its tests go red.
+
+The committed artifact is a 20MB binary and every bake writes a new one, so the
+repository carries a revision per bake. That is the accepted cost of a clean
+clone serving the finished tour without Blender; what is *not* acceptable is a
+revision per intermediate bake, and the guard above is what makes the difference
+visible before it is pushed.
+
 ---
 
 ## 7. What is still unverified
