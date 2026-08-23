@@ -642,11 +642,11 @@
     "glb": "a1-building-look.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 20068836,
+    "total_browser_bytes": 21047360,
     "canvas_glb": "a1-building.glb",
     "lightmap": {
       "carried_as": "emissive",
-      "scale": 1.9654
+      "scale": 2.9573
     }
   },
   "runtime": {

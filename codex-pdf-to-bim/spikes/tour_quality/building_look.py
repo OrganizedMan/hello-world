@@ -1028,20 +1028,27 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
 
-    # Pack every selected object into one square. Smart project, not lightmap
-    # pack: lightmap pack gives every *face* its own island, and the floors are
-    # subdivided into thousands of them to carry per-room finishes, so a
-    # fourteen-thousand-island atlas came back as triangular smears. Smart
-    # project merges connected coplanar faces, which is one island per wall
-    # face and one per floor -- a few hundred in total.
+    # Pack every selected object into one square, and pack it *hard*. Baking
+    # is expensive and packing is free, so this is where the resolution comes
+    # from: smart project's own packer left the atlas ninety-six per cent empty
+    # -- twelve texels to the metre, which renders as blocks rather than as
+    # light. Unwrapping with no margin, levelling the texel density by real
+    # area so a wall gets more of the atlas than a drawer edge, and repacking
+    # with concave island shapes takes coverage to forty per cent and thirty-
+    # eight texels to the metre. Same second of work, three times the
+    # resolution; buying that with image size instead would have cost nine
+    # times the bake.
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.uv.smart_project(
-        angle_limit=1.15,
-        island_margin=0.004,
+        angle_limit=1.4,
+        island_margin=0.0,
         correct_aspect=False,
         scale_to_bounds=False,
     )
+    bpy.ops.uv.average_islands_scale()
+    bpy.ops.uv.pack_islands(rotate=True, margin=0.0006, scale=True,
+                            shape_method="CONCAVE")
     bpy.ops.object.mode_set(mode="OBJECT")
     print(f"          unwrap took {time.monotonic() - unwrap_started:.0f}s", flush=True)
 
@@ -1076,6 +1083,23 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
     scene.render.engine = "CYCLES"
     scene.cycles.samples = samples
     scene.cycles.use_denoising = True
+    # Cycles charges by covered texel times samples, and packing the atlas
+    # properly multiplied the covered texels by ten. These three settings buy
+    # that back. Adaptive sampling stops paying for texels that have already
+    # converged, which on a diffuse bake is most of them; fast GI approximates
+    # the deep bounces that contribute least; and four bounces is enough for a
+    # room lit through a window, where the light that matters has arrived by
+    # the second or third.
+    scene.cycles.use_adaptive_sampling = True
+    scene.cycles.adaptive_threshold = 0.03
+    scene.cycles.adaptive_min_samples = max(4, samples // 8)
+    scene.cycles.max_bounces = 4
+    scene.cycles.diffuse_bounces = 4
+    try:
+        scene.cycles.use_fast_gi = True
+        scene.cycles.ao_bounces_render = 2
+    except AttributeError:
+        pass
     scene.render.bake.use_clear = True
     scene.render.bake.use_selected_to_active = False
     scene.render.bake.margin = max(2, size // 256)
