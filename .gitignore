@@ -5,3 +5,11 @@ server/data/
 .env
 .DS_Store
 *.tsbuildinfo
+
+# PDF-to-3D packages (docs/plan/pdf-to-3d-development-plan.md)
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.hypothesis/
+*.g3d

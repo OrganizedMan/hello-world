@@ -1,0 +1,27 @@
+# Development dependencies for the PDF-to-3D packages under packages/
+# (docs/plan/pdf-to-3d-development-plan.md). Install with:
+#
+#   pip install -r requirements-dev.txt
+#   for p in packages/*/; do pip install -e "$p"; done
+#
+# pymupdf is isolated behind packages/ingest/src/ingest/pymupdf_backend.py
+# (plan §18 R5) — see that file before adding a second import site.
+pymupdf>=1.28
+pytest>=8
+hypothesis>=6.100
+pyyaml>=6
+
+# Sprint 2: constraint solving and deterministic geometry (plan §8, §9)
+numpy>=2
+scipy>=1.17
+shapely>=2.1
+networkx>=3.6
+manifold3d>=3
+
+# Sprint 2: localhost API for the review UI (plan §15 `server`)
+fastapi>=0.141
+uvicorn>=0.52
+httpx>=0.28  # test client only
+
+# Sprint 2: end-to-end UI smoke test (tests/test_ui_smoke.py)
+playwright>=1.55

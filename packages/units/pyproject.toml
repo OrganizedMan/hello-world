@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf3d-units"
+version = "0.1.0"
+description = "Exact integer-nanometre units for the PDF-to-3D geometry pipeline"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]

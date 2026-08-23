@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf3d-extract"
+version = "0.1.0"
+description = "Deterministic vector/text extraction from Tier A/B PDFs: colour taxonomy, dimension-string classification, tick/segment matching (plan §6)"
+requires-python = ">=3.11"
+dependencies = ["pdf3d-ingest", "pdf3d-units"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf3d-core-schema"
+version = "0.1.0"
+description = "Canonical entity schema for the PDF-to-3D pipeline (plan §5) — the single source of truth"
+requires-python = ">=3.11"
+dependencies = ["pdf3d-units"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

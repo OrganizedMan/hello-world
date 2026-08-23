@@ -1,0 +1,30 @@
+{
+  "fixture": "garrigan-261-grove",
+  "description": "261 Grove Street, Montclair NJ — Design Options Set 08.13.26 — the project's development and regression-test fixture (plan Appendix A).",
+  "files": {
+    "garrigan-main-set.pdf": {
+      "sha256": "3191113683d3b79d7a2b7cf59d2bf879e7a7d4a695ce215b7de97e8a2cbf133d",
+      "bytes": 5921345,
+      "pages": 4,
+      "sheets": ["A-0", "A-1", "A-2", "A-3"],
+      "tier": "A",
+      "role": "primary Tier A fixture — native vector, colour-coded poche"
+    },
+    "garrigan-attic-idea.pdf": {
+      "sha256": "c439f87b50d3c8cad582c6f2dcc545f0358429cf774ed78c83b2c28a9069fc8b",
+      "bytes": 1292051,
+      "pages": 1,
+      "sheets": ["A-3 OP#B"],
+      "tier": "A",
+      "role": "alternate attic option set"
+    },
+    "garrigan-a1-degraded-150dpi.pdf": {
+      "sha256_note": "derived file — regenerate with tools/make_degraded_fixture.py rather than pinning a hash, since it is a build artifact of garrigan-main-set.pdf page 2",
+      "pages": 1,
+      "derived_from": "garrigan-main-set.pdf page index 1 (sheet A-1, Proposed First Floor)",
+      "generation": "rendered at 150 DPI to PNG, then re-embedded as the sole content of a new single-page PDF — zero vector paths, one full-bleed raster image",
+      "tier": "C",
+      "role": "the Stage-0 Tier C gate fixture (plan §14): the family room must be traceable and pass every topology assertion from this file alone, with no vector geometry available"
+    }
+  }
+}

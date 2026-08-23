@@ -1,0 +1,47 @@
+# Attic assertions (plan Appendix A, §9, §16). Highest-risk workstream
+# (R1) — roof planes, dormers, and the collision between the existing
+# roof, second-floor addition, and possible attic expansion.
+# Status: not yet runnable — see first-floor-topology.yaml header.
+
+level: attic
+source_sheet: "A-3 / A-3 OP#B"
+
+assertions:
+  - assert_ceiling_height:
+      room: ATTIC
+      value: "6'-8\""
+      tol: "1\""
+      reason: derived clear height must reproduce this section-stated value, not be accepted as an input
+
+  - assert_roof_pitch:
+      plane: MAIN_ROOF_A
+      rise_per_12: "5\""
+      tol_in_per_12: 0.05
+
+  - assert_roof_pitch:
+      plane: MAIN_ROOF_B
+      rise_per_12: "5\""
+      tol_in_per_12: 0.05
+
+  - assert_roof_pitch:
+      plane: LOW_SLOPE_ROOF
+      rise_per_12: "1\""
+      tol_in_per_12: 0.05
+
+  - assert_alignment_constraint:
+      kind: equal
+      members: [LOW_STORAGE_LEFT, LOW_STORAGE_RIGHT]
+      reason: >
+        The "EQ / EQ" tags on A-3 are equality constraints between the two
+        low-storage zones, not numeric dimensions — must not be parsed as
+        a feet-inches value.
+
+  - assert_section_vertical_chain:
+      section_marker: "3 / A-3 OP#B"
+      chain: ["8'-0\"", "1'-0\"", "7'-10\"", "6'-8\"", "0'-10\""]
+
+  - assert_dimension:
+      entity: POSSIBLE_NEW_ATTIC
+      dim: footprint
+      value: ["18'-7\"", "22'-5\""]
+      tol: "1\""

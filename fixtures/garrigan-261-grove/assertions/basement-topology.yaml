@@ -1,0 +1,37 @@
+# Basement assertions (plan Appendix A, §16 "Additional assertion sets").
+# Status: not yet runnable — see first-floor-topology.yaml header.
+
+level: basement
+variant: proposed
+source_sheet: A-0
+
+assertions:
+  - assert_ceiling_height:
+      room: FULL_BASEMENT
+      value: "8'-9\""
+      tol: "1\""
+      reason: new basement ceiling
+
+  - assert_ceiling_height:
+      room: "(E) BASEMENT"
+      value: "6'-9\""
+      tol: "1\""
+      reason: existing ceiling — must remain distinct from the new 8'-9" figure, not averaged
+
+  - assert_stair:
+      id: NEW_BASEMENT_STAIR
+      riser_count: 3
+      riser_height: "7\""
+      tread_count: 2
+      tread_depth: "12\""
+
+  - assert_opening_kind:
+      id: EGRESS_WINDOW
+      kind: window
+      note: paired with a window well; new stairs run alongside it
+
+  - assert_dimension:
+      entity: FULL_BASEMENT
+      dim: overall_length
+      value: "30'-1\""
+      tol: "1\""
