@@ -139,7 +139,17 @@ geometry.
 | `scripts/measure_glb.py` | Artifact-versus-trace diff for the kitchen GLB, landmark by landmark. |
 | `scripts/build_a1_tour.py` | Whole first floor: extract, build, measure. No Blender. |
 | `scripts/measure_a1_tour.py` | Artifact-versus-trace diff for the whole-floor GLB, every primitive corner. |
+| `services/hearthview/a1_massing.py` | Classified vectors → solids: walls, slabs, sills, lintels, stairs, counters. One storey. |
+| `services/hearthview/a1_building.py` | Four sheets → one building on one datum. Owns the storey elevations. |
+| `services/hearthview/a1_rooms.py` | Label-seeded flood fill. Which room is a point in, and how big is it. |
+| `services/hearthview/a1_tour.py` | Building → GLB and `hearthview-tour/v2` manifest, a node per storey. No Blender. |
+| `scripts/build_a1_building.py` | Every drawn storey: extract, build, measure. No Blender. |
+| `spikes/tour_quality/building_look.py` | The look pass. Materials, casework, joinery, furniture, and the Cycles bake. Needs Blender. |
+| `spikes/tour_quality/bakes/` | Baked lightmap atlases, kept so grading can be re-run without re-baking. |
+| `scripts/check_export.py` | Opens the GLB and checks what fails silently: did a grade survive, is the atlas empty. |
+| `scripts/tour_snapshot.mjs` | Photographs the tour in a real browser and fails on a console error or a dead control. |
 | `apps/web/src/features/tour/` | Runtime. `tourManifest.ts` is a discriminated union on `schema`: v1 spike, v2 traced. |
+| `apps/web/src/features/tour/tourFraming.ts` | Camera framing, storey and ceiling visibility, exposure metering, floor hit-testing. |
 
 ---
 
@@ -247,6 +257,49 @@ uv run python scripts/build_a1_tour.py      # first floor
 uv run python scripts/build_a1_building.py  # every drawn storey
 ```
 
+### The look pass
+
+Those two write the *canvas*: correct geometry, no materials. `building_look.py`
+turns it into the thing people look at, and needs Blender:
+
+```bash
+python spikes/tour_quality/building_look.py \
+    --canvas apps/web/public/tour-building/a1-building.glb \
+    --hdri apps/web/public/tour-building/environment.hdr \
+    --rooms --casework --openings --tile 1.0 \
+    --furniture spikes/tour_quality/assets/files \
+    --sun 6.0 --sky 5.0 \
+    --bake light --bake-size 2048 --bake-samples 64 \
+    --atlas spikes/tour_quality/bakes/a1-building-2048-lightmap.png \
+    --out apps/web/public/tour-building/a1-building-look.glb
+```
+
+**The bake is the long pole and everything after it is seconds.** About
+twenty-six minutes on four cores at these settings. Anything downstream of it --
+a paint colour, a tone curve, an export option -- reuses the atlas instead:
+
+```bash
+    --bake light --bake-size 2048 \
+    --reuse-lightmap spikes/tour_quality/bakes/a1-building-2048-lightmap.png \
+    --reuse-scale 2.9503
+```
+
+Forty seconds. Reuse assumes the geometry has not changed, because the unwrap
+is deterministic only for a given build. Change the massing and you owe a bake.
+
+**`--out` rewrites the manifest, and it does it last.** `build_a1_building.py`
+points the manifest back at the plain canvas, and the look pass points it at the
+finished model when it finishes. Committing between the two ships untextured,
+unlit massing that loads perfectly and looks like nothing. Check before you
+commit:
+
+```bash
+uv run python scripts/check_export.py \
+    apps/web/public/tour-building/a1-building-look.glb \
+    --min-coverage 0.30 --albedo "HV_LOOK_PLASTER_TEX=220,213,209"
+node scripts/tour_snapshot.mjs http://localhost:5173/tour ./tour-snapshots
+```
+
 ---
 
 ## 7. What is still unverified
@@ -263,44 +316,49 @@ State these plainly rather than implying the model is finished:
   typing is inferred from drawn symbols and position; roughly 24 openings across
   the full floor are typed "cased" with low confidence.
 - **~25 diagonal bay segments are approximated** as straight runs.
-- **Stair extraction does not survive the other sheets.** Treads are found per
-  sheet with no check that they stack, and they do not:
-
-  | sheet | stair east position | treads | printed rise |
-  | --- | --- | --- | --- |
-  | A-0 | — | 0 | note present |
-  | A-1 | 16.9 – 19.8 ft | 6 | yes |
-  | A-2 | — | 0 | no |
-  | A-3 | 27.3 – 32.8 ft | 10 | no |
-
-  A-3's run sits about ten feet east of A-1's and extends a foot past its own
-  footprint, and A-2 has no stair at all, so the model offers no way between
-  storeys. Flights in a house stack; nothing checks that, which is why this
-  shipped looking fine. Whatever A-3's treads are, they are probably not its
-  stair.
+- ~~**Stair extraction does not survive the other sheets.**~~ Fixed; see §11.
+  Every storey now has a flight, all four stack over each other in plan, and
+  three tests hold that: one per storey, one that the footprints overlap, one
+  that a flight climbs its own storey and stops at the ceiling. What is still
+  assumed is how far each flight runs — a plan cuts the stair where the floor
+  above crosses it, so the treads past the drawn ones are declared `assumed`.
+- **The last riser is missing by design.** A flight stops at its own printed
+  ceiling, which leaves roughly a foot to the floor above. That gap is the floor
+  assembly, which no sheet in this set dimensions.
+- **A stair has no stringer, soffit or handrail.** The flight is a stack of
+  treads, so from the side it reads as a solid mass rather than as joinery.
 - ~~**Multi-floor vertical alignment is untested.**~~ Checked. On one datum the
   basement's east and west walls land on the first floor's to 0.02 ft, A-2's
   north edge to 0.01 ft, and A-3's east and west edges match A-2's exactly.
   What remains assumed is *vertical*: the floor assembly between one ceiling and
   the next floor is in no sheet, so `ASSUMED_FLOOR_ASSEMBLY_INCHES` is a
   convention and every storey above the first inherits its error.
-- **Scope is the kitchen/family checkpoint region only** — the main kitchen and
-  living rectangle plus the west kitchen arm. The region was approved on
-  2026-08-22, so whole-floor generalisation is now in scope; see §8.
-- **The whole-floor path is outside the contract that fixed the kitchen.**
-  `a1_massing.py` and `a1_tour.py` build the whole traced first floor, but were
-  last touched at `ed8ec06`, before all three frame fixes. Nothing in them
-  imports `chirality` and nothing measures the GLB they write. Their 14 tests
-  now run everywhere, since the drawings are committed, but passing those tests
-  says nothing about handedness: that is exactly what the kitchen's suite did
-  while shipping a mirror.
+- ~~**Scope is the kitchen/family checkpoint region only.**~~ Superseded. All
+  four drawn storeys are built: 565 primitives, every one of 4,496 traced
+  corners present in the export.
+- ~~**The whole-floor path is outside the contract that fixed the kitchen.**~~
+  Superseded. `scripts/measure_a1_tour.py` opens the exported GLB and diffs
+  every primitive corner against the trace, and a committed-artifact test fails
+  the suite when the two drift apart. `chirality.mapping_preserves_handedness`
+  tests the *mapping* rather than named kitchen furniture, so it applies to
+  every storey.
+- **Nothing in the bake moves.** The lighting is baked, so the sun is at the
+  hour it was baked at, permanently, and reflections are environment-map
+  approximations. A different time of day is a re-bake.
+- **The top storey has no roof**, and the ceiling slabs overhang the walls they
+  sit on, which is the flying-saucer edge in the exploded view.
+- **Furniture is three stock models.** A bedroom gets a chair because a chair,
+  a table and a lamp are the only pieces in the repo. The proxy refuses Poly
+  Haven and AmbientCG, so sourcing more is blocked from inside a session.
+- **The powder room's four traced "fixture" shapes all became cabinets.** What
+  they actually are is an open question for whoever knows the building.
 
 ---
 
 ## 8. Agreed next, in order
 
 1. ~~**The rest of the house.**~~ Done: `/tour/building` serves all four drawn
-   storeys, 528 primitives, every one of 4,224 traced corners present in the
+   storeys, 565 primitives, every one of 4,496 traced corners present in the
    export.
 2. ~~**Overhead view must drop the ceiling.**~~ Done. Ceilings are their own
    glTF nodes now, because a material cannot be hidden per-face in three.js, and
@@ -309,10 +367,17 @@ State these plainly rather than implying the model is finished:
 3. ~~**A floor switcher in the browser UI.**~~ Done, alongside the storeys it
    switches between — and the camera reframes onto the floor you pick, which is
    what made the switcher feel broken even once it worked.
-4. **Photorealism**, deliberately after the layout is right — materials,
-   lighting and finishes on geometry that is already known to match the drawing.
-   See §10.
+4. ~~**Photorealism**, deliberately after the layout is right.~~ Done to the
+   limit of a real-time renderer; see §10. Cycles' whole diffuse solution is
+   baked in, the walls are painted, windows are glazed and lined, and the camera
+   meters for the room it is standing in.
 5. ~~**Stairs on every storey.**~~ Done; see §11.
+6. **A roof, and ceiling slabs that stop at their walls.** The top storey reads
+   as a flat white slab from outside and every ceiling overhangs.
+7. **Stair joinery** — a stringer and a soffit, so a flight stops reading as a
+   solid mass from the side.
+8. **Furniture beyond three stock pieces**, which needs assets the session
+   proxy will not fetch.
 
 ---
 
@@ -337,8 +402,14 @@ wall of any storey without a station convention.
 `spikes/tour_quality/build_scene.py` still exists and still builds the old
 kitchen. It is the comparison, not the product.
 
-Still deferred: the stock-furniture placement UI, and the levels above the
-first.
+Furniture follows the same rule and is placed the same way: a clearance
+transform finds the most open point in each traced room, whatever shape the
+trace gave it, and the room's *kind* decides what stands there — exactly as it
+already decides the floor finish and the worktop material. Bathrooms, cupboards
+and circulation get a light and nothing else, because furnishing them would be
+invention rather than staging.
+
+Still deferred: a UI for moving that furniture around.
 
 ---
 
@@ -534,6 +605,20 @@ needing about fourteen. Everything the continuation needs is measured — where
 it starts, how wide it is, which way it travels, its going — and only the fact
 that it keeps going is assumed. Those treads are declared `assumed`, exactly
 like a door head or a window sill, and the flight stops at the printed ceiling.
+
+**A continuation carried in a straight line walks out of the building.** The
+flood fill stops at walls, so "still in the same room" is "still inside the
+enclosure" without needing to know what the enclosure is called — which matters,
+because only A-1 labels its staircase. The first version of that test ran down
+the tread's *centre line*, and a tread is the best part of three feet wide: the
+first floor's flight kept its centre in the stairwell while both ends stood out
+in the family room and the kitchen. It was caught by looking at the model, not
+by the check. Both ends are asked now, and a flight stops at the wall rather
+than inventing the landing or the turn that a real stair would have there —
+this pipeline reads plans, and a plan does not say which.
+
+None of the four faults above was in the drawing. Every one was in the reading,
+and every one produced a model that loaded cleanly and passed its tests.
 
 The invariant that caught the roof-piercing flight was already in the suite:
 nothing but the ceiling slab may rise above the printed ceiling height. It is
