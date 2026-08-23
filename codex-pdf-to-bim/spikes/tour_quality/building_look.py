@@ -1029,7 +1029,8 @@ BAKE_UV = "HV_BAKE"
 
 
 def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
-                  distance: float = 1.4) -> tuple[int, float]:
+                  distance: float = 1.4, reuse: Path | None = None,
+                  reuse_scale: float = 1.0) -> tuple[int, float]:
     """Bake what Cycles knows about light into a texture the browser can read.
 
     This is the only way any of Blender's rendering reaches the page. glTF
@@ -1099,13 +1100,26 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
     print(f"          unwrap took {time.monotonic() - unwrap_started:.0f}s", flush=True)
 
     lit = mode == "light"
-    image = bpy.data.images.new(
-        "HV_LIGHTMAP" if lit else "HV_OCCLUSION", width=size, height=size, alpha=False,
-        float_buffer=lit,
-    )
-    # Occlusion is data. Baked light is colour, and wants the precision that
-    # sRGB encoding buys an 8-bit image in the shadows.
-    image.colorspace_settings.name = "sRGB" if lit else "Non-Color"
+    if reuse is not None:
+        # The unwrap above is deterministic on identical geometry, so an atlas
+        # baked from this same build can be loaded straight back in. That is
+        # worth having: baking is measured in hours and everything downstream
+        # of it -- denoising, grading, export -- is measured in seconds, and
+        # they should not be chained to each other.
+        image = bpy.data.images.load(str(reuse), check_existing=False)
+        image.colorspace_settings.name = "sRGB"
+        scale = reuse_scale
+    else:
+        image = None
+
+    if image is None:
+        image = bpy.data.images.new(
+            "HV_LIGHTMAP" if lit else "HV_OCCLUSION", width=size, height=size,
+            alpha=False, float_buffer=lit,
+        )
+        # Occlusion is data. Baked light is colour, and wants the precision
+        # that sRGB encoding buys an 8-bit image in the shadows.
+        image.colorspace_settings.name = "sRGB" if lit else "Non-Color"
 
     # The bake target is whichever image texture node is active in each
     # material, so every material needs one and it has to read the bake UVs --
@@ -1137,18 +1151,36 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
     # room lit through a window, where the light that matters has arrived by
     # the second or third.
     scene.cycles.use_adaptive_sampling = True
-    scene.cycles.adaptive_threshold = 0.03
-    scene.cycles.adaptive_min_samples = max(4, samples // 8)
+    # A loose threshold and a floor of three samples left dark interiors
+    # blotchy, and no spatial filter can tell low-frequency Monte Carlo
+    # variance from a real light gradient -- 5x5, 7x7 and 9x9 medians all
+    # plateaued at the same residue. Adaptive sampling only ever saves time on
+    # texels that have converged, so tightening it costs nothing where the
+    # answer was already clean.
+    scene.cycles.adaptive_threshold = 0.01
+    scene.cycles.adaptive_min_samples = 0
     scene.cycles.max_bounces = 4
     scene.cycles.diffuse_bounces = 4
+    # Clamp indirect fireflies. A handful of extreme samples dominate the
+    # variance of an interior lit through a window, and clamping them is far
+    # cheaper than out-sampling them.
+    scene.cycles.sample_clamp_indirect = 4.0
+    # Fast GI approximates the deep bounces, which biases exactly the soft
+    # indirect light this bake exists to capture, and adds variance doing it.
     try:
-        scene.cycles.use_fast_gi = True
-        scene.cycles.ao_bounces_render = 2
+        scene.cycles.use_fast_gi = False
     except AttributeError:
         pass
     scene.render.bake.use_clear = True
     scene.render.bake.use_selected_to_active = False
     scene.render.bake.margin = max(2, size // 256)
+
+    if reuse is not None:
+        for material, texture in targets:
+            _wire_bake(material, texture, lit=lit)
+        for obj in meshes:
+            obj.select_set(False)
+        return len(targets), scale
 
     started = time.monotonic()
     if lit:
@@ -1172,39 +1204,90 @@ def bake_lighting(*, mode: str = "light", size: int = 2048, samples: int = 16,
 
     scale = 1.0
     if lit:
+        _denoise_atlas(image)
         scale = _normalise(image)
     image.pack()
 
     for material, texture in targets:
-        tree = material.node_tree
-        if lit:
-            shader = next(
-                (n for n in tree.nodes if n.type in ("BSDF_PRINCIPLED", "EMISSION")), None
-            )
-            if shader is None:
-                continue
-            socket = "Emission Color" if "Emission Color" in shader.inputs else "Color"
-            tree.links.new(texture.outputs["Color"], shader.inputs[socket])
-            if "Emission Strength" in shader.inputs:
-                shader.inputs["Emission Strength"].default_value = 1.0
-        else:
-            # The exporter only writes occlusionTexture when it finds the glTF
-            # settings group; a stray image texture node is otherwise ignored.
-            from io_scene_gltf2.blender.com.material_helpers import (
-                create_settings_group,
-                get_gltf_node_name,
-            )
-
-            group_name = get_gltf_node_name()
-            group = bpy.data.node_groups.get(group_name) or create_settings_group(group_name)
-            settings = tree.nodes.new("ShaderNodeGroup")
-            settings.node_tree = group
-            settings.location = (-400, -600)
-            tree.links.new(texture.outputs["Color"], settings.inputs["Occlusion"])
+        _wire_bake(material, texture, lit=lit)
 
     for obj in meshes:
         obj.select_set(False)
     return len(targets), scale
+
+
+def _wire_bake(material, texture, *, lit: bool) -> None:
+    """Put a baked atlas where the exporter will actually pick it up."""
+    tree = material.node_tree
+    if lit:
+        shader = next(
+            (n for n in tree.nodes if n.type in ("BSDF_PRINCIPLED", "EMISSION")), None
+        )
+        if shader is None:
+            return
+        socket = "Emission Color" if "Emission Color" in shader.inputs else "Color"
+        tree.links.new(texture.outputs["Color"], shader.inputs[socket])
+        if "Emission Strength" in shader.inputs:
+            shader.inputs["Emission Strength"].default_value = 1.0
+        return
+
+    # The exporter only writes occlusionTexture when it finds the glTF settings
+    # group; a stray image texture node is otherwise ignored entirely.
+    from io_scene_gltf2.blender.com.material_helpers import (
+        create_settings_group,
+        get_gltf_node_name,
+    )
+
+    group_name = get_gltf_node_name()
+    group = bpy.data.node_groups.get(group_name) or create_settings_group(group_name)
+    settings = tree.nodes.new("ShaderNodeGroup")
+    settings.location = (-400, -600)
+    settings.node_tree = group
+    tree.links.new(texture.outputs["Color"], settings.inputs["Occlusion"])
+
+
+def _denoise_atlas(image) -> None:
+    """Take the Monte Carlo noise out of a baked atlas.
+
+    Cycles denoising is a *render* setting: `scene.render.bake` has no
+    equivalent and the bake operator does not denoise, so a baked atlas comes
+    back exactly as noisy as its sample count leaves it. Blender 5's compositor
+    could run OpenImageDenoise over it, but it needs a GPU context this build
+    has none of.
+
+    A median is the right filter for what is actually there. Path-traced
+    undersampling leaves salt and pepper -- isolated texels far from their
+    neighbours -- which a median removes outright while a mean would only
+    spread. The gentle blur afterwards is what a lightmap can afford, being
+    low-frequency by nature; the albedo carries all the detail.
+
+    Unlit gutters are held at black so nothing bleeds between islands packed
+    next to each other.
+    """
+    import numpy as np
+
+    width, height = image.size
+    channels = image.channels
+    buffer = np.empty(width * height * channels, dtype=np.float32)
+    image.pixels.foreach_get(buffer)
+    pixels = buffer.reshape(height, width, channels)
+    lit = pixels[:, :, :3].max(axis=2) > (2.0 / 255.0)
+
+    for channel in range(3):
+        plane = pixels[:, :, channel]
+        stack = np.stack([
+            np.roll(np.roll(plane, dy, axis=0), dx, axis=1)
+            for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+        ])
+        plane[:] = np.median(stack, axis=0)
+        del stack
+        # Separable three-tap blur, once across and once down.
+        plane[:] = (np.roll(plane, 1, axis=1) + 2 * plane + np.roll(plane, -1, axis=1)) / 4
+        plane[:] = (np.roll(plane, 1, axis=0) + 2 * plane + np.roll(plane, -1, axis=0)) / 4
+
+    pixels[:, :, :3] *= lit[..., None]
+    image.pixels.foreach_set(pixels.reshape(-1))
+    image.update()
 
 
 def _normalise(image) -> float:
@@ -1410,6 +1493,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="bake contact shadow, or the whole Cycles lighting solution")
     parser.add_argument("--bake-size", type=int, default=2048)
     parser.add_argument("--bake-samples", type=int, default=16)
+    parser.add_argument("--reuse-lightmap", type=Path,
+                        help="load an atlas baked earlier instead of baking again")
+    parser.add_argument("--reuse-scale", type=float, default=1.0,
+                        help="the scale that atlas was normalised by")
     args = parser.parse_args(raw)
 
     for required in (args.canvas, args.hdri):
@@ -1471,6 +1558,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.bake != "none":
         baked, light_scale = bake_lighting(
             mode=args.bake, size=args.bake_size, samples=args.bake_samples,
+            reuse=args.reuse_lightmap, reuse_scale=args.reuse_scale,
         )
 
     print(f"canvas    {args.canvas.name}")
@@ -1483,6 +1571,18 @@ def main(argv: list[str] | None = None) -> int:
         print("furniture " + ", ".join(f"{k}:{v}" for k, v in sorted(furniture.items())))
     if finishes:
         print("finishes  " + ", ".join(f"{k}:{v} faces" for k, v in sorted(finishes.items())))
+    if baked and args.bake == "light" and args.out and args.reuse_lightmap is None:
+        # Keep the atlas beside the model. Baking is measured in hours and
+        # everything after it in seconds, so the two should not be chained:
+        # a change to grading, tone or export can be re-run against this.
+        atlas = bpy.data.images.get("HV_LIGHTMAP")
+        if atlas is not None:
+            sidecar = args.out.with_name(args.out.stem + "-lightmap.png")
+            atlas.filepath_raw = str(sidecar)
+            atlas.file_format = "PNG"
+            atlas.save()
+            print(f"atlas     kept at {sidecar} (scale {light_scale})")
+
     if baked:
         print(f"bake      {args.bake} into {baked} materials at {args.bake_size}px"
               + (f", scaled by {light_scale}" if args.bake == "light" else ""))

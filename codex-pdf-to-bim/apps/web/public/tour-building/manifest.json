@@ -642,8 +642,12 @@
     "glb": "a1-building-look.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 18666596,
-    "canvas_glb": "a1-building.glb"
+    "total_browser_bytes": 20863540,
+    "canvas_glb": "a1-building.glb",
+    "lightmap": {
+      "carried_as": "emissive",
+      "scale": 2.9582
+    }
   },
   "runtime": {
     "eye_height_meters": 1.562,
