@@ -178,6 +178,39 @@ def plan_from_pdf(footprint):
     return to_plan
 
 
+def _complete_the_flight(
+    drawn: list[tuple[Point, Point]], *, rise: float, ceiling_inches: float
+) -> tuple[list[tuple[Point, Point]], int]:
+    """Carry a drawn flight the rest of the way up to the floor above.
+
+    A plan cuts the stair where the floor above crosses it, so what is drawn is
+    the bottom of the flight and not the whole of it -- A-1 shows six treads
+    for a storey that needs about fourteen. Left at six, the model has a stair
+    that stops in mid-air and no route between its floors, which is the whole
+    reason for reading stairs at all.
+
+    Everything the continuation needs is measured: where the flight starts, how
+    wide it is, which way it travels, and its going. Only the fact that it keeps
+    going is assumed, and the treads that rest on that are declared as assumed
+    exactly like a door head or a window sill.
+    """
+    if len(drawn) < 2:
+        return list(drawn), 0
+
+    goings = [drawn[i][0][1] - drawn[i + 1][0][1] for i in range(len(drawn) - 1)]
+    going = sorted(goings)[len(goings) // 2]
+    if going <= 0:
+        return list(drawn), 0
+
+    wanted = int(ceiling_inches // rise)
+    treads = list(drawn)
+    (ax, ay), (bx, _) = drawn[-1]
+    for step in range(1, max(0, wanted - len(drawn)) + 1):
+        y = ay - going * step
+        treads.append(((ax, y), (bx, y)))
+    return treads, len(treads) - len(drawn)
+
+
 def build_a1_massing(
     extraction: A1Extraction,
     *,
@@ -323,16 +356,17 @@ def build_a1_massing(
         else ASSUMED_STAIR_RISE_INCHES
     )
     rise_is_printed = extraction.stair_note is not None
-    treads = sorted(extraction.stair_treads, key=lambda t: -t[0][1])
+    drawn = sorted(extraction.stair_treads, key=lambda t: -t[0][1])
+    treads, invented = _complete_the_flight(drawn, rise=rise, ceiling_inches=ceiling.inches)
     for index, ((ax, ay), (bx, by)) in enumerate(treads):
         element = f"stair.{index:03d}"
-        if not rise_is_printed:
+        if not rise_is_printed or index >= len(drawn):
             assumed.add(element)
         x0, x1 = sorted((to_ticks_x(min(ax, bx)), to_ticks_x(max(ax, bx))))
         y_mid = to_ticks_y((ay + by) / 2)
         depth = int(round(6.0 * TICKS_PER_INCH))
         z1 = to_ticks_z(rise * (index + 1))
-        if x1 <= x0 or z1 <= base_elevation_ticks:
+        if x1 <= x0 or z1 <= base_elevation_ticks or z1 > ceiling_z:
             continue
         primitives.append(
             Primitive(

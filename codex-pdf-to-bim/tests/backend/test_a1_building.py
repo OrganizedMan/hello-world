@@ -99,3 +99,70 @@ def test_the_storeys_agree_where_the_drawings_say_they_should(building) -> None:
 def test_the_floor_assembly_is_declared_an_assumption() -> None:
     """No section exists in the set, so this thickness is a convention."""
     assert ASSUMED_FLOOR_ASSEMBLY_INCHES > 0
+
+
+def test_every_storey_has_a_stair(building) -> None:
+    """A tour you cannot walk between the floors of is not a tour of a house.
+
+    Two of the four storeys came back with no stairs at all, and the two that
+    did were in different places. The cause was in the reading, not the
+    drawing: A-0 and A-2 draw each tread as a pair of strokes an inch and a
+    half apart, and the ladder search wanted one constant riser, so it saw
+    10.5, then 1.5, and gave up after two steps.
+    """
+    for storey in building.storeys:
+        treads = [p for p in storey.primitives if p.part_kind == "stair"]
+        assert treads, f"{storey.sheet} has no stair, so nothing reaches the floor above"
+
+
+def test_the_stairs_stack_into_one_shaft(building) -> None:
+    """A stairwell is vertical. Flights that miss each other in plan are a
+    reading error, not architecture."""
+    footprints = {}
+    for storey in building.storeys:
+        treads = [p for p in storey.primitives if p.part_kind == "stair"]
+        footprints[storey.sheet] = (
+            min(p.x0_ticks for p in treads), max(p.x1_ticks for p in treads),
+        )
+
+    east = list(footprints.values())
+    widest = max(hi - lo for lo, hi in east)
+    for sheet, (lo, hi) in footprints.items():
+        for other, (other_lo, other_hi) in footprints.items():
+            shared = min(hi, other_hi) - max(lo, other_lo)
+            assert shared > widest * 0.5, (
+                f"the stair on {sheet} does not sit over the one on {other}"
+            )
+
+
+def test_a_flight_climbs_its_own_storey_and_stops(building) -> None:
+    """It has to reach the floor above, and it must not come out through the
+    roof -- which is what the false runs on A-3 did, five and a half feet wide
+    with a four-inch going."""
+    for storey in building.storeys:
+        treads = [p for p in storey.primitives if p.part_kind == "stair"]
+        floor = storey.base_inches * TICKS_PER_INCH
+        ceiling = floor + storey.ceiling_inches * TICKS_PER_INCH
+        top = max(p.z1_ticks for p in treads)
+
+        assert min(p.z0_ticks for p in treads) >= floor
+        assert top <= ceiling, f"{storey.sheet}'s stair rises through its own ceiling"
+        # Within one riser of the floor above: the last step up is the floor
+        # assembly itself, which no sheet in this set dimensions.
+        assert top > ceiling - 24 * TICKS_PER_INCH, (
+            f"{storey.sheet}'s stair stops short of the floor above"
+        )
+
+
+def test_treads_beyond_the_drawn_flight_are_declared_assumed(building) -> None:
+    """A plan cuts the stair where the floor above crosses it, so the drawn
+    treads are the bottom of the flight and not the whole of it. Carrying it
+    the rest of the way is an assumption and is recorded as one."""
+    for storey in building.storeys:
+        invented = [
+            element for element in storey.massing.assumed_primitive_ids
+            if element.startswith("stair.")
+        ]
+        if storey.sheet == "A-1":
+            # A-1 prints its riser height, so only the continuation is assumed.
+            assert invented, "A-1's flight is drawn short and the rest is assumed"

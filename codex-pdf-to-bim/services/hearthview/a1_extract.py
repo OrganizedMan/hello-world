@@ -332,6 +332,82 @@ def _merge_spans(spans: list[tuple[float, float]]) -> list[list[float]]:
     return merged
 
 
+# A stair drawn on plan can be told from hatching, a shelf or a louvre by two
+# physical facts, and both were needed: the false runs on A-3 were 5.5 feet
+# wide with a four-inch going, and they built a flight that came out through
+# the roof.
+#
+# Nobody climbs a four-inch going. Code minimum tread depth is nine to ten
+# inches; the flights actually drawn here run six and three-quarters to nine.
+_SHALLOWEST_GOING_POINTS = 6.0 / 12.0 * POINTS_PER_FOOT
+# And a dwelling stair is not five feet wide. The ones drawn here are under
+# three.
+_WIDEST_STAIR_POINTS = 5.0 * POINTS_PER_FOOT
+
+
+def _overlaps(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """How much of the shorter interval the two share, 0 to 1."""
+    span = min(a[1] - a[0], b[1] - b[0])
+    if span <= 0:
+        return 0.0
+    return max(0.0, min(a[1], b[1]) - max(a[0], b[0])) / span
+
+
+def _distinct_flights(
+    flights: list[list[tuple[Point, Point]]],
+) -> list[tuple[Point, Point]]:
+    """One flight per stair, not one per bucket it happened to fall in.
+
+    Treads are grouped by where their midpoint lands, and a flight whose treads
+    vary by an inch in width straddles two of those groups -- so the same stair
+    came back twice on A-2 and A-3, and the massing stacked both of them into
+    one impossible climb. Two runs covering the same ground are the same stair;
+    keep whichever sampled it better.
+    """
+    kept: list[list[tuple[Point, Point]]] = []
+    for flight in sorted(flights, key=len, reverse=True):
+        across = (min(t[0][0] for t in flight), max(t[1][0] for t in flight))
+        along = (min(t[0][1] for t in flight), max(t[0][1] for t in flight))
+        duplicate = False
+        for other in kept:
+            other_across = (min(t[0][0] for t in other), max(t[1][0] for t in other))
+            other_along = (min(t[0][1] for t in other), max(t[0][1] for t in other))
+            if _overlaps(across, other_across) > 0.5 and _overlaps(along, other_along) > 0.5:
+                duplicate = True
+                break
+        if not duplicate:
+            kept.append(flight)
+    return [tread for flight in kept for tread in flight]
+
+
+# Two strokes this close together at the same place on the sheet are the two
+# edges of one tread -- a nosing, or a tread drawn as a thin filled rectangle.
+# No riser is this shallow: at the sheet's scale it would be under an inch.
+_TREAD_EDGE_POINTS = 3.0
+
+
+def _one_line_per_tread(ys: list[float], spans: dict) -> list[float]:
+    """Collapse the paired strokes some sheets draw each tread with.
+
+    A-1 and A-3 draw a tread as one line; A-0 and A-2 draw it as two, 1.5 points
+    apart. The ladder search wants a constant riser, so on the paired sheets it
+    saw 10.5, then 1.5, and gave up after two steps -- which is why two of the
+    four storeys came out with no stairs at all and the house had no route
+    between its floors.
+    """
+    collapsed: list[float] = []
+    for y in ys:
+        if collapsed and y - collapsed[-1] < _TREAD_EDGE_POINTS:
+            pair = (collapsed[-1], y)
+            middle = sum(pair) / 2
+            # Keep the wider of the two strokes: the nosing is the shorter one.
+            spans[middle] = max((spans[p] for p in pair), key=lambda s: s[1] - s[0])
+            collapsed[-1] = middle
+        else:
+            collapsed.append(y)
+    return collapsed
+
+
 def _stair_treads(path: Path, page_number: int, view: fitz.Rect) -> list[tuple[Point, Point]]:
     """Recover stair treads with pdfplumber.
 
@@ -368,26 +444,26 @@ def _stair_treads(path: Path, page_number: int, view: fitz.Rect) -> list[tuple[P
     for y, (a, b) in spans.items():
         buckets[round(((a + b) / 2) / 20)].append(y)
 
-    treads: list[tuple[Point, Point]] = []
+    flights: list[list[tuple[Point, Point]]] = []
     for ys in buckets.values():
-        ys.sort()
+        ys = _one_line_per_tread(sorted(ys), spans)
         if len(ys) < 4:
             continue
         i = 0
         while i < len(ys) - 1:
             j = i + 1
             step = ys[j] - ys[i]
-            if step < 6 or step > 30:
+            if step < _SHALLOWEST_GOING_POINTS or step > 30:
                 i += 1
                 continue
             run = [ys[i], ys[j]]
             while j + 1 < len(ys) and abs((ys[j + 1] - ys[j]) - step) < 2.5:
                 j += 1
                 run.append(ys[j])
-            if len(run) >= 4:
-                treads.extend(((spans[y][0], y), (spans[y][1], y)) for y in run)
+            if len(run) >= 4 and max(spans[y][1] - spans[y][0] for y in run) <= _WIDEST_STAIR_POINTS:
+                flights.append([((spans[y][0], y), (spans[y][1], y)) for y in run])
             i = j if j > i + 1 else i + 1
-    return treads
+    return _distinct_flights(flights)
 
 
 def _stair_note(page) -> StairNote | None:

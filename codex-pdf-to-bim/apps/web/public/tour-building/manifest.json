@@ -9,7 +9,7 @@
     "points_per_foot": 18.0
   },
   "provenance": {
-    "verified_percent": 72.3,
+    "verified_percent": 69.7,
     "measured": [
       "wall footprints and thicknesses (wall poche)",
       "opening positions and widths (gaps in the wall runs)",
@@ -639,15 +639,10 @@
     "opening_heights"
   ],
   "artifact": {
-    "glb": "a1-building-look.glb",
+    "glb": "a1-building.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 20061472,
-    "canvas_glb": "a1-building.glb",
-    "lightmap": {
-      "carried_as": "emissive",
-      "scale": 2.9482
-    }
+    "total_browser_bytes": 420972
   },
   "runtime": {
     "eye_height_meters": 1.562,
@@ -2053,8 +2048,8 @@
       "node": "storey_a0",
       "base_meters": -2.3622,
       "ceiling_meters": 2.0574,
-      "primitives": 100,
-      "verified_fraction": 0.79
+      "primitives": 111,
+      "verified_fraction": 0.8018
     },
     {
       "sheet": "A-1",
@@ -2062,8 +2057,8 @@
       "node": "storey_a1",
       "base_meters": 0.0,
       "ceiling_meters": 2.5654,
-      "primitives": 213,
-      "verified_fraction": 0.723
+      "primitives": 221,
+      "verified_fraction": 0.6968
     },
     {
       "sheet": "A-2",
@@ -2071,8 +2066,8 @@
       "node": "storey_a2",
       "base_meters": 2.8702,
       "ceiling_meters": 2.4384,
-      "primitives": 150,
-      "verified_fraction": 0.6667
+      "primitives": 163,
+      "verified_fraction": 0.6135
     },
     {
       "sheet": "A-3",
@@ -2080,8 +2075,8 @@
       "node": "storey_a3",
       "base_meters": 5.6134,
       "ceiling_meters": 2.032,
-      "primitives": 69,
-      "verified_fraction": 0.7536
+      "primitives": 70,
+      "verified_fraction": 0.7429
     }
   ],
   "rooms": {

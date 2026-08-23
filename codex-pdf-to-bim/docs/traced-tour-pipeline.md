@@ -311,7 +311,8 @@ State these plainly rather than implying the model is finished:
    what made the switcher feel broken even once it worked.
 4. **Photorealism**, deliberately after the layout is right — materials,
    lighting and finishes on geometry that is already known to match the drawing.
-   In progress; see §10.
+   See §10.
+5. ~~**Stairs on every storey.**~~ Done; see §11.
 
 ---
 
@@ -500,3 +501,40 @@ saturation between channels reads as tan across a large flat surface. It is
 graded nearly neutral now, and because the atlas holds irradiance with no
 albedo in it, changing the paint costs a re-export and not a re-bake -- forty
 seconds against twenty-six minutes.
+
+---
+
+## 11. Reading a stair off a plan
+
+Two of the four storeys came back with no stairs at all, and the two that did
+were in different places — so the tour looked like a house you could not walk
+through. Every cause was in the reading, not the drawing.
+
+**Some sheets draw a tread as two strokes.** A-0 and A-2 draw each tread as a
+pair an inch and a half apart; A-1 and A-3 draw one line. The ladder search
+wants a constant riser, so on the paired sheets it measured 10.5, then 1.5,
+and gave up after two steps. Collapsing pairs closer than three points is safe
+because at this sheet's scale that is under two inches, and no riser is that
+shallow.
+
+**A stair can be found twice.** Treads are grouped by where their midpoint
+falls, so a flight whose treads vary by an inch in width straddles two groups.
+The massing then stacked both copies into one climb. Runs covering the same
+ground are the same stair; the better-sampled one wins.
+
+**Hatching looks like a stair.** Two runs on A-3 were five and a half feet wide
+with a four-inch going, and they built a flight that came out through the roof.
+Both facts are physical: nobody climbs a four-inch going — code minimum tread
+depth is nine to ten inches and the real flights here run six and three-quarters
+to nine — and a dwelling stair is not five feet wide.
+
+**A plan cuts the flight where the floor above crosses it.** What is drawn is
+the bottom of the stair, not the whole of it: A-1 shows six treads for a storey
+needing about fourteen. Everything the continuation needs is measured — where
+it starts, how wide it is, which way it travels, its going — and only the fact
+that it keeps going is assumed. Those treads are declared `assumed`, exactly
+like a door head or a window sill, and the flight stops at the printed ceiling.
+
+The invariant that caught the roof-piercing flight was already in the suite:
+nothing but the ceiling slab may rise above the printed ceiling height. It is
+worth more than the fix it caught.
