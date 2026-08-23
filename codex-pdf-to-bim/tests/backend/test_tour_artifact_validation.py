@@ -19,7 +19,7 @@ _STAGED_MODULE_DIR = Path(__file__).parents[2] / "spikes" / "tour_quality"
 spikes.tour_quality.__path__.insert(0, str(_STAGED_MODULE_DIR))
 
 from spikes.tour_quality.validate_artifact import validate_artifact
-from spikes.tour_quality.scene_contract import build_scene_contract
+from spikes.tour_quality.scene_contract import EYE_HEIGHT_METERS, build_scene_contract
 
 
 SCENE_NODES = [
@@ -183,7 +183,7 @@ def _literal_manifest() -> dict[str, object]:
             {"name": "north_clearance", "meters": 1.0668, "source": "A-1 printed dimension"},
             {"name": "south_transition", "meters": 1.8288, "source": "A-1 printed dimension"},
             {"name": "living_clear_width", "meters": 4.4958, "source": "A-1 printed dimension"},
-            {"name": "eye_height", "meters": 1.65, "source": "tour navigation requirement"},
+            {"name": "eye_height", "meters": EYE_HEIGHT_METERS, "source": "tour navigation requirement"},
         ],
         "wall_openings": [],
         "island_footprint": {
@@ -227,7 +227,7 @@ def _literal_manifest() -> dict[str, object]:
         },
         "runtime": {
             "coordinate_rule": "three_x=source_x;three_y=source_z;three_z=-source_y",
-            "eye_height_meters": 1.65,
+            "eye_height_meters": EYE_HEIGHT_METERS,
             "walkable": {"min_x": 0.18, "max_x": 8.9894, "min_z": -4.6714, "max_z": -0.18},
             "barriers": [
                 {"name": "west_counter", "min_x": 0.0, "max_x": 0.6604, "min_z": -2.75, "max_z": 0.0},
@@ -237,7 +237,7 @@ def _literal_manifest() -> dict[str, object]:
             ],
             "camera_presets": [
                 {"name": "kitchen_overview", "position": [0.70, 1.65, -4.3014], "target": [4.3434, 0.90, -3.0226], "up": [0.0, 1.0, -0.0]},
-                {"name": "walk_start", "position": [4.15, 1.65, -4.2014], "target": [5.20, 1.65, -2.10], "up": [0.0, 1.0, -0.0]},
+                {"name": "walk_start", "position": [4.15, EYE_HEIGHT_METERS, -4.2014], "target": [5.20, EYE_HEIGHT_METERS, -2.10], "up": [0.0, 1.0, -0.0]},
                 {"name": "overhead", "position": [5.4991, 11.5, -3.3401], "target": [5.4991, 0.0, -3.3401], "up": [0.0, 0.0, 1.0]},
             ],
         },
@@ -422,7 +422,7 @@ def test_absent_runtime_navigation_metadata_is_rejected(
     ("runtime_key", "wrong_value", "fragment"),
     [
         ("coordinate_rule", "three_x=source_x;three_z=source_y", "coordinate"),
-        ("eye_height_meters", 1.654, "eye height"),
+        ("eye_height_meters", EYE_HEIGHT_METERS + 0.004, "eye height"),
     ],
 )
 def test_wrong_coordinate_rule_or_eye_height_is_rejected(

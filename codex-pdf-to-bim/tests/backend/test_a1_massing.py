@@ -20,10 +20,12 @@ from hearthview.a1_massing import (
 )
 from hearthview.units import TICKS_PER_INCH
 
-_SOURCE = os.environ.get("HEARTHVIEW_A1_PDF")
+from hearthview.drawings import a1_source
+
+_SOURCE = a1_source()
 pytestmark = pytest.mark.skipif(
-    not (_SOURCE and Path(_SOURCE).is_file()),
-    reason="Set HEARTHVIEW_A1_PDF to the Garrigan A-1 drawing to run massing tests.",
+    _SOURCE is None,
+    reason="No drawing set: commit drawings/ or set HEARTHVIEW_A1_PDF.",
 )
 
 
@@ -47,11 +49,36 @@ def test_no_solid_rises_above_the_printed_ceiling(massing) -> None:
     ceiling_ticks = int(round(massing.ceiling.inches * TICKS_PER_INCH))
 
     assert massing.primitives
-    assert all(p.z1_ticks <= ceiling_ticks for p in massing.primitives)
+
+    # The printed CLG HT is the *finished* ceiling, meaning the underside of the
+    # board. So the ceiling slab is the one solid that legitimately sits above
+    # it, and its underside has to land exactly on the printed height -- which
+    # is a stronger claim than the blanket ceiling this test used to make.
+    ceilings = [p for p in massing.primitives if p.part_kind == "ceiling"]
+    assert ceilings, "a storey needs a ceiling, or its rooms light as open courtyards"
+    for item in ceilings:
+        assert item.z0_ticks == ceiling_ticks
+        assert item.z1_ticks > ceiling_ticks
+
+    assert all(
+        p.z1_ticks <= ceiling_ticks
+        for p in massing.primitives
+        if p.part_kind != "ceiling"
+    )
     # Walls start at floor level; only the floor and deck slabs sit below it.
+    # The deck stops a step short of it: a deck is built below the interior
+    # finished floor, and it has to be, because its footprint overlaps the
+    # floor slab where it meets the house and two faces at one height fight
+    # for the depth buffer.
+    from hearthview.a1_massing import DECK_STEP_DOWN_INCHES
+
     for item in massing.primitives:
-        if item.part_kind in ("floor", "deck"):
+        if item.part_kind == "floor":
             assert item.z0_ticks < 0 <= item.z1_ticks
+        elif item.part_kind == "deck":
+            assert item.z1_ticks < 0
+            assert item.z0_ticks < item.z1_ticks
+            assert DECK_STEP_DOWN_INCHES > 0
         else:
             assert item.z0_ticks >= 0
 
@@ -109,3 +136,35 @@ def test_openings_are_classified_and_doors_have_swings(massing) -> None:
     assert any(o.kind == "door" for o in massing.openings)
     # Every window must sit on the building's perimeter.
     assert all(o.on_exterior for o in massing.openings if o.kind == "window")
+
+
+def test_the_whole_floor_mapping_is_right_handed() -> None:
+    """The whole-floor path was never checked for this, and the kitchen's wasn't either.
+
+    `a1_massing` predates all three frame fixes and nothing here imported
+    `chirality` until now. Its tests passing said nothing about handedness --
+    which is precisely the state the kitchen's suite was in while the model it
+    produced was a reflection of the drawing.
+    """
+    from hearthview.a1_massing import plan_from_pdf
+    from hearthview.chirality import mapping_preserves_handedness
+
+    extraction = extract_a1(Path(_SOURCE))
+
+    assert mapping_preserves_handedness(plan_from_pdf(extraction.footprint))
+
+
+def test_north_in_the_model_is_north_on_the_sheet() -> None:
+    """Handedness alone allows a 180 turn; pin the direction too."""
+    from hearthview.a1_massing import plan_from_pdf
+
+    extraction = extract_a1(Path(_SOURCE))
+    to_plan = plan_from_pdf(extraction.footprint)
+    footprint = extraction.footprint
+
+    # PDF y grows downward, so the footprint's smaller y is its north edge.
+    _, north_edge = to_plan(footprint.x0, footprint.y0)
+    _, south_edge = to_plan(footprint.x0, footprint.y1)
+
+    assert north_edge > south_edge, "plan north must increase with model +y"
+    assert south_edge == 0.0, "the south edge anchors the frame origin"

@@ -29,6 +29,7 @@ from hearthview.a1_extract import (
     Opening,
     Shape,
 )
+from hearthview.a1_trace import PdfRect
 from hearthview.geometry import Primitive, StationInterval
 from hearthview.units import TICKS_PER_INCH
 
@@ -42,7 +43,16 @@ ASSUMED_COUNTER_HEIGHT_INCHES = 36.0
 ASSUMED_FIXTURE_HEIGHT_INCHES = 32.0
 ASSUMED_STAIR_RISE_INCHES = 7.0  # matches the printed NEW STAIRS riser
 FLOOR_SLAB_INCHES = 6.0
+# Ceiling board. Like the floor slab this is a construction convention, not a
+# printed dimension; it only has to read as a surface overhead.
+CEILING_SLAB_INCHES = 5.0
 DECK_SLAB_INCHES = 7.0
+# A deck is built a step below the interior finished floor -- for the threshold
+# and so water runs away from the house. It also has to be built that way here:
+# the deck footprint overlaps the floor slab where it meets the building, and
+# two coplanar faces at the same height fight for the depth buffer, which is
+# the mottled brown-and-white patch that appeared on the third floor.
+DECK_STEP_DOWN_INCHES = 1.0
 
 _AXIS_TOLERANCE = 0.75  # points; a bay wall's diagonals exceed this
 
@@ -147,25 +157,142 @@ def _classify(
     return ClassifiedOpening(opening, kind, opening.width_feet, on_exterior)
 
 
-def build_a1_massing(extraction: A1Extraction) -> A1Massing:
-    """Turn the extracted plan into first-floor wall solids."""
+def _points_to_ticks(points: float) -> int:
+    return int(round(points / POINTS_PER_INCH * TICKS_PER_INCH))
+
+
+def plan_from_pdf(footprint):
+    """Sheet coordinates to plan (east, north), in PDF points.
+
+    North-positive, so (east, north, up) is right-handed and the glTF export
+    lands the model the same way round as the drawing. This is a module-level
+    function rather than a closure so `chirality.mapping_preserves_handedness`
+    can be pointed at the conversion the build actually uses, instead of a copy
+    of it that can drift.
+    """
+    origin_x, base_y = footprint.x0, footprint.y1
+
+    def to_plan(pdf_x: float, pdf_y: float) -> tuple[float, float]:
+        return (pdf_x - origin_x, base_y - pdf_y)
+
+    return to_plan
+
+
+def _stays_in_the_stairwell(extraction):
+    """A test for whether a point is still in the room the stair started in.
+
+    The flood fill stops at walls, so "the same room" is "inside the same
+    enclosure" without needing to know what the enclosure is called -- which
+    matters, because only A-1 labels its staircase.
+    """
+    from hearthview.a1_rooms import build_room_grid
+
+    grid = build_room_grid(extraction)
+
+    def same_room_as(x0: float, x1: float, y: float):
+        start = grid.at((x0 + x1) / 2, y)
+        name = start.name if start else None
+
+        def test(left: float, right: float, py: float) -> bool:
+            # Across the whole tread, not down its middle. A tread is the best
+            # part of three feet wide, so a centre line can still be in the
+            # stairwell while both ends are out in the kitchen -- which is
+            # exactly how the first floor's flight came to stand in the family
+            # room. Landing on wall poche is fine and expected; landing in a
+            # different room is not.
+            for px in (left + 1.0, (left + right) / 2, right - 1.0):
+                here = grid.at(px, py)
+                if here is not None and here.name != name:
+                    return False
+            return True
+
+        return test
+
+    return same_room_as
+
+
+def _complete_the_flight(
+    drawn: list[tuple[Point, Point]], *, rise: float, ceiling_inches: float,
+    inside=None,
+) -> tuple[list[tuple[Point, Point]], int]:
+    """Carry a drawn flight the rest of the way up to the floor above.
+
+    A plan cuts the stair where the floor above crosses it, so what is drawn is
+    the bottom of the flight and not the whole of it -- A-1 shows six treads
+    for a storey that needs about fourteen. Left at six, the model has a stair
+    that stops in mid-air and no route between its floors, which is the whole
+    reason for reading stairs at all.
+
+    Everything the continuation needs is measured: where the flight starts, how
+    wide it is, which way it travels, and its going. Only the fact that it keeps
+    going is assumed, and the treads that rest on that are declared as assumed
+    exactly like a door head or a window sill.
+    """
+    if len(drawn) < 2:
+        return list(drawn), 0
+
+    goings = [drawn[i][0][1] - drawn[i + 1][0][1] for i in range(len(drawn) - 1)]
+    going = sorted(goings)[len(goings) // 2]
+    if going <= 0:
+        return list(drawn), 0
+
+    wanted = int(ceiling_inches // rise)
+    treads = list(drawn)
+    (ax, ay), (bx, _) = drawn[-1]
+    for step in range(1, max(0, wanted - len(drawn)) + 1):
+        y = ay - going * step
+        # Stop at the wall. A flight carried blindly in a straight line walked
+        # out of the stairwell and stood in the middle of the family room --
+        # which is what a continuation has no way of knowing unless it is
+        # asked. A real stair turns or lands there; this pipeline reads plans,
+        # not sections, and has no way to tell which, so it stops instead of
+        # inventing a landing.
+        if inside is not None and not inside(ax, bx, y):
+            break
+        treads.append(((ax, y), (bx, y)))
+    return treads, len(treads) - len(drawn)
+
+
+def build_a1_massing(
+    extraction: A1Extraction,
+    *,
+    datum: PdfRect | None = None,
+    base_elevation_ticks: int = 0,
+) -> A1Massing:
+    """Turn the extracted plan into wall solids.
+
+    `datum` sets the horizontal origin. A floor built on its own footprint
+    starts at (0, 0), which is right for one floor alone and wrong for a
+    building: it would stack every storey's south-west corner together no matter
+    where each sits on the plan. Passing one floor's footprint for all of them
+    keeps their true relative position, which the sheets support -- A-0's east
+    and west walls agree with A-1's to 0.02 ft, and A-2's north edge to 0.01 ft.
+
+    `base_elevation_ticks` lifts the storey to its height in the building.
+    """
     walls = extraction.layer("wall_new") + extraction.layer("wall_existing")
     if not walls:
         raise A1MassingError("The extraction contains no walls to extrude.")
 
     ceiling = parse_ceiling_height(extraction.ceiling_notes)
+    # Two different jobs, and conflating them is a bug: the datum fixes where
+    # this storey sits relative to the others, while the storey's own footprint
+    # is its actual extent -- what its floor slab spans, and which openings are
+    # close enough to an outside wall to be windows rather than cased openings.
+    origin = datum if datum is not None else extraction.footprint
     footprint = extraction.footprint
-    origin_x, base_y = footprint.x0, footprint.y1
+    origin_x, base_y = origin.x0, origin.y1
+
+    to_plan = plan_from_pdf(origin)
 
     def to_ticks_x(px: float) -> int:
-        return int(round((px - origin_x) / POINTS_PER_INCH * TICKS_PER_INCH))
+        return _points_to_ticks(to_plan(px, base_y)[0])
 
     def to_ticks_y(py: float) -> int:
-        # Flip so plan north is +Y in the model instead of mirrored.
-        return int(round((base_y - py) / POINTS_PER_INCH * TICKS_PER_INCH))
+        return _points_to_ticks(to_plan(origin_x, py)[1])
 
     def to_ticks_z(inches: float) -> int:
-        return int(round(inches * TICKS_PER_INCH))
+        return base_elevation_ticks + int(round(inches * TICKS_PER_INCH))
 
     primitives: list[Primitive] = []
     assumed: set[str] = set()
@@ -189,7 +316,7 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
                 part_kind="wall",
                 x0_ticks=x0,
                 y0_ticks=y0,
-                z0_ticks=0,
+                z0_ticks=base_elevation_ticks,
                 x1_ticks=x1,
                 y1_ticks=y1,
                 z1_ticks=ceiling_z,
@@ -204,10 +331,28 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
             "floor",
             to_ticks_x(footprint.x0),
             to_ticks_y(footprint.y1),
-            -to_ticks_z(FLOOR_SLAB_INCHES),
+            to_ticks_z(-FLOOR_SLAB_INCHES),
             to_ticks_x(footprint.x1),
             to_ticks_y(footprint.y0),
-            0,
+            to_ticks_z(0.0),
+            StationInterval(0, to_ticks_x(footprint.x1)),
+        )
+    )
+
+    # Ceiling slab at the printed ceiling height. Without one every room is lit
+    # as though open to the sky, which is wrong indoors and is also why the
+    # overhead view had nothing to take away: it is a separate part kind so the
+    # browser can hide it and look down into the plan.
+    primitives.append(
+        Primitive(
+            "ceiling.slab",
+            "ceiling",
+            to_ticks_x(footprint.x0),
+            to_ticks_y(footprint.y1),
+            ceiling_z,
+            to_ticks_x(footprint.x1),
+            to_ticks_y(footprint.y0),
+            ceiling_z + _points_to_ticks(CEILING_SLAB_INCHES * POINTS_PER_INCH),
             StationInterval(0, to_ticks_x(footprint.x1)),
         )
     )
@@ -226,7 +371,7 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
                 continue
             primitives.append(
                 Primitive(
-                    element, kind, x0, y0, 0, x1, y1, to_ticks_z(height),
+                    element, kind, x0, y0, to_ticks_z(0.0), x1, y1, to_ticks_z(height),
                     StationInterval(0, x1 - x0),
                 )
             )
@@ -238,8 +383,10 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
         if x1 > x0 and y1 > y0:
             primitives.append(
                 Primitive(
-                    f"deck.{index:03d}", "deck", x0, y0, -to_ticks_z(DECK_SLAB_INCHES),
-                    x1, y1, 0, StationInterval(0, x1 - x0),
+                    f"deck.{index:03d}", "deck", x0, y0,
+                    to_ticks_z(-DECK_SLAB_INCHES - DECK_STEP_DOWN_INCHES),
+                    x1, y1, to_ticks_z(-DECK_STEP_DOWN_INCHES),
+                    StationInterval(0, x1 - x0),
                 )
             )
 
@@ -251,20 +398,28 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
         else ASSUMED_STAIR_RISE_INCHES
     )
     rise_is_printed = extraction.stair_note is not None
-    treads = sorted(extraction.stair_treads, key=lambda t: -t[0][1])
+    drawn = sorted(extraction.stair_treads, key=lambda t: -t[0][1])
+    inside = None
+    if drawn:
+        top = drawn[-1]
+        inside = _stays_in_the_stairwell(extraction)(top[0][0], top[1][0], top[0][1])
+    treads, invented = _complete_the_flight(
+        drawn, rise=rise, ceiling_inches=ceiling.inches, inside=inside,
+    )
     for index, ((ax, ay), (bx, by)) in enumerate(treads):
         element = f"stair.{index:03d}"
-        if not rise_is_printed:
+        if not rise_is_printed or index >= len(drawn):
             assumed.add(element)
         x0, x1 = sorted((to_ticks_x(min(ax, bx)), to_ticks_x(max(ax, bx))))
         y_mid = to_ticks_y((ay + by) / 2)
         depth = int(round(6.0 * TICKS_PER_INCH))
         z1 = to_ticks_z(rise * (index + 1))
-        if x1 <= x0 or z1 <= 0:
+        if x1 <= x0 or z1 <= base_elevation_ticks or z1 > ceiling_z:
             continue
         primitives.append(
             Primitive(
-                element, "stair", x0, y_mid - depth, 0, x1, y_mid + depth, z1,
+                element, "stair", x0, y_mid - depth, base_elevation_ticks,
+                x1, y_mid + depth, z1,
                 StationInterval(0, x1 - x0),
             )
         )
@@ -287,7 +442,8 @@ def build_a1_massing(extraction: A1Extraction) -> A1Massing:
             below = f"sill.{index:03d}"
             assumed.add(below)
             primitives.append(
-                Primitive(below, "wall", x0, y0, 0, x1, y1, sill, StationInterval(0, x1 - x0))
+                Primitive(below, "wall", x0, y0, to_ticks_z(0.0), x1, y1, sill,
+                          StationInterval(0, x1 - x0))
             )
         else:
             head = to_ticks_z(ASSUMED_DOOR_HEAD_INCHES)

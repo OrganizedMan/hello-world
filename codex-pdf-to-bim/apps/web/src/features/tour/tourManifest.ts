@@ -63,6 +63,15 @@ const sharedSchema = z.object({
     poster: z.string().min(1),
     environment: z.string().min(1),
     total_browser_bytes: z.number().int().positive().max(45_000_000),
+    // Present when Cycles' whole lighting solution was baked into the model.
+    // It rides out in the emissive slot, which is the one RGB texture in glTF
+    // core that keeps a UV set of its own, and the browser promotes it back to
+    // a lightMap. The scale is what the bake was divided by to fit an 8-bit
+    // image: sunlight is not bounded by one.
+    lightmap: z.object({
+      carried_as: z.literal("emissive"),
+      scale: z.number().positive(),
+    }).optional(),
   }),
   runtime: z.object({
     eye_height_meters: z.number().positive().max(2.2),
@@ -112,6 +121,21 @@ const tracedManifestSchema = sharedSchema.extend({
   }),
   provenance: provenanceSchema,
   island_footprint: rectangleSchema.optional(),
+  // Present when the model holds more than one drawn storey. Each entry names
+  // the GLB node to show, so the page can switch floors without reloading.
+  storeys: z
+    .array(
+      z.object({
+        sheet: z.string().min(1),
+        name: z.string().min(1),
+        node: z.string().min(1),
+        base_meters: z.number(),
+        ceiling_meters: z.number().positive(),
+        primitives: z.number().int().nonnegative(),
+        verified_fraction: z.number().min(0).max(1),
+      }),
+    )
+    .optional(),
 });
 
 export const manifestSchema = z.discriminatedUnion("schema", [

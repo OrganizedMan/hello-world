@@ -14,10 +14,12 @@ import pytest
 
 from hearthview.a1_extract import POINTS_PER_FOOT, extract_a1
 
-_SOURCE = os.environ.get("HEARTHVIEW_A1_PDF")
+from hearthview.drawings import a1_source
+
+_SOURCE = a1_source()
 pytestmark = pytest.mark.skipif(
-    not (_SOURCE and Path(_SOURCE).is_file()),
-    reason="Set HEARTHVIEW_A1_PDF to the Garrigan A-1 drawing to run extraction tests.",
+    _SOURCE is None,
+    reason="No drawing set: commit drawings/ or set HEARTHVIEW_A1_PDF.",
 )
 
 
@@ -88,3 +90,36 @@ def test_every_shape_lies_inside_the_proposed_view(extraction) -> None:
         b = shape.bounds
         assert view.x0 <= b.x0 and b.x1 <= view.x1, f"{shape.layer} escapes the view"
         assert view.y0 <= b.y0 and b.y1 <= view.y1, f"{shape.layer} escapes the view"
+
+
+def test_treads_drawn_as_paired_strokes_are_read_as_one(extraction) -> None:
+    """A-0 and A-2 draw each tread as two lines an inch and a half apart.
+
+    The ladder search wants a constant riser, so on those sheets it measured
+    10.5, then 1.5, and gave up after two steps -- which is how two storeys of
+    a four-storey house came to have no stairs at all. Collapsing the pairs is
+    safe because no riser is that shallow: at this sheet's scale 1.5 points is
+    an inch.
+    """
+    from hearthview.a1_extract import _one_line_per_tread
+
+    spans = {y: (100.0, 150.0) for y in (900.0, 901.5, 911.0, 912.5, 922.0, 923.5)}
+    collapsed = _one_line_per_tread(sorted(spans), spans)
+
+    assert len(collapsed) == 3
+    steps = [round(collapsed[i + 1] - collapsed[i], 2) for i in range(len(collapsed) - 1)]
+    assert steps == [11.0, 11.0]
+
+
+def test_a_stair_found_twice_is_kept_once(extraction) -> None:
+    """Treads are grouped by where their midpoint falls, so a flight whose
+    treads vary by an inch in width straddles two groups and comes back twice.
+    The massing stacked both into one impossible climb."""
+    from hearthview.a1_extract import _distinct_flights
+
+    first = [((100.0, y), (150.0, y)) for y in (900.0, 912.0, 924.0, 936.0)]
+    second = [((101.0, y), (152.0, y)) for y in (901.0, 913.0, 925.0)]
+    apart = [((400.0, y), (450.0, y)) for y in (900.0, 912.0, 924.0, 936.0)]
+
+    assert len(_distinct_flights([first, second])) == len(first)
+    assert len(_distinct_flights([first, apart])) == len(first) + len(apart)

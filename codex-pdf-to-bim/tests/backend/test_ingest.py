@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from hearthview.drawings import SHEET_PAGES, a1_source
+
 import hearthview.ingest as ingest
 from hearthview.ingest import PdfIngestError, inspect_pdf, render_page, render_region
 
@@ -62,9 +64,10 @@ def test_render_region_returns_bounded_png_crop(tmp_path: Path, one_page_pdf: by
     assert crop.startswith(b"\x89PNG\r\n\x1a\n")
 
 
-@pytest.mark.skipif("HEARTHVIEW_GARRIGAN_PDF" not in os.environ, reason="real fixture path not provided")
+@pytest.mark.skipif(a1_source() is None, reason="no drawing set available")
 def test_real_garrigan_pdf_has_four_pages_and_a1_preview() -> None:
-    path = Path(os.environ["HEARTHVIEW_GARRIGAN_PDF"])
+    """A-0 basement, A-1 first floor, A-2 second floor, A-3 third floor."""
+    path = a1_source()
 
     assert inspect_pdf(path).page_count == 4
-    assert render_page(path, page_number=2, max_width=1000).startswith(b"\x89PNG")
+    assert render_page(path, page_number=SHEET_PAGES["A-1"], max_width=1000).startswith(b"\x89PNG")

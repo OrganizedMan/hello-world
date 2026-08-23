@@ -1,0 +1,218 @@
+"""Four sheets into one building: shared horizontal datum, stacked vertically.
+
+The two failure modes here are opposite. Horizontally the storeys must *not*
+each start at their own origin, or every south-west corner piles up regardless
+of where the storey sits. Vertically they must each start at their own floor,
+or everything collapses onto the datum storey.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from hearthview.a1_building import (
+    ASSUMED_FLOOR_ASSEMBLY_INCHES,
+    DATUM_SHEET,
+    build_building,
+)
+from hearthview.a1_extract import POINTS_PER_FOOT, extract_a1
+from hearthview.a1_massing import CEILING_SLAB_INCHES
+from hearthview.a1_massing import build_a1_massing
+from hearthview.drawings import SHEET_PAGES, a1_source
+from hearthview.units import TICKS_PER_INCH
+
+_SOURCE = a1_source()
+pytestmark = pytest.mark.skipif(_SOURCE is None, reason="no drawing set available")
+
+
+@pytest.fixture(scope="module")
+def building():
+    return build_building(_SOURCE)
+
+
+def test_every_drawn_storey_is_present(building) -> None:
+    assert [s.sheet for s in building.storeys] == ["A-0", "A-1", "A-2", "A-3"]
+
+
+def test_the_datum_storey_sits_at_zero(building) -> None:
+    assert building.storey(DATUM_SHEET).base_inches == 0.0
+
+
+def test_storeys_stack_in_order_without_intersecting(building) -> None:
+    """Each floor is above the one below, by that one's ceiling plus assembly."""
+    for lower, upper in zip(building.storeys, building.storeys[1:]):
+        rise = upper.base_inches - lower.base_inches
+        assert rise == pytest.approx(lower.ceiling_inches + ASSUMED_FLOOR_ASSEMBLY_INCHES)
+        assert rise > 0, "a storey must sit above the one beneath it"
+
+
+def test_each_storey_is_built_at_its_own_elevation(building) -> None:
+    """The bug this catches put every storey's slab back at z = 0."""
+    for storey in building.storeys:
+        floor_ticks = storey.base_inches * TICKS_PER_INCH
+        lowest = min(p.z0_ticks for p in storey.primitives)
+        highest = max(p.z1_ticks for p in storey.primitives)
+
+        # Nothing sits more than a slab thickness below its own floor.
+        assert lowest >= floor_ticks - 12 * TICKS_PER_INCH
+        # The ceiling board sits on top of the printed ceiling height.
+        assert highest == pytest.approx(
+            floor_ticks + (storey.ceiling_inches + CEILING_SLAB_INCHES) * TICKS_PER_INCH,
+            abs=TICKS_PER_INCH,
+        )
+
+
+def test_the_datum_moves_the_model_without_changing_it(building) -> None:
+    """A datum is a position, not a filter.
+
+    Building a storey on another storey's origin must translate it and nothing
+    more. When the datum was also used as the storey's extent it silently
+    changed which openings counted as exterior, dropping seven window sills from
+    A-2 and seven from A-3 with no error anywhere.
+    """
+    datum = extract_a1(_SOURCE, page_number=SHEET_PAGES[DATUM_SHEET]).footprint
+
+    for sheet in ("A-0", "A-2", "A-3"):
+        extraction = extract_a1(_SOURCE, page_number=SHEET_PAGES[sheet])
+        alone = build_a1_massing(extraction)
+        shifted = build_a1_massing(extraction, datum=datum)
+
+        assert {p.element_id for p in alone.primitives} == {
+            p.element_id for p in shifted.primitives
+        }, f"{sheet} gained or lost geometry when the datum changed"
+
+
+def test_the_storeys_agree_where_the_drawings_say_they_should(building) -> None:
+    """Vertical alignment, which nothing checked before.
+
+    The basement is under the first floor, so their east and west walls should
+    land on each other. They agree to well under an inch, which is what makes
+    one shared datum defensible in the first place.
+    """
+    basement = building.storey("A-0").extraction.footprint
+    first = building.storey("A-1").extraction.footprint
+
+    assert abs(basement.x0 - first.x0) / POINTS_PER_FOOT < 0.1
+    assert abs(basement.x1 - first.x1) / POINTS_PER_FOOT < 0.1
+
+
+def test_the_floor_assembly_is_declared_an_assumption() -> None:
+    """No section exists in the set, so this thickness is a convention."""
+    assert ASSUMED_FLOOR_ASSEMBLY_INCHES > 0
+
+
+def test_every_storey_has_a_stair(building) -> None:
+    """A tour you cannot walk between the floors of is not a tour of a house.
+
+    Two of the four storeys came back with no stairs at all, and the two that
+    did were in different places. The cause was in the reading, not the
+    drawing: A-0 and A-2 draw each tread as a pair of strokes an inch and a
+    half apart, and the ladder search wanted one constant riser, so it saw
+    10.5, then 1.5, and gave up after two steps.
+    """
+    for storey in building.storeys:
+        treads = [p for p in storey.primitives if p.part_kind == "stair"]
+        assert treads, f"{storey.sheet} has no stair, so nothing reaches the floor above"
+
+
+def test_the_stairs_stack_into_one_shaft(building) -> None:
+    """A stairwell is vertical. Flights that miss each other in plan are a
+    reading error, not architecture."""
+    footprints = {}
+    for storey in building.storeys:
+        treads = [p for p in storey.primitives if p.part_kind == "stair"]
+        footprints[storey.sheet] = (
+            min(p.x0_ticks for p in treads), max(p.x1_ticks for p in treads),
+        )
+
+    east = list(footprints.values())
+    widest = max(hi - lo for lo, hi in east)
+    for sheet, (lo, hi) in footprints.items():
+        for other, (other_lo, other_hi) in footprints.items():
+            shared = min(hi, other_hi) - max(lo, other_lo)
+            assert shared > widest * 0.5, (
+                f"the stair on {sheet} does not sit over the one on {other}"
+            )
+
+
+def test_a_flight_climbs_its_own_storey_and_stops(building) -> None:
+    """It has to reach the floor above, and it must not come out through the
+    roof -- which is what the false runs on A-3 did, five and a half feet wide
+    with a four-inch going."""
+    for storey in building.storeys:
+        treads = [p for p in storey.primitives if p.part_kind == "stair"]
+        floor = storey.base_inches * TICKS_PER_INCH
+        ceiling = floor + storey.ceiling_inches * TICKS_PER_INCH
+        top = max(p.z1_ticks for p in treads)
+
+        assert min(p.z0_ticks for p in treads) >= floor
+        assert top <= ceiling, f"{storey.sheet}'s stair rises through its own ceiling"
+        # Within one riser of the floor above: the last step up is the floor
+        # assembly itself, which no sheet in this set dimensions.
+        assert top > ceiling - 24 * TICKS_PER_INCH, (
+            f"{storey.sheet}'s stair stops short of the floor above"
+        )
+
+
+def test_treads_beyond_the_drawn_flight_are_declared_assumed(building) -> None:
+    """A plan cuts the stair where the floor above crosses it, so the drawn
+    treads are the bottom of the flight and not the whole of it. Carrying it
+    the rest of the way is an assumption and is recorded as one."""
+    for storey in building.storeys:
+        invented = [
+            element for element in storey.massing.assumed_primitive_ids
+            if element.startswith("stair.")
+        ]
+        if storey.sheet == "A-1":
+            # A-1 prints its riser height, so only the continuation is assumed.
+            assert invented, "A-1's flight is drawn short and the rest is assumed"
+
+
+def test_an_invented_tread_stays_in_the_stairwell(building) -> None:
+    """A flight carried on in a straight line walks out of the building.
+
+    The first floor's continuation stood in the middle of the family room,
+    because the test for "still inside" ran down the tread's centre line and a
+    tread is the best part of three feet wide. Both ends have to be asked.
+
+    The claim is about the treads this pipeline invents, not the ones the sheet
+    draws: where the drawing puts a tread on the stairwell boundary that is the
+    drawing's business. Landing on wall poche is expected -- a stair abuts its
+    own walls. Standing in another room is the failure.
+    """
+    from hearthview.a1_rooms import build_room_grid
+    from hearthview.a1_extract import POINTS_PER_FOOT
+
+    datum = building.datum
+    for storey in building.storeys:
+        grid = build_room_grid(storey.extraction)
+        treads = [p for p in storey.primitives if p.part_kind == "stair"]
+        drawn = len(storey.extraction.stair_treads)
+        if len(treads) <= drawn:
+            continue
+
+        def room_at(x_ticks: float, y_ticks: float):
+            x = datum.x0 + (x_ticks / TICKS_PER_INCH / 12) * POINTS_PER_FOOT
+            y = datum.y1 - (y_ticks / TICKS_PER_INCH / 12) * POINTS_PER_FOOT
+            return grid.at(x, y)
+
+        seen: dict[str, int] = {}
+        for item in treads[:drawn]:
+            room = room_at((item.x0_ticks + item.x1_ticks) // 2,
+                           (item.y0_ticks + item.y1_ticks) // 2)
+            if room is not None:
+                seen[room.name] = seen.get(room.name, 0) + 1
+        stairwell = max(seen, key=seen.get) if seen else None
+
+        for item in treads[drawn:]:
+            across = [item.x0_ticks + 1, (item.x0_ticks + item.x1_ticks) // 2,
+                      item.x1_ticks - 1]
+            middle = (item.y0_ticks + item.y1_ticks) // 2
+            at_home = sum(
+                1 for x in across
+                if (r := room_at(x, middle)) is None or r.name == stairwell
+            )
+            assert at_home >= 2, (
+                f"{storey.sheet}: an invented tread sits outside {stairwell}, "
+                f"in {[room_at(x, middle) and room_at(x, middle).name for x in across]}"
+            )

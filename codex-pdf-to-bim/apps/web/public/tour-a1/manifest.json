@@ -1,0 +1,2043 @@
+{
+  "schema": "hearthview-tour/v2",
+  "label": "Traced from A-1 \u00b7 measured geometry",
+  "canonical_geometry": true,
+  "source": {
+    "sheet": "A-1",
+    "page": 2,
+    "view": "Proposed - First Floor",
+    "points_per_foot": 18.0
+  },
+  "provenance": {
+    "verified_percent": 70.3,
+    "measured": [
+      "wall footprints and thicknesses (wall poche)",
+      "opening positions and widths (gaps in the wall runs)",
+      "ceiling height (printed ceiling note 8'-5\" (9 of 9 room notes))"
+    ],
+    "assumed": [
+      "door head height 6.67 ft",
+      "window sill height 2.50 ft",
+      "counter and fixture heights"
+    ],
+    "absent_from_drawing_set": "A-1, A-2 and A-3 are all plans; the set contains no elevation or section, so no opening has a printed vertical dimension.",
+    "approximated_wall_segments": 25
+  },
+  "envelope": {
+    "min_x": 0.0,
+    "min_y": -0.2032,
+    "min_z": -15.6258,
+    "max_x": 12.1279,
+    "max_y": 2.6924,
+    "max_z": 0.0
+  },
+  "orientation": {
+    "bounds": {
+      "name": "first_floor",
+      "min_x": 0.0,
+      "min_y": -13.4898,
+      "max_x": 12.1279,
+      "max_y": 0.0
+    },
+    "north_vector": [
+      0,
+      -1
+    ],
+    "north_up": true,
+    "regions": [
+      {
+        "name": "(E) Living Room",
+        "min_x": 6.7641,
+        "min_y": -5.9314,
+        "max_x": 8.5641,
+        "max_y": -4.1314
+      },
+      {
+        "name": "(E) Dining Room",
+        "min_x": 1.4043,
+        "min_y": -4.665,
+        "max_x": 3.2043,
+        "max_y": -2.865
+      },
+      {
+        "name": "(E) Study Room",
+        "min_x": 9.9832,
+        "min_y": -7.9873,
+        "max_x": 11.7832,
+        "max_y": -6.1873
+      },
+      {
+        "name": "(E) Staircase",
+        "min_x": 4.2941,
+        "min_y": -6.2943,
+        "max_x": 6.0941,
+        "max_y": -4.4943
+      },
+      {
+        "name": "(E) Entry",
+        "min_x": 4.291,
+        "min_y": -3.7697,
+        "max_x": 6.091,
+        "max_y": -1.9697
+      },
+      {
+        "name": "(E) Fireplace",
+        "min_x": 8.2355,
+        "min_y": -5.8575,
+        "max_x": 10.0355,
+        "max_y": -4.0575
+      },
+      {
+        "name": "New Deck",
+        "min_x": 7.7538,
+        "min_y": -15.9292,
+        "max_x": 9.5538,
+        "max_y": -14.1292
+      },
+      {
+        "name": "Kitchen",
+        "min_x": 2.6044,
+        "min_y": -11.9374,
+        "max_x": 4.4044,
+        "max_y": -10.1374
+      },
+      {
+        "name": "Living Room",
+        "min_x": 7.0467,
+        "min_y": -11.9374,
+        "max_x": 8.8467,
+        "max_y": -10.1374
+      },
+      {
+        "name": "Mudroom",
+        "min_x": 9.8558,
+        "min_y": -10.0953,
+        "max_x": 11.6558,
+        "max_y": -8.2953
+      },
+      {
+        "name": "Walk-In",
+        "min_x": 2.3487,
+        "min_y": -7.5292,
+        "max_x": 4.1487,
+        "max_y": -5.7292
+      },
+      {
+        "name": "Pantry",
+        "min_x": 2.3213,
+        "min_y": -7.3385,
+        "max_x": 4.1213,
+        "max_y": -5.5385
+      },
+      {
+        "name": "Powder",
+        "min_x": 0.2905,
+        "min_y": -7.5292,
+        "max_x": 2.0905,
+        "max_y": -5.7292
+      },
+      {
+        "name": "Room",
+        "min_x": 0.2867,
+        "min_y": -7.3385,
+        "max_x": 2.0867,
+        "max_y": -5.5385
+      }
+    ],
+    "openings": [
+      {
+        "name": "cased_opening.000",
+        "kind": "cased_opening",
+        "wall": "west",
+        "width_feet": 2.84,
+        "footprint": {
+          "name": "cased_opening.000",
+          "min_x": 1.8071,
+          "min_y": -5.289,
+          "max_x": 2.6716,
+          "max_y": -5.1874
+        }
+      },
+      {
+        "name": "cased_opening.001",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 4.0,
+        "footprint": {
+          "name": "cased_opening.001",
+          "min_x": 4.5247,
+          "min_y": -5.1366,
+          "max_x": 5.7453,
+          "max_y": -4.9842
+        }
+      },
+      {
+        "name": "cased_opening.002",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 3.84,
+        "footprint": {
+          "name": "cased_opening.002",
+          "min_x": 1.8166,
+          "min_y": -1.3724,
+          "max_x": 2.9863,
+          "max_y": -1.0676
+        }
+      },
+      {
+        "name": "door.003",
+        "kind": "door",
+        "wall": "south",
+        "width_feet": 4.0,
+        "footprint": {
+          "name": "door.003",
+          "min_x": 4.4993,
+          "min_y": -1.3724,
+          "max_x": 5.7199,
+          "max_y": -1.0676
+        }
+      },
+      {
+        "name": "cased_opening.004",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 3.84,
+        "footprint": {
+          "name": "cased_opening.004",
+          "min_x": 7.2202,
+          "min_y": -1.3724,
+          "max_x": 8.3899,
+          "max_y": -1.0676
+        }
+      },
+      {
+        "name": "cased_opening.005",
+        "kind": "cased_opening",
+        "wall": "east",
+        "width_feet": 6.01,
+        "footprint": {
+          "name": "cased_opening.005",
+          "min_x": 9.9156,
+          "min_y": -1.8313,
+          "max_x": 11.7464,
+          "max_y": -1.5265
+        }
+      },
+      {
+        "name": "cased_opening.006",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 5.67,
+        "footprint": {
+          "name": "cased_opening.006",
+          "min_x": 4.245,
+          "min_y": -0.1532,
+          "max_x": 5.9742,
+          "max_y": -0.0008
+        }
+      },
+      {
+        "name": "cased_opening.007",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 5.84,
+        "footprint": {
+          "name": "cased_opening.007",
+          "min_x": 4.2196,
+          "min_y": -0.1786,
+          "max_x": 5.9996,
+          "max_y": -0.1532
+        }
+      },
+      {
+        "name": "door.008",
+        "kind": "door",
+        "wall": "south",
+        "width_feet": 5.84,
+        "footprint": {
+          "name": "door.008",
+          "min_x": 4.2196,
+          "min_y": -1.0676,
+          "max_x": 5.9996,
+          "max_y": -1.0422
+        }
+      },
+      {
+        "name": "cased_opening.009",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 5.84,
+        "footprint": {
+          "name": "cased_opening.009",
+          "min_x": 4.2196,
+          "min_y": -0.204,
+          "max_x": 5.9996,
+          "max_y": -0.1786
+        }
+      },
+      {
+        "name": "door.010",
+        "kind": "door",
+        "wall": "south",
+        "width_feet": 5.84,
+        "footprint": {
+          "name": "door.010",
+          "min_x": 4.2196,
+          "min_y": -1.0422,
+          "max_x": 5.9996,
+          "max_y": -1.0168
+        }
+      },
+      {
+        "name": "cased_opening.011",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 5.59,
+        "footprint": {
+          "name": "cased_opening.011",
+          "min_x": 4.2577,
+          "min_y": -0.1904,
+          "max_x": 5.9614,
+          "max_y": -0.0126
+        }
+      },
+      {
+        "name": "cased_opening.012",
+        "kind": "cased_opening",
+        "wall": "north",
+        "width_feet": 2.67,
+        "footprint": {
+          "name": "cased_opening.012",
+          "min_x": 5.1604,
+          "min_y": -8.4928,
+          "max_x": 5.9742,
+          "max_y": -8.3912
+        }
+      },
+      {
+        "name": "cased_opening.013",
+        "kind": "cased_opening",
+        "wall": "west",
+        "width_feet": 2.84,
+        "footprint": {
+          "name": "cased_opening.013",
+          "min_x": 1.8071,
+          "min_y": -7.3735,
+          "max_x": 2.6716,
+          "max_y": -7.2719
+        }
+      },
+      {
+        "name": "window.014",
+        "kind": "window",
+        "wall": "north",
+        "width_feet": 2.01,
+        "footprint": {
+          "name": "window.014",
+          "min_x": 1.467,
+          "min_y": -13.4899,
+          "max_x": 2.0805,
+          "max_y": -13.3375
+        }
+      },
+      {
+        "name": "window.015",
+        "kind": "window",
+        "wall": "north",
+        "width_feet": 4.41,
+        "footprint": {
+          "name": "window.015",
+          "min_x": 2.2457,
+          "min_y": -13.4899,
+          "max_x": 3.5887,
+          "max_y": -13.3375
+        }
+      },
+      {
+        "name": "window.016",
+        "kind": "window",
+        "wall": "north",
+        "width_feet": 2.01,
+        "footprint": {
+          "name": "window.016",
+          "min_x": 3.754,
+          "min_y": -13.4899,
+          "max_x": 4.3674,
+          "max_y": -13.3375
+        }
+      },
+      {
+        "name": "door.017",
+        "kind": "door",
+        "wall": "north",
+        "width_feet": 3.01,
+        "footprint": {
+          "name": "door.017",
+          "min_x": 5.6674,
+          "min_y": -13.4899,
+          "max_x": 6.586,
+          "max_y": -13.3375
+        }
+      },
+      {
+        "name": "window.018",
+        "kind": "window",
+        "wall": "north",
+        "width_feet": 3.01,
+        "footprint": {
+          "name": "window.018",
+          "min_x": 6.8117,
+          "min_y": -13.4899,
+          "max_x": 7.7303,
+          "max_y": -13.3375
+        }
+      },
+      {
+        "name": "window.019",
+        "kind": "window",
+        "wall": "north",
+        "width_feet": 3.01,
+        "footprint": {
+          "name": "window.019",
+          "min_x": 7.956,
+          "min_y": -13.4899,
+          "max_x": 8.8746,
+          "max_y": -13.3375
+        }
+      },
+      {
+        "name": "door.020",
+        "kind": "door",
+        "wall": "east",
+        "width_feet": 3.01,
+        "footprint": {
+          "name": "door.020",
+          "min_x": 10.3717,
+          "min_y": -11.253,
+          "max_x": 11.2903,
+          "max_y": -11.0989
+        }
+      },
+      {
+        "name": "cased_opening.021",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 7.01,
+        "footprint": {
+          "name": "cased_opening.021",
+          "min_x": 6.0245,
+          "min_y": -4.4754,
+          "max_x": 6.1261,
+          "max_y": -2.3394
+        }
+      },
+      {
+        "name": "window.022",
+        "kind": "window",
+        "wall": "west",
+        "width_feet": 0.75,
+        "footprint": {
+          "name": "window.022",
+          "min_x": 0.5076,
+          "min_y": -9.7646,
+          "max_x": 0.7362,
+          "max_y": -9.5357
+        }
+      },
+      {
+        "name": "window.023",
+        "kind": "window",
+        "wall": "west",
+        "width_feet": 2.97,
+        "footprint": {
+          "name": "window.023",
+          "min_x": 0.5076,
+          "min_y": -8.4884,
+          "max_x": 0.7362,
+          "max_y": -7.5825
+        }
+      },
+      {
+        "name": "cased_opening.024",
+        "kind": "cased_opening",
+        "wall": "north",
+        "width_feet": 2.97,
+        "footprint": {
+          "name": "cased_opening.024",
+          "min_x": 9.5348,
+          "min_y": -12.8239,
+          "max_x": 9.6872,
+          "max_y": -11.918
+        }
+      },
+      {
+        "name": "cased_opening.025",
+        "kind": "cased_opening",
+        "wall": "east",
+        "width_feet": 3.17,
+        "footprint": {
+          "name": "cased_opening.025",
+          "min_x": 9.5348,
+          "min_y": -9.6629,
+          "max_x": 9.6872,
+          "max_y": -8.6966
+        }
+      },
+      {
+        "name": "cased_opening.026",
+        "kind": "cased_opening",
+        "wall": "east",
+        "width_feet": 0.5,
+        "footprint": {
+          "name": "cased_opening.026",
+          "min_x": 9.5348,
+          "min_y": -8.544,
+          "max_x": 9.6872,
+          "max_y": -8.3914
+        }
+      },
+      {
+        "name": "window.027",
+        "kind": "window",
+        "wall": "east",
+        "width_feet": 2.97,
+        "footprint": {
+          "name": "window.027",
+          "min_x": 11.9749,
+          "min_y": -10.0522,
+          "max_x": 12.1273,
+          "max_y": -9.1463
+        }
+      },
+      {
+        "name": "cased_opening.028",
+        "kind": "cased_opening",
+        "wall": "east",
+        "width_feet": 4.09,
+        "footprint": {
+          "name": "cased_opening.028",
+          "min_x": 9.5348,
+          "min_y": -7.6031,
+          "max_x": 9.6364,
+          "max_y": -6.3571
+        }
+      },
+      {
+        "name": "cased_opening.029",
+        "kind": "cased_opening",
+        "wall": "east",
+        "width_feet": 3.84,
+        "footprint": {
+          "name": "cased_opening.029",
+          "min_x": 9.5348,
+          "min_y": -3.56,
+          "max_x": 9.6364,
+          "max_y": -2.3903
+        }
+      },
+      {
+        "name": "cased_opening.030",
+        "kind": "cased_opening",
+        "wall": "west",
+        "width_feet": 8.82,
+        "footprint": {
+          "name": "cased_opening.030",
+          "min_x": 0.3112,
+          "min_y": -4.6252,
+          "max_x": 0.3739,
+          "max_y": -1.9354
+        }
+      },
+      {
+        "name": "cased_opening.031",
+        "kind": "cased_opening",
+        "wall": "west",
+        "width_feet": 5.65,
+        "footprint": {
+          "name": "cased_opening.031",
+          "min_x": 0.1927,
+          "min_y": -4.1409,
+          "max_x": 0.2486,
+          "max_y": -2.4197
+        }
+      },
+      {
+        "name": "cased_opening.032",
+        "kind": "cased_opening",
+        "wall": "west",
+        "width_feet": 6.76,
+        "footprint": {
+          "name": "cased_opening.032",
+          "min_x": 0.2401,
+          "min_y": -4.3102,
+          "max_x": 0.2943,
+          "max_y": -2.2504
+        }
+      },
+      {
+        "name": "cased_opening.033",
+        "kind": "cased_opening",
+        "wall": "west",
+        "width_feet": 7.83,
+        "footprint": {
+          "name": "cased_opening.033",
+          "min_x": 0.2858,
+          "min_y": -4.4733,
+          "max_x": 0.3417,
+          "max_y": -2.0873
+        }
+      },
+      {
+        "name": "cased_opening.034",
+        "kind": "cased_opening",
+        "wall": "south",
+        "width_feet": 5.67,
+        "footprint": {
+          "name": "cased_opening.034",
+          "min_x": 4.067,
+          "min_y": -4.0431,
+          "max_x": 4.1686,
+          "max_y": -2.314
+        }
+      },
+      {
+        "name": "cased_opening.035",
+        "kind": "cased_opening",
+        "wall": "west",
+        "width_feet": 6.51,
+        "footprint": {
+          "name": "cased_opening.035",
+          "min_x": 1.8064,
+          "min_y": -7.2726,
+          "max_x": 1.8318,
+          "max_y": -5.2891
+        }
+      },
+      {
+        "name": "cased_opening.036",
+        "kind": "cased_opening",
+        "wall": "west",
+        "width_feet": 6.51,
+        "footprint": {
+          "name": "cased_opening.036",
+          "min_x": 2.6463,
+          "min_y": -7.2726,
+          "max_x": 2.6717,
+          "max_y": -5.2891
+        }
+      }
+    ]
+  },
+  "provisional_categories": [
+    "cabinetry_detail",
+    "hardware",
+    "finishes",
+    "furniture",
+    "decor",
+    "undimensioned_offsets",
+    "opening_heights"
+  ],
+  "artifact": {
+    "glb": "a1-first-floor.glb",
+    "poster": "poster.webp",
+    "environment": "environment.hdr",
+    "total_browser_bytes": 162800
+  },
+  "runtime": {
+    "eye_height_meters": 1.562,
+    "walkable": {
+      "min_x": 0.3,
+      "max_x": 11.8279,
+      "min_z": -13.1898,
+      "max_z": -0.3
+    },
+    "barriers": [
+      {
+        "name": "wall_new.000",
+        "min_x": 2.6716,
+        "max_x": 4.067,
+        "min_z": -7.3743,
+        "max_z": -7.2726
+      },
+      {
+        "name": "wall_new.001",
+        "min_x": 0.7359,
+        "max_x": 1.807,
+        "min_z": -7.3743,
+        "max_z": -7.2726
+      },
+      {
+        "name": "wall_new.002",
+        "min_x": 0.507,
+        "max_x": 0.7359,
+        "min_z": -7.5825,
+        "max_z": -6.9166
+      },
+      {
+        "name": "wall_new.003",
+        "min_x": 7.0421,
+        "max_x": 7.0676,
+        "min_z": -8.544,
+        "max_z": -8.3914
+      },
+      {
+        "name": "wall_new.004",
+        "min_x": 8.5933,
+        "max_x": 8.6187,
+        "min_z": -8.544,
+        "max_z": -8.3914
+      },
+      {
+        "name": "wall_new.005",
+        "min_x": 0.507,
+        "max_x": 0.7359,
+        "min_z": -13.4899,
+        "max_z": -9.7646
+      },
+      {
+        "name": "wall_new.006",
+        "min_x": 11.9753,
+        "max_x": 12.1279,
+        "min_z": -9.1463,
+        "max_z": -8.0736
+      },
+      {
+        "name": "wall_new.007",
+        "min_x": 11.9753,
+        "max_x": 12.1279,
+        "min_z": -11.2521,
+        "max_z": -10.0522
+      },
+      {
+        "name": "wall_new.008",
+        "min_x": 9.9664,
+        "max_x": 11.7973,
+        "min_z": -8.0609,
+        "max_z": -7.9083
+      },
+      {
+        "name": "wall_new.009",
+        "min_x": 8.8746,
+        "max_x": 9.5342,
+        "min_z": -13.4899,
+        "max_z": -13.3373
+      },
+      {
+        "name": "wall_new.010",
+        "min_x": 7.7303,
+        "max_x": 7.956,
+        "min_z": -13.4899,
+        "max_z": -13.3373
+      },
+      {
+        "name": "wall_new.011",
+        "min_x": 6.586,
+        "max_x": 6.8117,
+        "min_z": -13.4899,
+        "max_z": -13.3373
+      },
+      {
+        "name": "wall_new.012",
+        "min_x": 4.3674,
+        "max_x": 5.6674,
+        "min_z": -13.4899,
+        "max_z": -13.3373
+      },
+      {
+        "name": "wall_new.013",
+        "min_x": 3.5887,
+        "max_x": 3.754,
+        "min_z": -13.4899,
+        "max_z": -13.3373
+      },
+      {
+        "name": "wall_new.014",
+        "min_x": 2.0805,
+        "max_x": 2.2457,
+        "min_z": -13.4899,
+        "max_z": -13.3373
+      },
+      {
+        "name": "wall_new.015",
+        "min_x": 0.7359,
+        "max_x": 1.467,
+        "min_z": -13.4899,
+        "max_z": -13.3373
+      },
+      {
+        "name": "wall_new.016",
+        "min_x": 9.5342,
+        "max_x": 9.6867,
+        "min_z": -8.6966,
+        "max_z": -8.544
+      },
+      {
+        "name": "wall_new.017",
+        "min_x": 9.5342,
+        "max_x": 9.6867,
+        "min_z": -11.9181,
+        "max_z": -9.6628
+      },
+      {
+        "name": "wall_new.018",
+        "min_x": 9.5342,
+        "max_x": 9.6867,
+        "min_z": -13.4899,
+        "max_z": -12.8239
+      },
+      {
+        "name": "wall_new.019",
+        "min_x": 9.5342,
+        "max_x": 9.6867,
+        "min_z": -8.722,
+        "max_z": -8.6966
+      },
+      {
+        "name": "wall_new.020",
+        "min_x": 9.5342,
+        "max_x": 9.6867,
+        "min_z": -9.6628,
+        "max_z": -9.6374
+      },
+      {
+        "name": "wall_new.021",
+        "min_x": 11.2903,
+        "max_x": 11.9753,
+        "min_z": -11.2521,
+        "max_z": -11.0996
+      },
+      {
+        "name": "wall_new.022",
+        "min_x": 9.6867,
+        "max_x": 10.3717,
+        "min_z": -11.2521,
+        "max_z": -11.0996
+      },
+      {
+        "name": "wall_new.023",
+        "min_x": 2.6716,
+        "max_x": 3.2024,
+        "min_z": -5.2891,
+        "max_z": -5.1874
+      },
+      {
+        "name": "wall_new.024",
+        "min_x": 1.733,
+        "max_x": 1.7594,
+        "min_z": -6.0011,
+        "max_z": -5.2891
+      },
+      {
+        "name": "wall_new.025",
+        "min_x": 1.6576,
+        "max_x": 1.684,
+        "min_z": -6.0011,
+        "max_z": -5.2891
+      },
+      {
+        "name": "wall_new.026",
+        "min_x": 1.6576,
+        "max_x": 1.7594,
+        "min_z": -7.2726,
+        "max_z": -6.7386
+      },
+      {
+        "name": "wall_new.027",
+        "min_x": 2.7193,
+        "max_x": 2.7457,
+        "min_z": -5.9948,
+        "max_z": -5.2891
+      },
+      {
+        "name": "wall_new.028",
+        "min_x": 2.7946,
+        "max_x": 2.821,
+        "min_z": -5.9948,
+        "max_z": -5.2891
+      },
+      {
+        "name": "wall_new.029",
+        "min_x": 2.7193,
+        "max_x": 2.821,
+        "min_z": -7.2726,
+        "max_z": -6.7322
+      },
+      {
+        "name": "wall_new.030",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -6.1791,
+        "max_z": -5.4672
+      },
+      {
+        "name": "wall_new.031",
+        "min_x": 1.807,
+        "max_x": 1.8325,
+        "min_z": -5.2891,
+        "max_z": -5.1874
+      },
+      {
+        "name": "wall_new.032",
+        "min_x": 2.6462,
+        "max_x": 2.6716,
+        "min_z": -5.2891,
+        "max_z": -5.1874
+      },
+      {
+        "name": "wall_new.033",
+        "min_x": 2.6462,
+        "max_x": 2.6716,
+        "min_z": -7.3743,
+        "max_z": -7.2726
+      },
+      {
+        "name": "wall_new.034",
+        "min_x": 1.807,
+        "max_x": 1.8325,
+        "min_z": -7.3743,
+        "max_z": -7.2726
+      },
+      {
+        "name": "wall_new.035",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -8.3851,
+        "max_z": -7.3234
+      },
+      {
+        "name": "wall_new.036",
+        "min_x": 5.5562,
+        "max_x": 5.7199,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_new.037",
+        "min_x": 4.4993,
+        "max_x": 4.6376,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.038",
+        "min_x": 0.507,
+        "max_x": 0.7422,
+        "min_z": -9.7646,
+        "max_z": -9.5357
+      },
+      {
+        "name": "wall_existing.039",
+        "min_x": 0.507,
+        "max_x": 0.8122,
+        "min_z": -5.2891,
+        "max_z": -4.7424
+      },
+      {
+        "name": "wall_existing.040",
+        "min_x": 0.8122,
+        "max_x": 1.807,
+        "min_z": -5.2891,
+        "max_z": -5.1874
+      },
+      {
+        "name": "wall_existing.041",
+        "min_x": 3.2024,
+        "max_x": 4.067,
+        "min_z": -5.2891,
+        "max_z": -5.1874
+      },
+      {
+        "name": "wall_existing.042",
+        "min_x": 4.957,
+        "max_x": 4.9952,
+        "min_z": -6.3317,
+        "max_z": -6.23
+      },
+      {
+        "name": "wall_existing.043",
+        "min_x": 4.1687,
+        "max_x": 4.1942,
+        "min_z": -6.3317,
+        "max_z": -6.23
+      },
+      {
+        "name": "wall_existing.044",
+        "min_x": 6.025,
+        "max_x": 6.1267,
+        "min_z": -2.3394,
+        "max_z": -1.3731
+      },
+      {
+        "name": "wall_existing.045",
+        "min_x": 6.025,
+        "max_x": 6.1267,
+        "min_z": -8.3914,
+        "max_z": -4.4754
+      },
+      {
+        "name": "wall_existing.046",
+        "min_x": 5.7453,
+        "max_x": 6.025,
+        "min_z": -5.1366,
+        "max_z": -4.984
+      },
+      {
+        "name": "wall_existing.047",
+        "min_x": 4.1687,
+        "max_x": 4.5247,
+        "min_z": -5.1366,
+        "max_z": -4.984
+      },
+      {
+        "name": "wall_existing.048",
+        "min_x": 8.3899,
+        "max_x": 9.6867,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.049",
+        "min_x": 5.7199,
+        "max_x": 7.2201,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.050",
+        "min_x": 2.9863,
+        "max_x": 4.4993,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.051",
+        "min_x": 0.507,
+        "max_x": 1.8166,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.052",
+        "min_x": 0.2621,
+        "max_x": 0.507,
+        "min_z": -4.9459,
+        "max_z": -4.7424
+      },
+      {
+        "name": "wall_existing.053",
+        "min_x": 0.2621,
+        "max_x": 0.7105,
+        "min_z": -1.8181,
+        "max_z": -1.6147
+      },
+      {
+        "name": "wall_existing.054",
+        "min_x": 0.507,
+        "max_x": 0.7105,
+        "min_z": -1.6147,
+        "max_z": -1.3731
+      },
+      {
+        "name": "wall_existing.055",
+        "min_x": 0.507,
+        "max_x": 0.7359,
+        "min_z": -6.9166,
+        "max_z": -5.2891
+      },
+      {
+        "name": "wall_existing.056",
+        "min_x": 0.507,
+        "max_x": 0.7359,
+        "min_z": -9.5357,
+        "max_z": -8.4884
+      },
+      {
+        "name": "wall_existing.057",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -2.3394,
+        "max_z": -2.314
+      },
+      {
+        "name": "wall_existing.058",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -4.0431,
+        "max_z": -4.0177
+      },
+      {
+        "name": "wall_existing.059",
+        "min_x": 8.6187,
+        "max_x": 9.6867,
+        "min_z": -8.544,
+        "max_z": -8.3914
+      },
+      {
+        "name": "wall_existing.060",
+        "min_x": 0.2587,
+        "max_x": 0.507,
+        "min_z": -1.8896,
+        "max_z": -1.8181
+      },
+      {
+        "name": "wall_existing.061",
+        "min_x": 0.0661,
+        "max_x": 0.2998,
+        "min_z": -2.5579,
+        "max_z": -2.4637
+      },
+      {
+        "name": "wall_existing.062",
+        "min_x": 0.0,
+        "max_x": 0.2273,
+        "min_z": -3.3151,
+        "max_z": -3.2455
+      },
+      {
+        "name": "wall_existing.063",
+        "min_x": 0.0661,
+        "max_x": 0.2998,
+        "min_z": -4.0969,
+        "max_z": -4.0027
+      },
+      {
+        "name": "wall_existing.064",
+        "min_x": 0.2587,
+        "max_x": 0.507,
+        "min_z": -4.7424,
+        "max_z": -4.6709
+      },
+      {
+        "name": "wall_existing.065",
+        "min_x": 9.5342,
+        "max_x": 9.6867,
+        "min_z": -8.3914,
+        "max_z": -7.9083
+      },
+      {
+        "name": "wall_existing.066",
+        "min_x": 11.7464,
+        "max_x": 12.1279,
+        "min_z": -1.8309,
+        "max_z": -1.5257
+      },
+      {
+        "name": "wall_existing.067",
+        "min_x": 9.5342,
+        "max_x": 9.9156,
+        "min_z": -1.8309,
+        "max_z": -1.5257
+      },
+      {
+        "name": "wall_existing.068",
+        "min_x": 11.9753,
+        "max_x": 12.1279,
+        "min_z": -2.1233,
+        "max_z": -1.8309
+      },
+      {
+        "name": "wall_existing.069",
+        "min_x": 11.9753,
+        "max_x": 12.1279,
+        "min_z": -8.0609,
+        "max_z": -7.6159
+      },
+      {
+        "name": "wall_existing.070",
+        "min_x": 9.6867,
+        "max_x": 9.9664,
+        "min_z": -8.0609,
+        "max_z": -7.9083
+      },
+      {
+        "name": "wall_existing.071",
+        "min_x": 11.7973,
+        "max_x": 11.9753,
+        "min_z": -8.0609,
+        "max_z": -7.9083
+      },
+      {
+        "name": "wall_existing.072",
+        "min_x": 9.6359,
+        "max_x": 10.1444,
+        "min_z": -3.8906,
+        "max_z": -3.7889
+      },
+      {
+        "name": "wall_existing.073",
+        "min_x": 10.0427,
+        "max_x": 10.1444,
+        "min_z": -6.1283,
+        "max_z": -3.8906
+      },
+      {
+        "name": "wall_existing.074",
+        "min_x": 9.6359,
+        "max_x": 10.0427,
+        "min_z": -6.1283,
+        "max_z": -6.0266
+      },
+      {
+        "name": "wall_existing.075",
+        "min_x": 9.5342,
+        "max_x": 9.6359,
+        "min_z": -2.3903,
+        "max_z": -1.8309
+      },
+      {
+        "name": "wall_existing.076",
+        "min_x": 9.5342,
+        "max_x": 9.6359,
+        "min_z": -6.3571,
+        "max_z": -3.56
+      },
+      {
+        "name": "wall_existing.077",
+        "min_x": 9.5342,
+        "max_x": 9.6359,
+        "min_z": -7.9083,
+        "max_z": -7.6031
+      },
+      {
+        "name": "wall_existing.078",
+        "min_x": 9.5342,
+        "max_x": 9.6867,
+        "min_z": -1.5257,
+        "max_z": -1.3731
+      },
+      {
+        "name": "wall_existing.079",
+        "min_x": 11.9753,
+        "max_x": 12.1279,
+        "min_z": -2.1487,
+        "max_z": -2.1233
+      },
+      {
+        "name": "wall_existing.080",
+        "min_x": 11.9753,
+        "max_x": 12.1279,
+        "min_z": -7.6159,
+        "max_z": -7.5904
+      },
+      {
+        "name": "wall_existing.081",
+        "min_x": 11.721,
+        "max_x": 11.7464,
+        "min_z": -1.8309,
+        "max_z": -1.5257
+      },
+      {
+        "name": "wall_existing.082",
+        "min_x": 9.9156,
+        "max_x": 9.941,
+        "min_z": -1.8309,
+        "max_z": -1.5257
+      },
+      {
+        "name": "wall_existing.083",
+        "min_x": 8.3644,
+        "max_x": 8.3899,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.084",
+        "min_x": 7.2201,
+        "max_x": 7.2456,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.085",
+        "min_x": 2.9609,
+        "max_x": 2.9863,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.086",
+        "min_x": 1.8166,
+        "max_x": 1.842,
+        "min_z": -1.3731,
+        "max_z": -1.068
+      },
+      {
+        "name": "wall_existing.087",
+        "min_x": 9.5342,
+        "max_x": 9.6359,
+        "min_z": -2.4157,
+        "max_z": -2.3903
+      },
+      {
+        "name": "wall_existing.088",
+        "min_x": 9.5342,
+        "max_x": 9.6359,
+        "min_z": -3.56,
+        "max_z": -3.5346
+      },
+      {
+        "name": "wall_existing.089",
+        "min_x": 6.025,
+        "max_x": 6.1267,
+        "min_z": -2.3649,
+        "max_z": -2.3394
+      },
+      {
+        "name": "wall_existing.090",
+        "min_x": 6.025,
+        "max_x": 6.1267,
+        "min_z": -4.4754,
+        "max_z": -4.45
+      },
+      {
+        "name": "wall_existing.091",
+        "min_x": 5.7199,
+        "max_x": 5.7453,
+        "min_z": -5.1366,
+        "max_z": -4.984
+      },
+      {
+        "name": "wall_existing.092",
+        "min_x": 4.5247,
+        "max_x": 4.5501,
+        "min_z": -5.1366,
+        "max_z": -4.984
+      },
+      {
+        "name": "wall_existing.093",
+        "min_x": 4.9316,
+        "max_x": 4.957,
+        "min_z": -6.3317,
+        "max_z": -6.23
+      },
+      {
+        "name": "wall_existing.094",
+        "min_x": 4.1942,
+        "max_x": 4.2196,
+        "min_z": -6.3317,
+        "max_z": -6.23
+      },
+      {
+        "name": "wall_existing.095",
+        "min_x": 4.067,
+        "max_x": 4.245,
+        "min_z": -0.1526,
+        "max_z": 0.0
+      },
+      {
+        "name": "wall_existing.096",
+        "min_x": 5.9742,
+        "max_x": 6.1522,
+        "min_z": -0.1526,
+        "max_z": 0.0
+      },
+      {
+        "name": "wall_existing.097",
+        "min_x": 0.1599,
+        "max_x": 0.2226,
+        "min_z": -4.1495,
+        "max_z": -4.0868
+      },
+      {
+        "name": "wall_existing.098",
+        "min_x": 0.3119,
+        "max_x": 0.3746,
+        "min_z": -4.6879,
+        "max_z": -4.6252
+      },
+      {
+        "name": "wall_existing.099",
+        "min_x": 0.192,
+        "max_x": 0.2486,
+        "min_z": -4.3014,
+        "max_z": -4.1409
+      },
+      {
+        "name": "wall_existing.100",
+        "min_x": 0.2398,
+        "max_x": 0.2947,
+        "min_z": -4.4645,
+        "max_z": -4.3102
+      },
+      {
+        "name": "wall_existing.101",
+        "min_x": 0.2859,
+        "max_x": 0.3425,
+        "min_z": -4.6338,
+        "max_z": -4.4733
+      },
+      {
+        "name": "wall_existing.102",
+        "min_x": 0.0795,
+        "max_x": 0.3067,
+        "min_z": -4.1213,
+        "max_z": -4.0347
+      },
+      {
+        "name": "wall_existing.103",
+        "min_x": 0.2523,
+        "max_x": 0.4794,
+        "min_z": -4.7331,
+        "max_z": -4.6465
+      },
+      {
+        "name": "wall_existing.104",
+        "min_x": 0.3119,
+        "max_x": 0.3746,
+        "min_z": -1.9354,
+        "max_z": -1.8727
+      },
+      {
+        "name": "wall_existing.105",
+        "min_x": 0.1599,
+        "max_x": 0.2226,
+        "min_z": -2.4738,
+        "max_z": -2.411
+      },
+      {
+        "name": "wall_existing.106",
+        "min_x": 0.2859,
+        "max_x": 0.3425,
+        "min_z": -2.0873,
+        "max_z": -1.9268
+      },
+      {
+        "name": "wall_existing.107",
+        "min_x": 0.2398,
+        "max_x": 0.2947,
+        "min_z": -2.2504,
+        "max_z": -2.096
+      },
+      {
+        "name": "wall_existing.108",
+        "min_x": 0.192,
+        "max_x": 0.2486,
+        "min_z": -2.4197,
+        "max_z": -2.2592
+      },
+      {
+        "name": "wall_existing.109",
+        "min_x": 0.2523,
+        "max_x": 0.4794,
+        "min_z": -1.9141,
+        "max_z": -1.8274
+      },
+      {
+        "name": "wall_existing.110",
+        "min_x": 0.0795,
+        "max_x": 0.3067,
+        "min_z": -2.5259,
+        "max_z": -2.4392
+      },
+      {
+        "name": "wall_existing.111",
+        "min_x": 4.067,
+        "max_x": 4.2196,
+        "min_z": -0.178,
+        "max_z": -0.1526
+      },
+      {
+        "name": "wall_existing.112",
+        "min_x": 4.067,
+        "max_x": 4.2196,
+        "min_z": -1.068,
+        "max_z": -1.0426
+      },
+      {
+        "name": "wall_existing.113",
+        "min_x": 4.067,
+        "max_x": 4.2196,
+        "min_z": -0.2034,
+        "max_z": -0.178
+      },
+      {
+        "name": "wall_existing.114",
+        "min_x": 4.067,
+        "max_x": 4.2196,
+        "min_z": -1.0426,
+        "max_z": -1.0171
+      },
+      {
+        "name": "wall_existing.115",
+        "min_x": 5.9996,
+        "max_x": 6.1522,
+        "min_z": -0.178,
+        "max_z": -0.1526
+      },
+      {
+        "name": "wall_existing.116",
+        "min_x": 5.9996,
+        "max_x": 6.1522,
+        "min_z": -1.068,
+        "max_z": -1.0426
+      },
+      {
+        "name": "wall_existing.117",
+        "min_x": 5.9996,
+        "max_x": 6.1522,
+        "min_z": -0.2034,
+        "max_z": -0.178
+      },
+      {
+        "name": "wall_existing.118",
+        "min_x": 5.9996,
+        "max_x": 6.1522,
+        "min_z": -1.0426,
+        "max_z": -1.0171
+      },
+      {
+        "name": "wall_existing.119",
+        "min_x": 4.1687,
+        "max_x": 4.423,
+        "min_z": -2.2123,
+        "max_z": -1.3731
+      },
+      {
+        "name": "wall_existing.120",
+        "min_x": 4.0797,
+        "max_x": 4.2577,
+        "min_z": -0.1907,
+        "max_z": -0.0127
+      },
+      {
+        "name": "wall_existing.121",
+        "min_x": 5.9614,
+        "max_x": 6.1394,
+        "min_z": -0.1907,
+        "max_z": -0.0127
+      },
+      {
+        "name": "wall_existing.122",
+        "min_x": 4.1687,
+        "max_x": 5.0333,
+        "min_z": -6.8148,
+        "max_z": -6.7131
+      },
+      {
+        "name": "wall_existing.123",
+        "min_x": 0.1284,
+        "max_x": 0.1838,
+        "min_z": -3.3792,
+        "max_z": -3.3238
+      },
+      {
+        "name": "wall_existing.124",
+        "min_x": 0.1853,
+        "max_x": 0.2407,
+        "min_z": -3.9868,
+        "max_z": -3.9315
+      },
+      {
+        "name": "wall_existing.125",
+        "min_x": 0.0,
+        "max_x": 0.2297,
+        "min_z": -3.3404,
+        "max_z": -3.2938
+      },
+      {
+        "name": "wall_existing.126",
+        "min_x": 0.0635,
+        "max_x": 0.2937,
+        "min_z": -4.024,
+        "max_z": -3.9774
+      },
+      {
+        "name": "wall_existing.127",
+        "min_x": 0.0635,
+        "max_x": 0.2937,
+        "min_z": -2.5832,
+        "max_z": -2.5366
+      },
+      {
+        "name": "wall_existing.128",
+        "min_x": 0.0,
+        "max_x": 0.2297,
+        "min_z": -3.2668,
+        "max_z": -3.2201
+      },
+      {
+        "name": "wall_existing.129",
+        "min_x": 0.1853,
+        "max_x": 0.2407,
+        "min_z": -2.6291,
+        "max_z": -2.5737
+      },
+      {
+        "name": "wall_existing.130",
+        "min_x": 0.1284,
+        "max_x": 0.1838,
+        "min_z": -3.2367,
+        "max_z": -3.1813
+      },
+      {
+        "name": "wall_existing.131",
+        "min_x": 5.9742,
+        "max_x": 7.0421,
+        "min_z": -8.4931,
+        "max_z": -8.3914
+      },
+      {
+        "name": "wall_existing.132",
+        "min_x": 4.1687,
+        "max_x": 5.1604,
+        "min_z": -8.4931,
+        "max_z": -8.3914
+      },
+      {
+        "name": "wall_existing.133",
+        "min_x": 5.0333,
+        "max_x": 5.135,
+        "min_z": -7.3743,
+        "max_z": -6.3317
+      },
+      {
+        "name": "wall_existing.134",
+        "min_x": 5.9487,
+        "max_x": 5.9742,
+        "min_z": -8.4931,
+        "max_z": -8.3914
+      },
+      {
+        "name": "wall_existing.135",
+        "min_x": 5.1604,
+        "max_x": 5.1859,
+        "min_z": -8.4931,
+        "max_z": -8.3914
+      },
+      {
+        "name": "wall_existing.136",
+        "min_x": 5.0333,
+        "max_x": 5.135,
+        "min_z": -7.3997,
+        "max_z": -7.3743
+      },
+      {
+        "name": "wall_existing.137",
+        "min_x": 5.0333,
+        "max_x": 5.135,
+        "min_z": -8.3914,
+        "max_z": -8.3787
+      },
+      {
+        "name": "wall_existing.138",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -5.4672,
+        "max_z": -5.1493
+      },
+      {
+        "name": "wall_existing.139",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -6.7004,
+        "max_z": -6.1791
+      },
+      {
+        "name": "wall_existing.140",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -2.314,
+        "max_z": -1.3731
+      },
+      {
+        "name": "wall_existing.141",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -5.1493,
+        "max_z": -4.0431
+      },
+      {
+        "name": "wall_existing.142",
+        "min_x": 4.9952,
+        "max_x": 5.135,
+        "min_z": -6.3317,
+        "max_z": -6.23
+      },
+      {
+        "name": "wall_existing.143",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -7.3234,
+        "max_z": -6.7004
+      },
+      {
+        "name": "wall_existing.144",
+        "min_x": 4.067,
+        "max_x": 4.1687,
+        "min_z": -8.4931,
+        "max_z": -8.3851
+      },
+      {
+        "name": "lintel.000",
+        "min_x": 1.807,
+        "max_x": 2.6716,
+        "min_z": -5.289,
+        "max_z": -5.1874
+      },
+      {
+        "name": "lintel.001",
+        "min_x": 4.5247,
+        "max_x": 5.7453,
+        "min_z": -5.1366,
+        "max_z": -4.9842
+      },
+      {
+        "name": "lintel.002",
+        "min_x": 1.8166,
+        "max_x": 2.9863,
+        "min_z": -1.3724,
+        "max_z": -1.0676
+      },
+      {
+        "name": "lintel.003",
+        "min_x": 4.4993,
+        "max_x": 5.7199,
+        "min_z": -1.3724,
+        "max_z": -1.0676
+      },
+      {
+        "name": "lintel.004",
+        "min_x": 7.2201,
+        "max_x": 8.3899,
+        "min_z": -1.3724,
+        "max_z": -1.0676
+      },
+      {
+        "name": "lintel.005",
+        "min_x": 9.9156,
+        "max_x": 11.7464,
+        "min_z": -1.8313,
+        "max_z": -1.5265
+      },
+      {
+        "name": "lintel.006",
+        "min_x": 4.245,
+        "max_x": 5.9742,
+        "min_z": -0.1532,
+        "max_z": -0.0008
+      },
+      {
+        "name": "lintel.007",
+        "min_x": 4.2196,
+        "max_x": 5.9996,
+        "min_z": -0.1786,
+        "max_z": -0.1532
+      },
+      {
+        "name": "lintel.008",
+        "min_x": 4.2196,
+        "max_x": 5.9996,
+        "min_z": -1.0676,
+        "max_z": -1.0422
+      },
+      {
+        "name": "lintel.009",
+        "min_x": 4.2196,
+        "max_x": 5.9996,
+        "min_z": -0.204,
+        "max_z": -0.1786
+      },
+      {
+        "name": "lintel.010",
+        "min_x": 4.2196,
+        "max_x": 5.9996,
+        "min_z": -1.0422,
+        "max_z": -1.0168
+      },
+      {
+        "name": "lintel.011",
+        "min_x": 4.2577,
+        "max_x": 5.9614,
+        "min_z": -0.1904,
+        "max_z": -0.0126
+      },
+      {
+        "name": "lintel.012",
+        "min_x": 5.1604,
+        "max_x": 5.9742,
+        "min_z": -8.4928,
+        "max_z": -8.3912
+      },
+      {
+        "name": "lintel.013",
+        "min_x": 1.807,
+        "max_x": 2.6716,
+        "min_z": -7.3735,
+        "max_z": -7.2719
+      },
+      {
+        "name": "sill.014",
+        "min_x": 1.467,
+        "max_x": 2.0805,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "lintel.014",
+        "min_x": 1.467,
+        "max_x": 2.0805,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "sill.015",
+        "min_x": 2.2457,
+        "max_x": 3.5887,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "lintel.015",
+        "min_x": 2.2457,
+        "max_x": 3.5887,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "sill.016",
+        "min_x": 3.754,
+        "max_x": 4.3674,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "lintel.016",
+        "min_x": 3.754,
+        "max_x": 4.3674,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "lintel.017",
+        "min_x": 5.6674,
+        "max_x": 6.586,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "sill.018",
+        "min_x": 6.8117,
+        "max_x": 7.7303,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "lintel.018",
+        "min_x": 6.8117,
+        "max_x": 7.7303,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "sill.019",
+        "min_x": 7.956,
+        "max_x": 8.8746,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "lintel.019",
+        "min_x": 7.956,
+        "max_x": 8.8746,
+        "min_z": -13.4899,
+        "max_z": -13.3375
+      },
+      {
+        "name": "lintel.020",
+        "min_x": 10.3717,
+        "max_x": 11.2903,
+        "min_z": -11.253,
+        "max_z": -11.0989
+      },
+      {
+        "name": "lintel.021",
+        "min_x": 6.0245,
+        "max_x": 6.1261,
+        "min_z": -4.4754,
+        "max_z": -2.3394
+      },
+      {
+        "name": "sill.022",
+        "min_x": 0.5077,
+        "max_x": 0.7363,
+        "min_z": -9.7646,
+        "max_z": -9.5357
+      },
+      {
+        "name": "lintel.022",
+        "min_x": 0.5077,
+        "max_x": 0.7363,
+        "min_z": -9.7646,
+        "max_z": -9.5357
+      },
+      {
+        "name": "sill.023",
+        "min_x": 0.5077,
+        "max_x": 0.7363,
+        "min_z": -8.4884,
+        "max_z": -7.5825
+      },
+      {
+        "name": "lintel.023",
+        "min_x": 0.5077,
+        "max_x": 0.7363,
+        "min_z": -8.4884,
+        "max_z": -7.5825
+      },
+      {
+        "name": "lintel.024",
+        "min_x": 9.5348,
+        "max_x": 9.6872,
+        "min_z": -12.8239,
+        "max_z": -11.9181
+      },
+      {
+        "name": "lintel.025",
+        "min_x": 9.5348,
+        "max_x": 9.6872,
+        "min_z": -9.6628,
+        "max_z": -8.6966
+      },
+      {
+        "name": "lintel.026",
+        "min_x": 9.5348,
+        "max_x": 9.6872,
+        "min_z": -8.544,
+        "max_z": -8.3914
+      },
+      {
+        "name": "sill.027",
+        "min_x": 11.9749,
+        "max_x": 12.1273,
+        "min_z": -10.0522,
+        "max_z": -9.1463
+      },
+      {
+        "name": "lintel.027",
+        "min_x": 11.9749,
+        "max_x": 12.1273,
+        "min_z": -10.0522,
+        "max_z": -9.1463
+      },
+      {
+        "name": "lintel.028",
+        "min_x": 9.5348,
+        "max_x": 9.6364,
+        "min_z": -7.6031,
+        "max_z": -6.3571
+      },
+      {
+        "name": "lintel.029",
+        "min_x": 9.5348,
+        "max_x": 9.6364,
+        "min_z": -3.56,
+        "max_z": -2.3903
+      },
+      {
+        "name": "lintel.030",
+        "min_x": 0.3112,
+        "max_x": 0.3739,
+        "min_z": -4.6252,
+        "max_z": -1.9354
+      },
+      {
+        "name": "lintel.031",
+        "min_x": 0.1927,
+        "max_x": 0.2486,
+        "min_z": -4.1409,
+        "max_z": -2.4197
+      },
+      {
+        "name": "lintel.032",
+        "min_x": 0.2401,
+        "max_x": 0.2943,
+        "min_z": -4.3102,
+        "max_z": -2.2504
+      },
+      {
+        "name": "lintel.033",
+        "min_x": 0.2858,
+        "max_x": 0.3417,
+        "min_z": -4.4733,
+        "max_z": -2.0873
+      },
+      {
+        "name": "lintel.034",
+        "min_x": 4.067,
+        "max_x": 4.1686,
+        "min_z": -4.0431,
+        "max_z": -2.314
+      },
+      {
+        "name": "lintel.035",
+        "min_x": 1.8064,
+        "max_x": 1.8318,
+        "min_z": -7.2726,
+        "max_z": -5.2891
+      },
+      {
+        "name": "lintel.036",
+        "min_x": 2.6463,
+        "max_x": 2.6717,
+        "min_z": -7.2726,
+        "max_z": -5.2891
+      }
+    ],
+    "camera_presets": [
+      {
+        "name": "kitchen_overview",
+        "position": [
+          12.734,
+          8.364,
+          5.666
+        ],
+        "target": [
+          5.579,
+          0.0,
+          -7.015
+        ],
+        "up": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "name": "walk_start",
+        "position": [
+          3.504,
+          1.562,
+          -11.037
+        ],
+        "target": [
+          5.72,
+          1.562,
+          -7.253
+        ],
+        "up": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "name": "overhead",
+        "position": [
+          6.064,
+          14.164,
+          -6.745
+        ],
+        "target": [
+          6.064,
+          0.0,
+          -6.745
+        ],
+        "up": [
+          0,
+          0,
+          -1
+        ]
+      }
+    ]
+  }
+}

@@ -33,7 +33,7 @@ SOUTH_TRANSITION_METERS = ticks_to_meters(
     _CANONICAL.bounds.depth_ticks - _CANONICAL.island.max_y_ticks
 )
 LIVING_CLEAR_WIDTH_METERS = ticks_to_meters(_CANONICAL.living_width_ticks)
-EYE_HEIGHT_METERS = 1.65
+EYE_HEIGHT_METERS = 1.562   # eye height of a 5'6" person, not 5'9"
 
 DIMENSION_TOLERANCE_METERS = 0.003
 SCHEMA = "hearthview-tour-spike/v1"
@@ -633,7 +633,7 @@ def build_scene_contract_from_spec(spec: dict) -> SceneContract:
             PrintedDimension("ceiling", round(ceiling, 4), "A-1 printed dimension 8'-5\""),
             PrintedDimension("island_width", round(island[2] - island[0], 4), "A-1 printed dimension 8'-7\""),
             PrintedDimension("island_depth", round(island[3] - island[1], 4), "A-1 printed dimension 4'-3\""),
-            PrintedDimension("eye_height", 1.65, "tour navigation requirement"),
+            PrintedDimension("eye_height", EYE_HEIGHT_METERS, "tour navigation requirement"),
         ),
         wall_openings=wall_openings,
         island_footprint=Rectangle("island", island[0], island[1], island[2], island[3]),

@@ -1,6 +1,6 @@
 {
   "schema": "hearthview-asset-provenance/v1",
-  "label": "Quality spike · visual staging",
+  "label": "Quality spike \u00b7 visual staging",
   "canonical_geometry": false,
   "provisional_categories": [
     "cabinetry_detail",
@@ -106,7 +106,8 @@
       "transformations": [
         "Tile at 2.4 repeats in both mapped UV axes.",
         "Apply a warm beige tint and 1.05 roughness multiplier.",
-        "Mark normal and roughness images as non-color data."
+        "Mark normal and roughness images as non-color data.",
+        "Grade the diffuse map to interior paint on disk -- saturation 0.34, value 1.35 -- written to derived/beige_wall_001_diff_1k_s0.34_v1.35.png. The photograph averages sRGB 159,141,120, about a third of the light falling on it; interior paint reflects roughly three quarters. It is graded to a file rather than in the node tree because glTF carries no node graphs: the exporter drops the grade without complaint, and the bake would then light walls the browser paints a different colour."
       ]
     },
     {
@@ -189,14 +190,38 @@
       "license_url": "https://polyhaven.com/license",
       "authoring_role": "one real-scale living-room accent chair",
       "files": [
-        {"path": "models/modern_arm_chair_01/modern_arm_chair_01_1k.gltf", "sha256": "d31be520add2603447b43acedbdacf9516866f7c89e9ea9230c9edbac9cc6e6a"},
-        {"path": "models/modern_arm_chair_01/modern_arm_chair_01.bin", "sha256": "8755f2f498c0bb165660379d1b045465751c16bbeaf553c8dd76bb14c16d1ff6"},
-        {"path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_arm_1k.jpg", "sha256": "c76b65200a52cf649a865baf7f879dc34277b923edaac7ec8164eaf7c51c935d"},
-        {"path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_diff_1k.jpg", "sha256": "6291421a8db6cd9bbbc8c141aa087465d698427249f813d24c6e5ccdbf0bf536"},
-        {"path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_nor_gl_1k.jpg", "sha256": "af328e8530884907cf0d38a675338bb4e2b03c56ed2d21eb5abf505bb67c11de"},
-        {"path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_arm_1k.jpg", "sha256": "fec333290ddfd70e78428251874d30d5410d6d0a956dd84922b0d3f3596e4b7a"},
-        {"path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_diff_1k.jpg", "sha256": "f1935436b460ad5c03ac7ff9d1e1b4aaedcdc9a503d79c257beb8cdac2e9e1f7"},
-        {"path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_nor_gl_1k.jpg", "sha256": "2717b9d22e1d3533e3c7436a0230b00b1d25bf396246679825c8db08edaba0a8"}
+        {
+          "path": "models/modern_arm_chair_01/modern_arm_chair_01_1k.gltf",
+          "sha256": "d31be520add2603447b43acedbdacf9516866f7c89e9ea9230c9edbac9cc6e6a"
+        },
+        {
+          "path": "models/modern_arm_chair_01/modern_arm_chair_01.bin",
+          "sha256": "8755f2f498c0bb165660379d1b045465751c16bbeaf553c8dd76bb14c16d1ff6"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_arm_1k.jpg",
+          "sha256": "c76b65200a52cf649a865baf7f879dc34277b923edaac7ec8164eaf7c51c935d"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_diff_1k.jpg",
+          "sha256": "6291421a8db6cd9bbbc8c141aa087465d698427249f813d24c6e5ccdbf0bf536"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_legs_nor_gl_1k.jpg",
+          "sha256": "af328e8530884907cf0d38a675338bb4e2b03c56ed2d21eb5abf505bb67c11de"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_arm_1k.jpg",
+          "sha256": "fec333290ddfd70e78428251874d30d5410d6d0a956dd84922b0d3f3596e4b7a"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_diff_1k.jpg",
+          "sha256": "f1935436b460ad5c03ac7ff9d1e1b4aaedcdc9a503d79c257beb8cdac2e9e1f7"
+        },
+        {
+          "path": "models/modern_arm_chair_01/textures/modern_arm_chair_01_pillow_nor_gl_1k.jpg",
+          "sha256": "2717b9d22e1d3533e3c7436a0230b00b1d25bf396246679825c8db08edaba0a8"
+        }
       ],
       "transformations": [
         "Import the local glTF with its adjacent BIN and textures and preserve meter scale.",
@@ -211,11 +236,26 @@
       "license_url": "https://polyhaven.com/license",
       "authoring_role": "one real-scale living-room coffee table",
       "files": [
-        {"path": "models/modern_coffee_table_01/modern_coffee_table_01_1k.gltf", "sha256": "a35d811da4c174d0c888f23353dda21501763dbf5505c66f57fef4b3f613e50c"},
-        {"path": "models/modern_coffee_table_01/modern_coffee_table_01.bin", "sha256": "b8fe0d49041b879a5d5962685a39e3daf009679f7b6a88ced1347e6dc6c0851e"},
-        {"path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_diff_1k.jpg", "sha256": "069b89dd3ef03ddcbb7b2e6a124b1903aa7848394509121aa19f87bd0ef0218c"},
-        {"path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_nor_gl_1k.jpg", "sha256": "43e0d317d0f8418b130c0058c645225ee83b808b1dc0e5e7236bead3bdd77139"},
-        {"path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_rough_1k.jpg", "sha256": "8013b48b0ebb845907f840afcae9cbc915a5205ac82ed99cbba31771febacb0f"}
+        {
+          "path": "models/modern_coffee_table_01/modern_coffee_table_01_1k.gltf",
+          "sha256": "a35d811da4c174d0c888f23353dda21501763dbf5505c66f57fef4b3f613e50c"
+        },
+        {
+          "path": "models/modern_coffee_table_01/modern_coffee_table_01.bin",
+          "sha256": "b8fe0d49041b879a5d5962685a39e3daf009679f7b6a88ced1347e6dc6c0851e"
+        },
+        {
+          "path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_diff_1k.jpg",
+          "sha256": "069b89dd3ef03ddcbb7b2e6a124b1903aa7848394509121aa19f87bd0ef0218c"
+        },
+        {
+          "path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_nor_gl_1k.jpg",
+          "sha256": "43e0d317d0f8418b130c0058c645225ee83b808b1dc0e5e7236bead3bdd77139"
+        },
+        {
+          "path": "models/modern_coffee_table_01/textures/modern_coffee_table_01_rough_1k.jpg",
+          "sha256": "8013b48b0ebb845907f840afcae9cbc915a5205ac82ed99cbba31771febacb0f"
+        }
       ],
       "transformations": [
         "Import the local glTF with its adjacent BIN and textures.",
@@ -230,16 +270,63 @@
       "license_url": "https://polyhaven.com/license",
       "authoring_role": "three local pendant instances above the island",
       "files": [
-        {"path": "models/modern_ceiling_lamp_01/modern_ceiling_lamp_01_1k.gltf", "sha256": "f88b5d0a81fa813457a77474e7e4e812f97ad5fac2109ba03ddb183274be3f8c"},
-        {"path": "models/modern_ceiling_lamp_01/modern_ceiling_lamp_01.bin", "sha256": "ae5140a64e12e639554158901a5e92340bb37c706096ff255804e3220fb96367"},
-        {"path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_arm_1k.jpg", "sha256": "f4c6a8e7c86b1deaaf0f74099539ff635063b63f594b0fadfc3ec8fac805df4e"},
-        {"path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_diff_1k.jpg", "sha256": "c08bfbf7576a86a4a09d386ae9f0a92965fc652bf82f3a8dba1c796b1aa9e535"},
-        {"path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_nor_gl_1k.jpg", "sha256": "dd75bd21a901581325f5c363bd89b45430b8531cb27dead314cd087196a33c27"}
+        {
+          "path": "models/modern_ceiling_lamp_01/modern_ceiling_lamp_01_1k.gltf",
+          "sha256": "f88b5d0a81fa813457a77474e7e4e812f97ad5fac2109ba03ddb183274be3f8c"
+        },
+        {
+          "path": "models/modern_ceiling_lamp_01/modern_ceiling_lamp_01.bin",
+          "sha256": "ae5140a64e12e639554158901a5e92340bb37c706096ff255804e3220fb96367"
+        },
+        {
+          "path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_arm_1k.jpg",
+          "sha256": "f4c6a8e7c86b1deaaf0f74099539ff635063b63f594b0fadfc3ec8fac805df4e"
+        },
+        {
+          "path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_diff_1k.jpg",
+          "sha256": "c08bfbf7576a86a4a09d386ae9f0a92965fc652bf82f3a8dba1c796b1aa9e535"
+        },
+        {
+          "path": "models/modern_ceiling_lamp_01/textures/modern_ceiling_lamp_01_nor_gl_1k.jpg",
+          "sha256": "dd75bd21a901581325f5c363bd89b45430b8531cb27dead314cd087196a33c27"
+        }
       ],
       "transformations": [
         "Import three instances from the same local glTF hierarchy and adjacent resources.",
         "Normalize each maximum extent to 0.90 meters, hang above the island, and apply small alternating rotations.",
         "Add separate generic emissive bulbs and 2700-3000 K-equivalent local point lights; do not alter the source files."
+      ]
+    },
+    {
+      "id": "ambientcg-wood-floor-070",
+      "provider": "ambientCG",
+      "source_page": "https://ambientcg.com/view?id=WoodFloor070",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "authoring_role": "herringbone parquet. Held for rooms that want a patterned floor; the straight-plank Poly Haven set is what the traced rooms use, because the reference interiors are laid in boards not parquet",
+      "files": [
+        {
+          "path": "WoodFloor070/WoodFloor070_2K-JPG_Color.jpg",
+          "sha256": "183e58b14e3fb74a3ba5da7806861c65db0f7c5ad6cb1aa13bb21a60c037e017"
+        },
+        {
+          "path": "WoodFloor070/WoodFloor070_2K-JPG_Displacement.jpg",
+          "sha256": "4610e91c6f50bd4715588076ae408fb42880388393e38797d9587df095a389c4"
+        },
+        {
+          "path": "WoodFloor070/WoodFloor070_2K-JPG_NormalDX.jpg",
+          "sha256": "d461f70b98fc17392701e86372d2ebdf1c5a464af3d04c1625956394b66a77ba"
+        },
+        {
+          "path": "WoodFloor070/WoodFloor070_2K-JPG_NormalGL.jpg",
+          "sha256": "4cbf1cce2c7351ab85bb066e962ba31669f3f9224ed6a2baa9df30dbfad7a65d"
+        },
+        {
+          "path": "WoodFloor070/WoodFloor070_2K-JPG_Roughness.jpg",
+          "sha256": "a647bf50f76e45b56d333f120639d688c7562c8fd9af4e8331c547f19ac65289"
+        }
+      ],
+      "transformations": [
+        "Mapped by object coordinates so plank width is a real dimension rather than a UV guess."
       ]
     }
   ]

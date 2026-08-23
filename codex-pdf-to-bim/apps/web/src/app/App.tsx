@@ -27,7 +27,11 @@ export function App() {
             <Route path="/projects/:projectId/model" element={<ModelPage />} />
             <Route path="/projects/:projectId/render" element={<RenderPage />} />
             <Route path="/projects/:projectId/report" element={<ReportPage />} />
+            {/* The kitchen spike, kept for comparison. The house is the live path. */}
             <Route path="/tour-spike" element={<TourPage />} />
+            <Route path="/tour/first-floor" element={<TourPage basePath="/tour-a1" />} />
+            <Route path="/tour/building" element={<TourPage basePath="/tour-building" />} />
+            <Route path="/tour" element={<TourPage basePath="/tour-building" />} />
             <Route path="*" element={<HomePage />} />
           </Routes>
         </Suspense>

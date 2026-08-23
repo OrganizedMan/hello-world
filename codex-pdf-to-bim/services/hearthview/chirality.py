@@ -51,3 +51,32 @@ def blender_to_gltf(x: float, y: float) -> Point:
 def matches_drawing(sink: Point, range_: Point, island: Point) -> bool:
     """True when the model has the same handedness as A-1."""
     return (model_turn(sink, range_, island) > 0) == (plan_turn() > 0)
+
+
+# Testing a *mapping* rather than a built model. The landmarks above are kitchen
+# fixtures, which is fine for the kitchen and useless for a bedroom; every floor
+# of the house needs the same question asked without naming furniture.
+#
+# Three probe points in sheet coordinates: the origin, one due east of it, one
+# due north. On the sheet +x is east and PDF y grows *downwards*, so north is
+# -y. A mapping that preserves the drawing's handedness sends these to a
+# positive turn, because east x north = up.
+_PROBE_ORIGIN: Point = (0.0, 0.0)
+_PROBE_EAST: Point = (100.0, 0.0)
+_PROBE_NORTH: Point = (0.0, -100.0)
+
+
+def mapping_preserves_handedness(to_plan) -> bool:
+    """True when a PDF-to-plan mapping keeps the drawing's handedness.
+
+    ``to_plan`` takes ``(pdf_x, pdf_y)`` and returns plan ``(east, north)`` in
+    any consistent unit; only the sign of the result matters. Measuring south
+    instead of north, or flipping x, reverses the turn and yields a mirrored
+    world -- and no amount of correct tracing repairs that, because the
+    coordinates going in were already right. That is how the kitchen shipped
+    reflected while driven by the trace.
+    """
+    origin, east, north = (
+        to_plan(*probe) for probe in (_PROBE_ORIGIN, _PROBE_EAST, _PROBE_NORTH)
+    )
+    return _turn(origin, east, north) > 0

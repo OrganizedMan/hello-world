@@ -242,6 +242,20 @@ def _validate_authoring_inputs(assets_dir: Path) -> dict[str, Any]:
 
 
 def _set_eevee_engine(render: Any) -> None:
+    """Pick the render engine for the poster.
+
+    EEVEE is the right default: it is fast and the poster is only a loading
+    placeholder. But EEVEE initialises a GPU context, and on a headless machine
+    without libEGL that aborts the whole process -- not an exception that can be
+    caught, the interpreter is gone. Setting HEARTHVIEW_RENDER_ENGINE=CYCLES
+    renders on the CPU instead, which is what lets the scene be built somewhere
+    without a display. The exported GLB is identical either way; only the poster
+    image differs.
+    """
+    requested = os.environ.get("HEARTHVIEW_RENDER_ENGINE", "").strip().upper()
+    if requested == "CYCLES":
+        render.engine = "CYCLES"
+        return
     try:
         render.engine = "BLENDER_EEVEE_NEXT"
     except TypeError:
@@ -1215,17 +1229,77 @@ def _create_dishwasher(start: float, width: float, depth: float, materials: dict
     create_cylinder("HV_DISHWASHER_PULL", radius=0.008, depth=width * 0.62, location=(center_x, depth + 0.028, 0.78), rotation=(0.0, math.pi / 2, 0.0), material=materials["bronze"], parent=root, vertices=24)
 
 
+def _cut_opening(target: bpy.types.Object, size: tuple[float, float, float],
+                 location: tuple[float, float, float]) -> None:
+    """Boolean a rectangular hole through an object, then drop the cutter."""
+    cutter = create_box("HV_CUTTER_TMP", size, location)
+    modifier = target.modifiers.new("HV_OPENING", type="BOOLEAN")
+    modifier.operation = "DIFFERENCE"
+    modifier.object = cutter
+    modifier.solver = "EXACT"   # Blender 5 dropped FAST
+    bpy.context.view_layer.objects.active = target
+    bpy.ops.object.modifier_apply(modifier=modifier.name)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+
+
 def _create_sink_and_faucet(center_x: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
-    create_box("HV_SINK_RIM", (0.66, 0.43, 0.035), (center_x, 0.37, 0.94), material=materials["steel"], parent=root, bevel=0.02, bevel_segments=5)
-    create_box("HV_SINK_BASIN", (0.57, 0.34, 0.06), (center_x, 0.37, 0.958), material=materials["black"], parent=root, bevel=0.025, bevel_segments=5)
+    rim = create_box("HV_SINK_RIM", (0.66, 0.43, 0.035), (center_x, 0.37, 0.94), material=materials["steel"], parent=root, bevel=0.02, bevel_segments=5)
+    # Cut the bowl opening out of the rim, so it reads as a sink rather than a
+    # steel plate lying on the counter. The carve leaves the outer dimensions
+    # alone, which matters: HV_SINK_RIM is one of the landmarks measure_glb
+    # checks against the trace, and it is measured from its bounding box.
+    _cut_opening(rim, (0.57, 0.34, 0.30), (center_x, 0.37, 0.94))
+    # The bowl is a recess, not a block. This sat at z 0.928..0.988 -- above the
+    # 0.94 rim -- so the sink read as a dark slab standing on the counter.
+    basin = create_box(
+        "HV_SINK_BASIN", (0.59, 0.36, 0.185), (center_x, 0.37, 0.8525),
+        material=materials["steel"], parent=root, bevel=0.012, bevel_segments=4,
+    )
+    # Hollow it from above, leaving a 12 mm shell. A solid block here shows only
+    # its top face through the rim opening, which renders as a dark panel rather
+    # than a bowl you can see the inside of.
+    _cut_opening(basin, (0.566, 0.336, 0.20), (center_x, 0.37, 0.876))
+    # A gooseneck rises directly behind the basin and arcs forward over it, all
+    # in one vertical plane. The previous run started 0.22 m to the right of the
+    # sink and ended at its centre, so the tube swept sideways across the bowl;
+    # with AUTO bezier handles that sideways travel became a loop, and it read
+    # as a cartoon rather than a tap.
+    spout_x = center_x
+    behind_basin = 0.15          # metres from the wall: clear of the rim, on the deck
+    over_basin = 0.36            # the bowl's centre line, where water should land
     create_curve_tube(
         "HV_GOSENECK_FAUCET",
-        [(center_x + 0.22, 0.18, 0.96), (center_x + 0.22, 0.18, 1.34), (center_x, 0.26, 1.39), (center_x, 0.36, 1.20)],
-        radius=0.014,
-        material=materials["bronze"],
+        [
+            (spout_x, behind_basin, 0.95),          # base on the counter
+            (spout_x, behind_basin, 1.20),          # straight rise
+            (spout_x, behind_basin + 0.06, 1.29),   # into the bend
+            (spout_x, over_basin - 0.04, 1.30),     # apex, flattened
+            (spout_x, over_basin, 1.17),            # spout, pointing down
+        ],
+        radius=0.011,            # 22 mm, a plausible tube; 28 mm read as plumbing
+        material=materials["steel"],
         parent=root,
     )
-    create_cylinder("HV_FAUCET_HANDLE", radius=0.012, depth=0.14, location=(center_x + 0.29, 0.18, 1.08), material=materials["bronze"], parent=root, vertices=24)
+    # Lever beside the base rather than floating 0.29 m away over the counter.
+    create_cylinder(
+        "HV_FAUCET_HANDLE",
+        radius=0.009,
+        depth=0.11,
+        location=(spout_x + 0.075, behind_basin + 0.01, 1.03),
+        rotation=(math.radians(62.0), 0.0, 0.0),
+        material=materials["steel"],
+        parent=root,
+        vertices=24,
+    )
+    create_cylinder(
+        "HV_FAUCET_BASE",
+        radius=0.024,
+        depth=0.02,
+        location=(spout_x, behind_basin, 0.95),
+        material=materials["steel"],
+        parent=root,
+        vertices=32,
+    )
 
 
 def _create_range_and_hood(start: float, width: float, depth: float, materials: dict[str, bpy.types.Material], root: bpy.types.Object) -> None:
