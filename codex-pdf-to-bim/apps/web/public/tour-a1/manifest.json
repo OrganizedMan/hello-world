@@ -9,7 +9,7 @@
     "points_per_foot": 18.0
   },
   "provenance": {
-    "verified_percent": 69.7,
+    "verified_percent": 70.3,
     "measured": [
       "wall footprints and thicknesses (wall poche)",
       "opening positions and widths (gaps in the wall runs)",
@@ -641,7 +641,7 @@
     "glb": "a1-first-floor.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 164240
+    "total_browser_bytes": 162800
   },
   "runtime": {
     "eye_height_meters": 1.562,

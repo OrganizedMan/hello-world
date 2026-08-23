@@ -178,8 +178,42 @@ def plan_from_pdf(footprint):
     return to_plan
 
 
+def _stays_in_the_stairwell(extraction):
+    """A test for whether a point is still in the room the stair started in.
+
+    The flood fill stops at walls, so "the same room" is "inside the same
+    enclosure" without needing to know what the enclosure is called -- which
+    matters, because only A-1 labels its staircase.
+    """
+    from hearthview.a1_rooms import build_room_grid
+
+    grid = build_room_grid(extraction)
+
+    def same_room_as(x0: float, x1: float, y: float):
+        start = grid.at((x0 + x1) / 2, y)
+        name = start.name if start else None
+
+        def test(left: float, right: float, py: float) -> bool:
+            # Across the whole tread, not down its middle. A tread is the best
+            # part of three feet wide, so a centre line can still be in the
+            # stairwell while both ends are out in the kitchen -- which is
+            # exactly how the first floor's flight came to stand in the family
+            # room. Landing on wall poche is fine and expected; landing in a
+            # different room is not.
+            for px in (left + 1.0, (left + right) / 2, right - 1.0):
+                here = grid.at(px, py)
+                if here is not None and here.name != name:
+                    return False
+            return True
+
+        return test
+
+    return same_room_as
+
+
 def _complete_the_flight(
-    drawn: list[tuple[Point, Point]], *, rise: float, ceiling_inches: float
+    drawn: list[tuple[Point, Point]], *, rise: float, ceiling_inches: float,
+    inside=None,
 ) -> tuple[list[tuple[Point, Point]], int]:
     """Carry a drawn flight the rest of the way up to the floor above.
 
@@ -207,6 +241,14 @@ def _complete_the_flight(
     (ax, ay), (bx, _) = drawn[-1]
     for step in range(1, max(0, wanted - len(drawn)) + 1):
         y = ay - going * step
+        # Stop at the wall. A flight carried blindly in a straight line walked
+        # out of the stairwell and stood in the middle of the family room --
+        # which is what a continuation has no way of knowing unless it is
+        # asked. A real stair turns or lands there; this pipeline reads plans,
+        # not sections, and has no way to tell which, so it stops instead of
+        # inventing a landing.
+        if inside is not None and not inside(ax, bx, y):
+            break
         treads.append(((ax, y), (bx, y)))
     return treads, len(treads) - len(drawn)
 
@@ -357,7 +399,13 @@ def build_a1_massing(
     )
     rise_is_printed = extraction.stair_note is not None
     drawn = sorted(extraction.stair_treads, key=lambda t: -t[0][1])
-    treads, invented = _complete_the_flight(drawn, rise=rise, ceiling_inches=ceiling.inches)
+    inside = None
+    if drawn:
+        top = drawn[-1]
+        inside = _stays_in_the_stairwell(extraction)(top[0][0], top[1][0], top[0][1])
+    treads, invented = _complete_the_flight(
+        drawn, rise=rise, ceiling_inches=ceiling.inches, inside=inside,
+    )
     for index, ((ax, ay), (bx, by)) in enumerate(treads):
         element = f"stair.{index:03d}"
         if not rise_is_printed or index >= len(drawn):

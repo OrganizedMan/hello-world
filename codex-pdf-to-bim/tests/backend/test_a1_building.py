@@ -166,3 +166,53 @@ def test_treads_beyond_the_drawn_flight_are_declared_assumed(building) -> None:
         if storey.sheet == "A-1":
             # A-1 prints its riser height, so only the continuation is assumed.
             assert invented, "A-1's flight is drawn short and the rest is assumed"
+
+
+def test_an_invented_tread_stays_in_the_stairwell(building) -> None:
+    """A flight carried on in a straight line walks out of the building.
+
+    The first floor's continuation stood in the middle of the family room,
+    because the test for "still inside" ran down the tread's centre line and a
+    tread is the best part of three feet wide. Both ends have to be asked.
+
+    The claim is about the treads this pipeline invents, not the ones the sheet
+    draws: where the drawing puts a tread on the stairwell boundary that is the
+    drawing's business. Landing on wall poche is expected -- a stair abuts its
+    own walls. Standing in another room is the failure.
+    """
+    from hearthview.a1_rooms import build_room_grid
+    from hearthview.a1_extract import POINTS_PER_FOOT
+
+    datum = building.datum
+    for storey in building.storeys:
+        grid = build_room_grid(storey.extraction)
+        treads = [p for p in storey.primitives if p.part_kind == "stair"]
+        drawn = len(storey.extraction.stair_treads)
+        if len(treads) <= drawn:
+            continue
+
+        def room_at(x_ticks: float, y_ticks: float):
+            x = datum.x0 + (x_ticks / TICKS_PER_INCH / 12) * POINTS_PER_FOOT
+            y = datum.y1 - (y_ticks / TICKS_PER_INCH / 12) * POINTS_PER_FOOT
+            return grid.at(x, y)
+
+        seen: dict[str, int] = {}
+        for item in treads[:drawn]:
+            room = room_at((item.x0_ticks + item.x1_ticks) // 2,
+                           (item.y0_ticks + item.y1_ticks) // 2)
+            if room is not None:
+                seen[room.name] = seen.get(room.name, 0) + 1
+        stairwell = max(seen, key=seen.get) if seen else None
+
+        for item in treads[drawn:]:
+            across = [item.x0_ticks + 1, (item.x0_ticks + item.x1_ticks) // 2,
+                      item.x1_ticks - 1]
+            middle = (item.y0_ticks + item.y1_ticks) // 2
+            at_home = sum(
+                1 for x in across
+                if (r := room_at(x, middle)) is None or r.name == stairwell
+            )
+            assert at_home >= 2, (
+                f"{storey.sheet}: an invented tread sits outside {stairwell}, "
+                f"in {[room_at(x, middle) and room_at(x, middle).name for x in across]}"
+            )

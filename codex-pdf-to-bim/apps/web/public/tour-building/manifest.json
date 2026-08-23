@@ -9,7 +9,7 @@
     "points_per_foot": 18.0
   },
   "provenance": {
-    "verified_percent": 69.7,
+    "verified_percent": 70.3,
     "measured": [
       "wall footprints and thicknesses (wall poche)",
       "opening positions and widths (gaps in the wall runs)",
@@ -642,7 +642,7 @@
     "glb": "a1-building.glb",
     "poster": "poster.webp",
     "environment": "environment.hdr",
-    "total_browser_bytes": 420972
+    "total_browser_bytes": 418800
   },
   "runtime": {
     "eye_height_meters": 1.562,
@@ -2057,8 +2057,8 @@
       "node": "storey_a1",
       "base_meters": 0.0,
       "ceiling_meters": 2.5654,
-      "primitives": 221,
-      "verified_fraction": 0.6968
+      "primitives": 219,
+      "verified_fraction": 0.7032
     },
     {
       "sheet": "A-2",
@@ -2066,8 +2066,8 @@
       "node": "storey_a2",
       "base_meters": 2.8702,
       "ceiling_meters": 2.4384,
-      "primitives": 163,
-      "verified_fraction": 0.6135
+      "primitives": 162,
+      "verified_fraction": 0.6173
     },
     {
       "sheet": "A-3",
