@@ -432,3 +432,41 @@ rendered at all, and the environment drops to a fraction of its strength --
 just enough for the specular reflection in a worktop or a pane of glass. What
 it is *not* is a substitute for a real-time renderer that could do this itself.
 Nothing in the bake moves. The sun is at the hour it was baked at, forever.
+
+### The bake is not the loop
+
+Baking is measured in hours; grading, denoising, tone mapping and export are
+measured in seconds. Chaining them meant every downstream question cost another
+bake, and it is the single most expensive mistake available in this pipeline.
+The atlas is kept in `spikes/tour_quality/bakes/` and `--reuse-lightmap` loads
+it back, which turns a hundred-minute round trip into forty seconds. Reuse
+assumes unchanged geometry: the unwrap is deterministic, but only for that
+build.
+
+Three things about the bake itself, each of which cost a bake to learn:
+
+**Cycles denoising is a render setting.** `scene.render.bake` has no
+equivalent and the bake operator does not denoise, so an atlas comes back
+exactly as noisy as its sample count leaves it. Blender 5's compositor could
+run OpenImageDenoise over it and needs a GPU context. A median in numpy is the
+right filter for what is actually there — undersampled path tracing leaves
+salt and pepper, which a median removes and a mean only spreads.
+
+**A filter cannot rescue undersampling.** 5×5, 7×7 and 9×9 medians all plateau
+at the same residue, because what is left is low-frequency Monte Carlo
+variance and no spatial filter can tell that from a real light gradient. The
+fix was in the sampling: a tight adaptive threshold, no sample floor, clamped
+indirect fireflies, and fast GI off — it approximates exactly the deep bounces
+this bake exists to capture. Tightening the threshold made the bake *faster*,
+not slower, because adaptive sampling only ever saves time on texels that have
+converged.
+
+**Packing decides resolution, not image size.** `smart_project`'s own packer
+left the atlas ninety-six per cent empty at twelve texels to the metre.
+Unwrapping with no margin, levelling texel density by real area, and repacking
+with concave island shapes gives forty per cent coverage and thirty-eight
+texels to the metre — three times the detail for one second of work, where
+buying it with image size would have cost nine times the bake.
+
+`scripts/check_export.py` guards all of this from the artifact side, because
+every one of these failures exports cleanly and raises nothing.

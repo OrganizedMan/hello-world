@@ -1493,6 +1493,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="bake contact shadow, or the whole Cycles lighting solution")
     parser.add_argument("--bake-size", type=int, default=2048)
     parser.add_argument("--bake-samples", type=int, default=16)
+    parser.add_argument("--atlas", type=Path,
+                        help="where to keep the baked atlas for later reuse")
     parser.add_argument("--reuse-lightmap", type=Path,
                         help="load an atlas baked earlier instead of baking again")
     parser.add_argument("--reuse-scale", type=float, default=1.0,
@@ -1571,17 +1573,20 @@ def main(argv: list[str] | None = None) -> int:
         print("furniture " + ", ".join(f"{k}:{v}" for k, v in sorted(furniture.items())))
     if finishes:
         print("finishes  " + ", ".join(f"{k}:{v} faces" for k, v in sorted(finishes.items())))
-    if baked and args.bake == "light" and args.out and args.reuse_lightmap is None:
-        # Keep the atlas beside the model. Baking is measured in hours and
-        # everything after it in seconds, so the two should not be chained:
-        # a change to grading, tone or export can be re-run against this.
+    if baked and args.bake == "light" and args.atlas and args.reuse_lightmap is None:
+        # Keep the atlas somewhere it is not served. Baking is measured in
+        # hours and everything after it in seconds, so the two should not be
+        # chained: grading, tone and export can all be re-run against this
+        # without paying for the bake again. It is deliberately not beside the
+        # GLB, where the browser would never ask for it and every deployment
+        # would carry it anyway.
         atlas = bpy.data.images.get("HV_LIGHTMAP")
         if atlas is not None:
-            sidecar = args.out.with_name(args.out.stem + "-lightmap.png")
-            atlas.filepath_raw = str(sidecar)
+            args.atlas.parent.mkdir(parents=True, exist_ok=True)
+            atlas.filepath_raw = str(args.atlas)
             atlas.file_format = "PNG"
             atlas.save()
-            print(f"atlas     kept at {sidecar} (scale {light_scale})")
+            print(f"atlas     kept at {args.atlas} (scale {light_scale})")
 
     if baked:
         print(f"bake      {args.bake} into {baked} materials at {args.bake_size}px"
