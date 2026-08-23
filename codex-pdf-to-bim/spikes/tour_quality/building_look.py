@@ -68,6 +68,53 @@ def _clear_nodes(material: bpy.types.Material):
     return tree, shader
 
 
+def painted(source: Path, *, saturation: float, value: float) -> Path:
+    """Grade a photographed texture into paint, on disk, once.
+
+    This has to happen to the image file and not in the node tree. A Hue/
+    Saturation node is a node graph, and glTF has no node graphs -- the
+    exporter drops it without complaint and ships the photograph, so the bake
+    lights walls that the browser then paints a different colour. The same trap
+    that made the procedural materials export as nothing, and the same trap
+    that has been quietly discarding the tints in `image_maps` all along.
+
+    The result is cached next to the asset it derives from, and is reproducible
+    from a committed input by construction.
+    """
+    import numpy as np
+
+    out = source.parent / "derived" / f"{source.stem}_s{saturation:.2f}_v{value:.2f}.png"
+    if out.is_file():
+        return out
+
+    original = bpy.data.images.load(str(source), check_existing=False)
+    width, height = original.size
+    buffer = np.empty(width * height * original.channels, dtype=np.float32)
+    original.pixels.foreach_get(buffer)
+    pixels = buffer.reshape(-1, original.channels)
+
+    # These are the stored values, not linear ones: for an 8-bit image Blender
+    # hands back the bytes over 255 without decoding them, so the grade is in
+    # display space and the multiplier is smaller than a linear one would be.
+    # Treating them as linear multiplied an already-bright wall past white.
+    rgb = pixels[:, :3]
+    grey = rgb.mean(axis=1, keepdims=True)
+    rgb[:] = np.clip((grey + (rgb - grey) * saturation) * value, 0.0, 1.0)
+    if original.channels > 3:
+        pixels[:, 3] = 1.0
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    graded = bpy.data.images.new(out.stem, width, height, alpha=False)
+    graded.colorspace_settings.name = "sRGB"
+    graded.pixels.foreach_set(pixels.reshape(-1))
+    graded.filepath_raw = str(out)
+    graded.file_format = "PNG"
+    graded.save()
+    bpy.data.images.remove(original)
+    bpy.data.images.remove(graded)
+    return out
+
+
 def image_maps(
     tree,
     shader,
@@ -333,17 +380,16 @@ def textured_plaster() -> bpy.types.Material:
     tree, shader = _clear_nodes(material)
     image_maps(
         tree, shader,
-        colour=ASSETS / "beige_wall_001_diff_1k.jpg",
-        roughness=ASSETS / "beige_wall_001_rough_1k.jpg",
-        normal=ASSETS / "beige_wall_001_nor_gl_1k.jpg",
-        scale=1.6,
-        tint=(1.06, 1.05, 1.02, 1.0),
         # The photograph averages a mid-tan -- around a third of the light it
         # receives -- and interior paint reflects three-quarters of it. Left as
         # shot, every room came back brown and starved of bounce, because a
-        # dark wall is also a wall that passes almost nothing on.
-        saturation=0.34,
-        value=1.95,
+        # dark wall is also a wall that passes almost nothing on. Graded on
+        # disk rather than in the node tree, because a node tree does not
+        # survive the export and the bake would then disagree with the render.
+        colour=painted(ASSETS / "beige_wall_001_diff_1k.jpg", saturation=0.34, value=1.35),
+        roughness=ASSETS / "beige_wall_001_rough_1k.jpg",
+        normal=ASSETS / "beige_wall_001_nor_gl_1k.jpg",
+        scale=1.6,
     )
     return material
 

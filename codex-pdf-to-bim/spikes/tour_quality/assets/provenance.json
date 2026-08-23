@@ -106,7 +106,8 @@
       "transformations": [
         "Tile at 2.4 repeats in both mapped UV axes.",
         "Apply a warm beige tint and 1.05 roughness multiplier.",
-        "Mark normal and roughness images as non-color data."
+        "Mark normal and roughness images as non-color data.",
+        "Grade the diffuse map to interior paint on disk -- saturation 0.34, value 1.35 -- written to derived/beige_wall_001_diff_1k_s0.34_v1.35.png. The photograph averages sRGB 159,141,120, about a third of the light falling on it; interior paint reflects roughly three quarters. It is graded to a file rather than in the node tree because glTF carries no node graphs: the exporter drops the grade without complaint, and the bake would then light walls the browser paints a different colour."
       ]
     },
     {
