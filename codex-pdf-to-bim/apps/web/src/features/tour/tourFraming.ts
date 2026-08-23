@@ -237,3 +237,28 @@ export function floorBeneath(y: number, storeyBases: readonly number[]): number 
   }
   return seen ? best : (storeyBases[0] ?? 0);
 }
+
+
+/**
+ * How the camera should meter, given where it is standing.
+ *
+ * These are stops, not preferences. Baked light is linear, and an interior
+ * sits far below the sunlit exterior that sets the top of the range: the
+ * median lit texel in this house is about a quarter of the atlas peak, so a
+ * white wall exposed for the outside renders at sRGB 75 -- which is brown. A
+ * real interior photograph blows the windows out precisely so that the room
+ * reads correctly, and a real exterior photograph does not. One exposure
+ * cannot do both: measured, the interior stop clips 3.5% of the exterior view,
+ * and the exterior stop puts an interior wall at a third of its true value.
+ */
+export const EXPOSURE = { interior: 6.0, exterior: 2.2 } as const;
+
+
+export function exposureFor(
+  box: Box3 | null,
+  position: { x: number; y: number; z: number },
+): number {
+  if (!box) return EXPOSURE.exterior;
+  const inside = new Vector3(position.x, position.y, position.z);
+  return box.containsPoint(inside) ? EXPOSURE.interior : EXPOSURE.exterior;
+}

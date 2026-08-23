@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   boundsOfStoreys,
   ceilingsAreInTheWay,
+  EXPOSURE,
+  exposureFor,
   floorBeneath,
   framingForBounds,
   isEffectivelyVisible,
@@ -248,5 +250,40 @@ describe("isEffectivelyVisible", () => {
 
   it("rejects nothing at all", () => {
     expect(isEffectivelyVisible(null)).toBe(false);
+  });
+});
+
+
+describe("exposureFor", () => {
+  /**
+   * A white wall exposed for the sunlit outside renders at sRGB 75, which is
+   * brown -- and that is what the model shipped as until it was measured. One
+   * exposure cannot serve both: baked light is linear, and an interior sits far
+   * below the exterior that sets the top of the range.
+   */
+  it("opens up when the camera is standing in the room", () => {
+    const box = boundsOfStoreys(building(), ["storey_a1"])!;
+
+    expect(exposureFor(box, { x: 6, y: 1.6, z: -8 })).toBe(EXPOSURE.interior);
+  });
+
+  it("stops down when the camera is outside looking at the model", () => {
+    const box = boundsOfStoreys(building(), ["storey_a1"])!;
+
+    expect(exposureFor(box, { x: 30, y: 20, z: 25 })).toBe(EXPOSURE.exterior);
+  });
+
+  it("stops down for a camera above an open-topped floor", () => {
+    const box = boundsOfStoreys(building(), ["storey_a1"])!;
+
+    expect(exposureFor(box, { x: 6, y: box.max.y + 4, z: -8 })).toBe(EXPOSURE.exterior);
+  });
+
+  it("meters for the exterior when nothing is on screen yet", () => {
+    expect(exposureFor(null, { x: 0, y: 0, z: 0 })).toBe(EXPOSURE.exterior);
+  });
+
+  it("is a real stop apart, not a nudge", () => {
+    expect(EXPOSURE.interior / EXPOSURE.exterior).toBeGreaterThan(2);
   });
 });

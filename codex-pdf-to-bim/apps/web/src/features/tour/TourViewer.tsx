@@ -21,6 +21,8 @@ import type { TourCameraPreset, TourManifest } from "./tourManifest";
 import {
   boundsOfStoreys,
   ceilingsAreInTheWay,
+  EXPOSURE,
+  exposureFor,
   isEffectivelyVisible,
   framingForBounds,
   floorBeneath,
@@ -470,7 +472,12 @@ function TourExperience({
     };
   }, [camera, gl.domElement, mode, onModeChange]);
 
-  useFrame((_, frameDelta) => {
+  useFrame(({ gl }, frameDelta) => {
+    // Meter for what the camera is actually looking at. Inside the storey's
+    // own bounds is an interior; anywhere else is the model seen from outside.
+    const wanted = exposureFor(visibleBox, camera.position);
+    if (gl.toneMappingExposure !== wanted) gl.toneMappingExposure = wanted;
+
     if (mode !== "walk") return;
     const keys = pressedKeys.current;
     const forwardInput = Number(keys.has("w") || keys.has("arrowup")) - Number(keys.has("s") || keys.has("arrowdown"));
@@ -561,7 +568,7 @@ export function TourViewer(props: TourViewerProps) {
           // look like the same building.
           gl={{ antialias: true, outputColorSpace: SRGBColorSpace, toneMapping: NeutralToneMapping }}
           onCreated={({ gl }) => {
-            gl.toneMappingExposure = 1.5;
+            gl.toneMappingExposure = EXPOSURE.exterior;
           }}
           shadows={{ type: PCFSoftShadowMap }}
         >

@@ -470,3 +470,33 @@ buying it with image size would have cost nine times the bake.
 
 `scripts/check_export.py` guards all of this from the artifact side, because
 every one of these failures exports cleanly and raises nothing.
+
+### The camera meters for what it is looking at
+
+A white wall came out brown, and neither the albedo nor the bake was at fault:
+the albedo was 195,190,178 in the export and the light was clean. The exposure
+was metering for the sunlit exterior.
+
+Baked light is linear. The sunlit outside sets the top of the range, and the
+median lit texel indoors is about a quarter of the atlas peak, so a 0.55
+albedo lands at 0.15 linear -- sRGB 75, which the eye reads as dark brown. A
+real interior photograph blows the windows out precisely so the room reads
+correctly; a real exterior photograph does not. One exposure cannot do both,
+and the sweep says so:
+
+| exposure | interior wall | exterior clipped |
+| --- | --- | --- |
+| 1.5 | 88, 85, 81 | 0.03% |
+| 3.0 | 134, 130, 125 | 0.03% |
+| 4.5 | 165, 161, 155 | 0.20% |
+| 6.0 | 190, 185, 179 | 3.53% |
+
+`exposureFor()` picks the stop from whether the camera is inside the storey's
+own bounds. Two stops apart, chosen by where the camera is standing, which is
+what a camera operator does.
+
+The wall paint is a separate matter and was also wrong: seventeen points of
+saturation between channels reads as tan across a large flat surface. It is
+graded nearly neutral now, and because the atlas holds irradiance with no
+albedo in it, changing the paint costs a re-export and not a re-bake -- forty
+seconds against twenty-six minutes.

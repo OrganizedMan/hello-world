@@ -383,10 +383,13 @@ def textured_plaster() -> bpy.types.Material:
         # The photograph averages a mid-tan -- around a third of the light it
         # receives -- and interior paint reflects three-quarters of it. Left as
         # shot, every room came back brown and starved of bounce, because a
-        # dark wall is also a wall that passes almost nothing on. Graded on
+        # dark wall is also a wall that passes almost nothing on. Nearly all
+        # the photograph's colour goes too: seventeen points of saturation
+        # between channels reads as tan on a large flat surface, and interior
+        # walls here are white. Graded on
         # disk rather than in the node tree, because a node tree does not
         # survive the export and the bake would then disagree with the render.
-        colour=painted(ASSETS / "beige_wall_001_diff_1k.jpg", saturation=0.34, value=1.35),
+        colour=painted(ASSETS / "beige_wall_001_diff_1k.jpg", saturation=0.12, value=1.54),
         roughness=ASSETS / "beige_wall_001_rough_1k.jpg",
         normal=ASSETS / "beige_wall_001_nor_gl_1k.jpg",
         scale=1.6,
