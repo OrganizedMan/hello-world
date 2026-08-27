@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly NY Penn history backup
+
+[Timer]
+OnCalendar=*-*-* 04:15:00
+# Run on next boot if the Pi was off at the scheduled time.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,9 @@
+[Unit]
+Description=Back up the NY Penn history database
+After=nypenn-collector.service
+
+[Service]
+Type=oneshot
+User=pi
+ExecStart=/home/pi/nypenn/deploy/backup.sh
+SyslogIdentifier=nypenn-backup

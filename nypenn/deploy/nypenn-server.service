@@ -1,0 +1,27 @@
+[Unit]
+Description=NY Penn departure board server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/nypenn
+EnvironmentFile=/home/pi/nypenn/.env
+ExecStart=/usr/bin/node server/dist/index.js
+
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+
+SyslogIdentifier=nypenn-server
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+# The server opens the database read-only, so it needs no write access.
+ReadOnlyPaths=/home/pi/nypenn/data
+
+[Install]
+WantedBy=multi-user.target

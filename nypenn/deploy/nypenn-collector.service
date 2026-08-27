@@ -1,0 +1,35 @@
+[Unit]
+Description=NY Penn departure collector
+Documentation=https://github.com/OrganizedMan/hello-world
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/nypenn
+EnvironmentFile=/home/pi/nypenn/.env
+ExecStart=/usr/bin/node collector/dist/index.js
+
+# A dead collector loses history that cannot be re-collected, so it always
+# comes back. StartLimitIntervalSec=0 keeps systemd from giving up during a
+# long network outage.
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=0
+
+# Give the collector time to flush its buffer before it is killed.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Keep the journal quiet; per-poll detail is behind LOG_LEVEL=debug anyway.
+SyslogIdentifier=nypenn-collector
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=/home/pi/nypenn/data
+
+[Install]
+WantedBy=multi-user.target
