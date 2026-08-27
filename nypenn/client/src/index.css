@@ -1,0 +1,176 @@
+/* Dark by default: this is read on a phone in a dim station concourse. */
+:root {
+  --bg: #0b0d10;
+  --surface: #14181d;
+  --surface-raised: #1c2229;
+  --border: #262d36;
+  --text: #f2f5f8;
+  --text-dim: #8b96a5;
+
+  /* Confidence palette. Posted tracks use --text so that a fact never
+     shares a colour with a guess. */
+  --high: #4ade80;
+  --medium: #fbbf24;
+  --low: #f87171;
+
+  --radius: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  /* Keep content clear of the notch and home indicator. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.app { max-width: 640px; margin: 0 auto; padding: 0 12px 32px; }
+
+header.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 4px 10px;
+  background: linear-gradient(var(--bg) 70%, transparent);
+}
+
+h1 { font-size: 1.05rem; margin: 0; letter-spacing: 0.01em; }
+.muted { color: var(--text-dim); font-size: 0.78rem; }
+
+/* Stale banner — the board is only as good as the last poll. */
+.banner {
+  background: #3b2412;
+  border: 1px solid #6b3d16;
+  color: #fbbf24;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+}
+.banner.error { background: #3b1518; border-color: #6b1f24; color: #f87171; }
+
+.rows { display: flex; flex-direction: column; gap: 6px; }
+
+.row {
+  display: grid;
+  grid-template-columns: 78px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 11px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.row:hover { background: var(--surface-raised); }
+.row.pinned { border-color: #35507a; }
+
+.time {
+  font-size: 0.98rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  /* Never let "7:20 PM" break across two lines — it costs a row of height
+     and makes the column ragged. */
+  white-space: nowrap;
+}
+.time .late { display: block; font-size: 0.7rem; color: var(--medium); font-weight: 500; }
+
+.dest { min-width: 0; }
+.dest .name {
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dest .sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+.dest .sub .status-delayed { color: var(--medium); }
+
+/* The track cell is the whole product. */
+.track { text-align: right; min-width: 66px; }
+.track .value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.track .label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; }
+
+/* Posted: plain white, no ornament. Fact needs no decoration. */
+.track.posted .value { color: var(--text); }
+.track.posted .label { color: var(--text-dim); }
+
+/* Predicted: coloured, italic, and prefixed — three independent signals, so
+   the distinction survives colour-blindness and a sunlit screen. */
+.track.predicted .value { font-style: italic; font-weight: 600; }
+.track.predicted .value::before {
+  content: "~";
+  /* Smaller and lifted to sit with the digit rather than tower over it. */
+  font-size: 0.62em;
+  vertical-align: 0.22em;
+  opacity: 0.6;
+  margin-right: 2px;
+}
+.track.predicted.high .value { color: var(--high); }
+.track.predicted.medium .value { color: var(--medium); }
+.track.predicted.low .value { color: var(--low); }
+.track.predicted .label { color: var(--text-dim); }
+
+.track.unknown .value { color: var(--text-dim); font-weight: 400; font-size: 1.15rem; }
+
+/* Detail panel */
+.sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 20;
+}
+.sheet {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px 14px 0 0; padding: 18px 16px 26px;
+  width: 100%; max-width: 640px; max-height: 82vh; overflow-y: auto;
+}
+.sheet h2 { margin: 0 0 2px; font-size: 1.1rem; }
+.sheet .section { margin-top: 18px; }
+.sheet .section h3 {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-dim); margin: 0 0 8px;
+}
+
+.history { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  background: var(--surface-raised); border: 1px solid var(--border);
+  border-radius: 7px; padding: 6px 9px; font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.chip .date { color: var(--text-dim); font-size: 0.68rem; display: block; }
+
+button.action {
+  background: var(--surface-raised); border: 1px solid var(--border);
+  color: var(--text); border-radius: 8px; padding: 10px 14px;
+  font-size: 0.85rem; cursor: pointer; width: 100%;
+}
+button.action:hover { background: #232b34; }
+
+/* Login */
+.login { max-width: 320px; margin: 18vh auto 0; padding: 0 16px; }
+.login input {
+  width: 100%; padding: 12px; margin-bottom: 10px; font-size: 1rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text);
+}
+.login .error { color: var(--low); font-size: 0.82rem; margin-bottom: 10px; }
+
+.empty { color: var(--text-dim); text-align: center; padding: 40px 0; font-size: 0.9rem; }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  font-size: 0.7rem; color: var(--text-dim);
+  padding: 14px 4px 0; border-top: 1px solid var(--border); margin-top: 16px;
+}
+.legend .swatch { font-weight: 700; font-style: italic; }

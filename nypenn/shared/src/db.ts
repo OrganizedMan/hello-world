@@ -15,15 +15,19 @@ export interface OpenOptions {
 export function openDb(path: string, opts: OpenOptions = {}): Db {
   const db = new Database(path, { readonly: opts.readonly ?? false });
 
-  // Must be set before any table exists, so incremental_vacuum can later
-  // reclaim space from purged observations without a full VACUUM rewrite.
-  db.pragma('auto_vacuum = INCREMENTAL');
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
+  // Connection-scoped, and safe on a read-only handle.
   db.pragma('temp_store = MEMORY');
   db.pragma('busy_timeout = 5000');
 
   if (!opts.readonly) {
+    // These persist in the database file itself, so only the writer sets
+    // them; attempting them on a read-only handle fails outright.
+    //
+    // auto_vacuum must be set before any table exists for incremental_vacuum
+    // to reclaim space from purged observations later without a full VACUUM.
+    db.pragma('auto_vacuum = INCREMENTAL');
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
     // ~4MB of WAL before a checkpoint, instead of the 1000-page default.
     db.pragma('wal_autocheckpoint = 1000');
   }
