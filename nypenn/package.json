@@ -1,0 +1,16 @@
+{
+  "name": "nypenn",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["shared", "collector", "server", "client"],
+  "scripts": {
+    "build": "npm run build -w @nypenn/shared && npm run build -w @nypenn/collector && npm run build -w @nypenn/server && npm run build -w @nypenn/client",
+    "test": "npm run test -w @nypenn/shared --if-present && npm run test -w @nypenn/collector --if-present && npm run test -w @nypenn/server --if-present",
+    "collector": "npm run start -w @nypenn/collector",
+    "server": "npm run start -w @nypenn/server"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
