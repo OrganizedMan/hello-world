@@ -1,0 +1,26 @@
+{
+  "name": "@nypenn/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "adduser": "node dist/adduser.js",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/test/*.test.js\""
+  },
+  "dependencies": {
+    "@nypenn/shared": "*",
+    "better-sqlite3": "^11.5.0",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  }
+}
