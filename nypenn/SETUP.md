@@ -118,8 +118,24 @@ enough history of their own.
 
 ```bash
 systemctl status nypenn-collector
-journalctl -u nypenn-collector -n 50
+journalctl -u nypenn-collector -n 50 --no-pager
 ```
+
+`--no-pager` matters: without it the lines are cut off at the terminal width,
+and the HTTP status code in a feed error is usually the part that gets cut.
+
+If systemd logs `Unknown key name 'StartLimitIntervalSec' in section 'Service'`,
+the installed unit predates the fix that moved that line to `[Unit]`. It is
+ignored where it was, so the unit gives up permanently after a fast crash loop
+instead of retrying forever. Re-run `./deploy/install.sh`, then:
+
+```bash
+sudo systemctl reset-failed nypenn-server nypenn-collector
+sudo systemctl restart nypenn-server nypenn-collector
+```
+
+`reset-failed` is the part that is easy to miss — a unit that already hit the
+old rate limit stays failed until it is cleared, no matter how good the fix is.
 
 **`health` says `"ok":false`**
 

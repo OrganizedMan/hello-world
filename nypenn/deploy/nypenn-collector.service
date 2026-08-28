@@ -3,6 +3,12 @@ Description=NY Penn departure collector
 After=network-online.target
 Wants=network-online.target
 
+# Never stop retrying. This belongs in [Unit]: systemd rejects it in
+# [Service] with "Unknown key", which silently leaves the default rate
+# limit in place and lets the unit give up for good after a fast crash
+# loop -- exactly when unattended restarts matter most.
+StartLimitIntervalSec=0
+
 [Service]
 Type=simple
 User=pi
@@ -12,7 +18,6 @@ ExecStart=/usr/bin/node collector/dist/index.js
 
 Restart=always
 RestartSec=10
-StartLimitIntervalSec=0
 
 KillSignal=SIGTERM
 TimeoutStopSec=30

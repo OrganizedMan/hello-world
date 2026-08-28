@@ -1,12 +1,18 @@
 [Unit]
 Description=NY Penn departure board server
-After=network-online.target nypenn-collector.service
-Wants=network-online.target
 
 # Ordering only, deliberately not a dependency. The collector creates the
 # database the server reads, so starting second avoids a pointless race on a
 # fresh install; but the server still starts, listens, and reports itself
 # unhealthy if the collector is dead, rather than following it down.
+After=network-online.target nypenn-collector.service
+Wants=network-online.target
+
+# Never stop retrying. This belongs in [Unit]: systemd rejects it in [Service]
+# with "Unknown key", which silently leaves the default rate limit in place and
+# lets the unit give up for good after a fast crash loop -- exactly when
+# unattended restarts matter most.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -17,7 +23,6 @@ ExecStart=/usr/bin/node server/dist/index.js
 
 Restart=always
 RestartSec=5
-StartLimitIntervalSec=0
 
 SyslogIdentifier=nypenn-server
 
