@@ -65,27 +65,6 @@ sudo systemctl enable --now nypenn-collector.service nypenn-server.service
 sudo systemctl enable --now nypenn-backup.timer
 
 echo
-echo "==> Collector is running and gathering history."
-
-# The collector is the urgent half and is now live. The server needs logins,
-# which cannot be generated until after this build — so if they are missing,
-# say exactly what to do rather than leaving a crash-looping unit behind.
-if ! grep -qE '^NYPENN_USERS=.+' .env; then
-  cat <<'NEXT'
-
-One step left — the server has no logins yet, so it will keep restarting
-until you add them:
-
-  node server/dist/adduser.js alice 'a good password'
-
-Paste the printed line into NYPENN_USERS in .env (comma-separate a second
-person), then:
-
-  sudo systemctl restart nypenn-server
-
-NEXT
-else
-  echo
-  echo "Done. Check it is collecting:"
-  echo "  curl -s localhost:${PORT:-3005}/api/health"
-fi
+echo "==> Done. Collector and server are running."
+echo "  Check it is collecting:  curl -s localhost:${PORT:-3005}/api/health"
+echo "  Open the board:          http://localhost:${PORT:-3005}"

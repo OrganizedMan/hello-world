@@ -3,9 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import { openDb } from '@nypenn/shared';
-import { issueToken, parseAccounts, requireAuth, verify } from './auth.js';
 import { BoardService } from './board.js';
 import { Predictor } from './predictor.js';
 
@@ -13,18 +11,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 const PORT = Number(process.env.PORT ?? 3005);
 const DB_PATH = process.env.NYPENN_DB ?? 'data/nypenn.db';
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  console.error('JWT_SECRET is required. Generate one with: openssl rand -hex 32');
-  process.exit(1);
-}
-
-const accounts = parseAccounts(process.env.NYPENN_USERS);
-if (accounts.length === 0) {
-  console.error('NYPENN_USERS is empty. Add an account with: npm run adduser -w @nypenn/server');
-  process.exit(1);
-}
 
 /** Cold-start fallbacks, used only until a train has real history. */
 const linePriors = JSON.parse(process.env.LINE_PRIORS ?? '{}') as Record<string, string>;
@@ -37,40 +23,17 @@ const board = new BoardService(db, predictor);
 
 const app = express();
 app.use(helmet());
-app.use(express.json({ limit: '8kb' }));
-
-app.post(
-  '/api/login',
-  rateLimit({ windowMs: 15 * 60_000, limit: 10, standardHeaders: true, legacyHeaders: false }),
-  (req, res) => {
-    const { username, password } = req.body ?? {};
-    const account = accounts.find((a) => a.username === username);
-
-    // Same response either way, so the endpoint does not reveal which
-    // usernames exist.
-    if (!account || typeof password !== 'string' || !verify(account, password)) {
-      res.status(401).json({ error: 'invalid credentials' });
-      return;
-    }
-    res.json({ token: issueToken(account.username, JWT_SECRET), username: account.username });
-  },
-);
-
-// Unauthenticated so an uptime check can reach it without a token; it exposes
-// only liveness counters, never departure data.
 app.get('/api/health', (_req, res) => res.json(board.health()));
 
-const auth = requireAuth(JWT_SECRET);
-
-app.get('/api/board', auth, (_req, res) => {
+app.get('/api/board', (_req, res) => {
   res.json({ departures: board.departures(), health: board.health() });
 });
 
-app.get('/api/train/:trainId/history', auth, (req, res) => {
+app.get('/api/train/:trainId/history', (req, res) => {
   res.json({ history: board.trainHistory(req.params.trainId) });
 });
 
-app.get('/api/accuracy', auth, (req, res) => {
+app.get('/api/accuracy', (req, res) => {
   const to = typeof req.query.to === 'string' ? req.query.to : today();
   const from = typeof req.query.from === 'string' ? req.query.from : shift(to, -30);
   res.json(predictor.backtest(from, to));
