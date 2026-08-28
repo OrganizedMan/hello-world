@@ -61,10 +61,45 @@ CONF
 sudo systemctl restart systemd-journald
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now nypenn-collector.service nypenn-server.service
-sudo systemctl enable --now nypenn-backup.timer
+
+# `enable --now` starts a stopped unit but is a no-op on a running one, so on
+# every re-run after the first it left the old processes serving the previous
+# build. You would pull a fix, watch the build succeed, and still be running
+# the code you were trying to replace. restart is unconditional.
+#
+# reset-failed first: a unit parked in failed (by an earlier crash loop, say)
+# stays there, and restart alone will not clear it.
+echo "==> Starting services"
+sudo systemctl enable nypenn-collector.service nypenn-server.service nypenn-backup.timer
+sudo systemctl reset-failed nypenn-collector.service nypenn-server.service 2> /dev/null || true
+sudo systemctl restart nypenn-collector.service nypenn-server.service
+sudo systemctl restart nypenn-backup.timer
+
+# The install is not finished because systemd said "started" -- it is finished
+# when the port answers. Both of those have disagreed here before.
+echo "==> Verifying the board is answering"
+PORT="${PORT:-3005}"
+for attempt in $(seq 1 15); do
+  if curl -fsS --max-time 2 "http://localhost:$PORT/api/health" > /dev/null 2>&1; then
+    answered=yes
+    break
+  fi
+  sleep 2
+done
+
+if [ "${answered:-no}" != yes ]; then
+  echo
+  echo "The server is not answering on localhost:$PORT after 30s." >&2
+  echo "  systemctl status nypenn-server --no-pager" >&2
+  echo "  journalctl -u nypenn-server -n 40 --no-pager" >&2
+  exit 1
+fi
 
 echo
 echo "==> Done. Collector and server are running."
-echo "  Check it is collecting:  curl -s localhost:${PORT:-3005}/api/health"
-echo "  Open the board:          http://localhost:${PORT:-3005}"
+echo "  Board:      http://localhost:$PORT"
+echo "  Health:     curl -s localhost:$PORT/api/health"
+echo
+echo "  From another device, use the Pi's address rather than localhost, and"
+echo "  type the http:// prefix explicitly -- browsers try https first for a"
+echo "  bare host:port, and nothing is listening for TLS on $PORT."
