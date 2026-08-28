@@ -83,7 +83,10 @@ export class NjtClient {
       });
 
       if (!res.ok) {
-        throw new NjtError(`${path} returned HTTP ${res.status}`, res.status);
+        // The status alone is not enough to act on: a 500 from getToken looks
+        // identical whether the portal is down or it is rejecting the shape of
+        // this request. The body is where the API says which, so carry it.
+        throw new NjtError(`${path} returned HTTP ${res.status}`, res.status, await snippet(res));
       }
       return await res.json();
     } finally {
@@ -194,8 +197,29 @@ function findItemArray(payload: unknown, depth = 0): unknown[] | null {
 }
 
 export class NjtError extends Error {
-  constructor(message: string, readonly status: number) {
-    super(message);
+  constructor(
+    message: string,
+    readonly status: number,
+    /** What the API said, when it said anything. Empty if it sent no body. */
+    readonly detail = '',
+  ) {
+    super(detail ? `${message}: ${detail}` : message);
     this.name = 'NjtError';
+  }
+}
+
+/**
+ * The first line of an error body, bounded. NJT returns HTML error pages as
+ * well as JSON, and a stack trace in the journal every 20 seconds would wear
+ * the SD card faster than the history it is meant to protect.
+ */
+async function snippet(res: Response): Promise<string> {
+  try {
+    const text = (await res.text()).trim();
+    if (!text) return '';
+    const oneLine = text.replace(/\s+/g, ' ');
+    return oneLine.length > 200 ? `${oneLine.slice(0, 200)}...` : oneLine;
+  } catch {
+    return '';
   }
 }

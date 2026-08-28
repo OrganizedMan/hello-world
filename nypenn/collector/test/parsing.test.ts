@@ -127,3 +127,58 @@ test('drops rows that cannot be joined to history', () => {
 test('reports a payload it cannot understand rather than silently collecting nothing', () => {
   assert.throws(() => client.parseBoard({ error: 'invalid token' }), /could not locate/);
 });
+
+/**
+ * A feed error has to say enough to act on. The report that prompted this was
+ * 120 consecutive `getToken returned HTTP 500` lines over ten hours -- enough
+ * to know something was wrong, not enough to know what, because the status
+ * alone cannot distinguish the portal being down from it rejecting the shape
+ * of the request. NJT's own body says which; it was being discarded.
+ */
+test('a failed request carries what the API said, not just the status', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response('{"error":"invalid client"}', { status: 500 })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => client.fetchBoard(),
+      (err: Error) => {
+        assert.match(err.message, /getToken returned HTTP 500/);
+        assert.match(err.message, /invalid client/, 'the response body must survive');
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('an error body that is huge or empty stays loggable every 20 seconds', async () => {
+  const original = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response('x'.repeat(10_000), { status: 502 })) as typeof fetch;
+  try {
+    await assert.rejects(
+      () => client.fetchBoard(),
+      (err: Error) => {
+        assert.ok(err.message.length < 300, `unbounded error message: ${err.message.length}`);
+        assert.match(err.message, /\.\.\.$/);
+        return true;
+      },
+    );
+
+    globalThis.fetch = (async () => new Response('', { status: 503 })) as typeof fetch;
+    await assert.rejects(
+      () => client.fetchBoard(),
+      (err: Error) => {
+        // No body, so no trailing colon dangling off the end of the message.
+        assert.equal(err.message, 'getToken returned HTTP 503');
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});

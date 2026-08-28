@@ -146,6 +146,11 @@ journalctl -u nypenn-collector -n 20
 ```
 
 - `getToken returned HTTP 401/403` — check `NJT_USERNAME` / `NJT_PASSWORD` in `.env`
+- `getToken returned HTTP 500` — not credentials. A 500 rather than a 404 means
+  the endpoint exists and its handler is failing, which usually means the
+  request body is not in the form it expects. Run `./scripts/probe-njt.sh`: it
+  tries the plausible shapes against your account and says which one is
+  accepted, printing statuses only and never the token.
 - `could not locate a departure array` — NJT's endpoint names differ from what was
   assumed. See README, "Confirming the feed contract". Only one file needs changing.
 
