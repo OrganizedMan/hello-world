@@ -33,12 +33,12 @@ cp .env.example .env
 nano .env
 ```
 
-Four blanks are marked **FILL ME IN**. Three you can do right now:
+Two blanks are marked **FILL ME IN**:
 
 - `NJT_USERNAME` and `NJT_PASSWORD` — from developer.njtransit.com
-- `JWT_SECRET` — run `openssl rand -hex 32` and paste the result
 
-Leave `NYPENN_USERS` empty for now. Save and exit (`Ctrl+O`, `Enter`, `Ctrl+X`).
+Everything below them already has working defaults. Save and exit (`Ctrl+O`,
+`Enter`, `Ctrl+X`).
 
 ### 4. Install
 
@@ -49,31 +49,7 @@ Leave `NYPENN_USERS` empty for now. Save and exit (`Ctrl+O`, `Enter`, `Ctrl+X`).
 This builds everything, installs both services, and starts them. It takes a few
 minutes on a Pi.
 
-It will finish, then the **server** will be in a restart loop because `NYPENN_USERS`
-is still empty. That's expected — the collector is already running and gathering
-data, which is the part that matters.
-
-### 5. Create your logins
-
-```bash
-node server/dist/adduser.js alice 'a good password'
-node server/dist/adduser.js bob 'another good password'
-```
-
-Each prints a line like `alice:a1b2c3...:d4e5f6...`. Put both into `.env`, separated
-by a comma:
-
-```
-NYPENN_USERS=alice:a1b2...:d4e5...,bob:f7g8...:h9i0...
-```
-
-Then restart the server:
-
-```bash
-sudo systemctl restart nypenn-server
-```
-
-### 6. Check it's working
+### 5. Check it's working
 
 ```bash
 curl -s localhost:3005/api/health
@@ -82,7 +58,9 @@ curl -s localhost:3005/api/health
 You want `"ok":true`. If you see that, you're done for today — data is accumulating.
 
 Open `http://localhost:3005` on the Pi, or from another machine on your network at
-`http://<pi-address>:3005`, and log in.
+`http://<pi-address>:3005`. There is no login — the board loads straight away, so
+keep it on your own network or on Tailscale rather than exposing port 3005 to the
+internet.
 
 > **You won't see predictions yet.** That's correct. Tracks show as `—` until NJ
 > Transit posts them. Predictions start appearing once there's history to learn from.
@@ -118,11 +96,7 @@ get your own. Add the board to your home screen while you're there.
 Predictions should be appearing. Check whether they can be trusted:
 
 ```bash
-TOKEN=$(curl -s -X POST localhost:3005/api/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"alice","password":"your password"}' | grep -o '"token":"[^"]*' | cut -d'"' -f4)
-
-curl -s localhost:3005/api/accuracy -H "Authorization: Bearer $TOKEN"
+curl -s localhost:3005/api/accuracy
 ```
 
 Look at `byConfidence`. Green (`high`) predictions should be right far more often than
@@ -154,6 +128,23 @@ journalctl -u nypenn-collector -n 20
 - `getToken returned HTTP 401/403` — check `NJT_USERNAME` / `NJT_PASSWORD` in `.env`
 - `could not locate a departure array` — NJT's endpoint names differ from what was
   assumed. See README, "Confirming the feed contract". Only one file needs changing.
+
+**The page is blank, but `curl` works**
+
+An empty page with nothing in `journalctl` means the browser fetched the HTML and
+then refused to fetch the JavaScript inside it. Open the browser's developer
+console — a failed request for `/assets/index-*.js` is the confirmation.
+
+This was caused by a security header that told the browser to upgrade the page's
+own script to `https://`, which nothing on the Pi answers. It is fixed; if you are
+seeing it, you are running an older checkout:
+
+```bash
+cd /home/pi/nypenn-repo && git pull && cd /home/pi/nypenn && ./deploy/install.sh
+```
+
+Note that the symptom hides itself on the Pi: `http://localhost:3005` is exempt
+from that upgrade, so the board looks fine there and blank on every phone.
 
 **No predictions after several weeks**
 
