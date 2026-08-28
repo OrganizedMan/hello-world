@@ -16,12 +16,5 @@ StartLimitIntervalSec=0
 
 SyslogIdentifier=nypenn-server
 
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=false
-# The server opens the database read-only, so it needs no write access.
-ReadOnlyPaths=/home/pi/nypenn/data
-
 [Install]
 WantedBy=multi-user.target
