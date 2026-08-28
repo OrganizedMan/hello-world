@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 #
-# Ask NJT's getToken which request shape it accepts.
+# One getToken call, reported in full.
 #
-# The endpoint contract is the one part of this project never tested against
-# the live API (see README, "Confirming the feed contract"). A 500 rather than
-# a 404 means the endpoint is there and the handler is failing -- typically
-# because the body is not in the form it binds to, which is a shape problem
-# rather than a credentials one.
+# getToken is capped at 10 calls per day and the account is locked out until
+# midnight past that -- so this deliberately makes a single call and prints
+# everything it got back, rather than trying variations. The request shape is
+# no longer in question: multipart/form-data, per NJTRANSIT_RailData_API_V2.
 #
-# Reads .env, so no secrets are typed on the command line. Prints status codes
-# and error bodies only; a token is reported as received, never displayed.
+# Reads .env, so no credential is typed at a prompt. A token is reported as
+# received and never printed, so the output is safe to paste.
 #
-#   ./scripts/probe-njt.sh
+#   ./scripts/probe-njt.sh                 # the NJT_BASE_URL from .env
+#   ./scripts/probe-njt.sh test            # NJT's test environment
+#   ./scripts/probe-njt.sh https://...     # an explicit base URL
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -21,69 +22,44 @@ set -a; . ./.env; set +a
 : "${NJT_USERNAME:?NJT_USERNAME is not set in .env}"
 : "${NJT_PASSWORD:?NJT_PASSWORD is not set in .env}"
 
-BASE="${NJT_BASE_URL:-https://raildata.njtransit.com/api/TrainData}"
+case "${1:-}" in
+  '')     BASE="${NJT_BASE_URL:-https://raildata.njtransit.com/api/TrainData}" ;;
+  test)   BASE="https://testraildata.njtransit.com/api/TrainData" ;;
+  prod)   BASE="https://raildata.njtransit.com/api/TrainData" ;;
+  *)      BASE="$1" ;;
+esac
 BASE="${BASE%/}"
+
+echo "POST $BASE/getToken"
+echo "  username: $NJT_USERNAME"
+echo "  password: ${#NJT_PASSWORD} characters"
+echo
+echo "This spends one of the account's 10 getToken calls for today."
+echo
+
 body=$(mktemp); trap 'rm -f "$body"' EXIT
+code=$(curl -sS -o "$body" -w '%{http_code}' --max-time 20 \
+  -X POST "$BASE/getToken" -H 'accept: text/plain' \
+  --form-string "username=$NJT_USERNAME" \
+  --form-string "password=$NJT_PASSWORD") || code=000
 
-# Each probe truncates this first. curl does not write the file when it fails
-# before receiving a response, and a stale body read as the current one is
-# worse than no body at all.
-probe() { : > "$body"; curl -sS -o "$body" -w '%{http_code}' --max-time 20 "$@" || echo 000; }
+echo "HTTP $code"
+if grep -qi 'usertoken\|authorization' "$body" && ! grep -qi '"UserToken": *""' "$body"; then
+  echo 'Token received. These credentials work against this base URL.'
+  echo 'Set NJT_BASE_URL to it in .env if it is not already, and restart the collector.'
+else
+  tr -d '\r' < "$body" | tr '\n' ' ' | cut -c1-300 | sed 's/^/  /'
+  echo
+  cat <<'GUIDE'
 
-report() {
-  local label="$1" code="$2"
-  if [ "$code" = 200 ] && grep -qi 'token\|authorization' "$body"; then
-    echo "  $label -> HTTP 200, token received.  <== this is the shape to use"
-  else
-    echo "  $label -> HTTP $code"
-    if [ -s "$body" ]; then
-      tr -d '\r' < "$body" | tr '\n' ' ' | cut -c1-220 | sed 's/^/       /'
-      echo
-    fi
-  fi
-}
-
-echo "POST $BASE/getToken as ${NJT_USERNAME}"
-echo
-
-report "A urlencoded (what the collector sends today)" "$(probe -X POST "$BASE/getToken" -H 'Accept: application/json' \
-  --data-urlencode "username=$NJT_USERNAME" --data-urlencode "password=$NJT_PASSWORD")"
-
-report "B multipart/form-data" "$(probe -X POST "$BASE/getToken" -H 'Accept: application/json' \
-  --form-string "username=$NJT_USERNAME" --form-string "password=$NJT_PASSWORD")"
-
-report "C JSON" "$(probe -X POST "$BASE/getToken" \
-  -H 'Content-Type: application/json' -H 'Accept: application/json' \
-  --data "$(printf '{"username":"%s","password":"%s"}' "$NJT_USERNAME" "$NJT_PASSWORD")")"
-
-report "D query string" "$(probe -X POST -G "$BASE/getToken" -H 'Accept: application/json' \
-  --data-urlencode "username=$NJT_USERNAME" --data-urlencode "password=$NJT_PASSWORD")"
-
-
-# The shape probes above cannot tell two very different failures apart, because
-# both plausibly answer "Missing user account.": the API not finding a field
-# named `username` at all, and it finding one whose value matches no account.
-# These two controls separate them, and neither can succeed by accident.
-echo
-echo "Controls, to read the error above:"
-
-report "E no username field at all" "$(probe -X POST "$BASE/getToken" -H 'Accept: application/json' \
-  --data-urlencode "password=$NJT_PASSWORD")"
-
-report "F username present but certainly wrong" "$(probe -X POST "$BASE/getToken" -H 'Accept: application/json' \
-  --data-urlencode "username=nnnnnnnn-no-such-account" --data-urlencode "password=$NJT_PASSWORD")"
-
-cat <<'GUIDE'
-
-How to read E and F against A:
-  A == F, and E differs   -> the field name is right; that account is not found.
-                             Check the username at developer.njtransit.com --
-                             it is the portal username, which is often not the
-                             email address -- and that the account is approved
-                             for the rail data API.
-  A == E                  -> the API never saw our username field. The field
-                             name in NjtClient is wrong; send this output.
+Reading it:
+  "Missing user account."   The API cannot find this account. The request shape
+                            is right, so this is the account itself: check that
+                            NJT_USERNAME is the portal username rather than the
+                            email you sign in with, and that these credentials
+                            match this environment -- NJT issues separate Test
+                            and Production sets. Try: ./scripts/probe-njt.sh test
+  "Authenticated": "False"  The account exists; the password is wrong.
+  "Daily usage limit..."    Locked out until midnight. Stop and wait.
 GUIDE
-
-echo
-echo "Send me the labels and statuses. Do not paste a token."
+fi
