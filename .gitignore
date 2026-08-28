@@ -5,3 +5,5 @@ server/data/
 .env
 .DS_Store
 *.tsbuildinfo
+dist-test/
+nypenn/data/
