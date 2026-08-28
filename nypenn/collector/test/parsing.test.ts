@@ -1,15 +1,23 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { dayTypeOf, parseRailDateTime, serviceDateOf } from '@nypenn/shared';
-import { NjtClient } from '../src/njt.js';
+import { NjtClient, NjtError } from '../src/njt.js';
 
-const client = new NjtClient({
-  baseUrl: 'http://example.invalid',
-  username: 'u',
-  password: 'p',
-  station: 'NY',
-  requestTimeoutMs: 1000,
-});
+const makeClient = () =>
+  new NjtClient({
+    baseUrl: 'http://example.invalid',
+    username: 'u',
+    password: 'p',
+    station: 'NY',
+    requestTimeoutMs: 1000,
+    tokenPath: join(mkdtempSync(join(tmpdir(), 'njt-')), 'token.json'),
+    maxTokensPerDay: 4,
+  });
+
+const client = makeClient();
 
 test('parses the timestamp formats NJT has used', () => {
   // 17:31 Eastern on 27 Aug is EDT (UTC-4) => 21:31Z
@@ -180,5 +188,217 @@ test('an error body that is huge or empty stays loggable every 20 seconds', asyn
     );
   } finally {
     globalThis.fetch = original;
+  }
+});
+
+/**
+ * The published contract, from NJTRANSIT_RailData_API_V2.
+ *
+ * These are the parts that were guessed wrong for months and could not be
+ * caught by any test that did not know the real shapes: multipart rather than
+ * urlencoded, the token as a form field rather than a header, getTrainSchedule
+ * rather than getStationSchedule, and application errors reported with HTTP
+ * 200 rather than a status.
+ */
+
+interface Sent {
+  url: string;
+  contentType: string;
+  fields: Record<string, string>;
+}
+
+/** Stub fetch, recording each request and replying from a queue of bodies. */
+function stubFetch(replies: Array<{ status?: number; body: string }>): {
+  sent: Sent[];
+  restore: () => void;
+} {
+  const original = globalThis.fetch;
+  const sent: Sent[] = [];
+  let n = 0;
+
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    // Built as a real Request so the Content-Type under test is the one fetch
+    // derives from the body, boundary and all -- not one the test invented.
+    const req = new Request(String(url), init);
+    const fields: Record<string, string> = {};
+    for (const [k, v] of await req.formData()) fields[k] = String(v);
+    sent.push({
+      url: String(url),
+      contentType: req.headers.get('content-type') ?? '',
+      fields,
+    });
+    const reply = replies[Math.min(n++, replies.length - 1)];
+    return new Response(reply.body, { status: reply.status ?? 200 });
+  }) as unknown as typeof fetch;
+
+  return { sent, restore: () => { globalThis.fetch = original; } };
+}
+
+const TOKEN_OK = JSON.stringify({ Authenticated: 'True', UserToken: 'tok-123' });
+const BOARD = JSON.stringify({
+  STATION_2CHAR: 'NY',
+  STATIONNAME: 'New York Penn Station',
+  STATIONMSGS: [],
+  ITEMS: [
+    {
+      SCHED_DEP_DATE: '30-May-2024 11:56:00 AM',
+      DESTINATION: 'Dover',
+      TRACK: '4',
+      LINE: 'Morris & Essex Line',
+      TRAIN_ID: '6643',
+      STATUS: 'in 13 Min',
+      SEC_LATE: '120',
+      LINEABBREVIATION: 'ME',
+    },
+  ],
+});
+
+test('authenticates and polls exactly as the published contract specifies', async () => {
+  const { sent, restore } = stubFetch([{ body: TOKEN_OK }, { body: BOARD }]);
+  try {
+    const departures = await makeClient().fetchBoard();
+
+    const [token, board] = sent;
+    assert.match(token.url, /\/getToken$/);
+    assert.match(
+      token.contentType,
+      /^multipart\/form-data; boundary=/,
+      'urlencoded makes the API see no parameters and answer "Missing user account."',
+    );
+    assert.deepEqual(token.fields, { username: 'u', password: 'p' });
+
+    assert.match(board.url, /\/getTrainSchedule$/, 'getStationSchedule is capped at 200/day');
+    assert.equal(board.fields.token, 'tok-123', 'the token is a form field, not a header');
+    assert.equal(board.fields.station, 'NY');
+
+    assert.equal(departures.length, 1);
+    assert.equal(departures[0].trainId, '6643');
+    assert.equal(departures[0].track, '4');
+    assert.equal(departures[0].secondsLate, 120);
+  } finally {
+    restore();
+  }
+});
+
+test('an application error reported with HTTP 200 is still an error', async () => {
+  const { restore } = stubFetch([{ body: JSON.stringify({ errorMessage: 'Missing user account.' }) }]);
+  try {
+    await assert.rejects(
+      () => makeClient().fetchBoard(),
+      (err: Error) => {
+        assert.match(err.message, /Missing user account/);
+        return true;
+      },
+    );
+  } finally {
+    restore();
+  }
+});
+
+test('a bare Null says the API saw no parameters, rather than parsing as data', async () => {
+  const { restore } = stubFetch([{ body: 'Null' }]);
+  try {
+    await assert.rejects(() => makeClient().fetchBoard(), /no usable parameters/);
+  } finally {
+    restore();
+  }
+});
+
+test('an expired token is renewed once, since the API reports it as 200', async () => {
+  const { sent, restore } = stubFetch([
+    { body: TOKEN_OK },
+    { body: JSON.stringify({ errorMessage: 'Invalid token.' }) },
+    { body: JSON.stringify({ Authenticated: 'True', UserToken: 'tok-456' }) },
+    { body: BOARD },
+  ]);
+  try {
+    const departures = await makeClient().fetchBoard();
+    assert.equal(departures.length, 1);
+    assert.deepEqual(
+      sent.map((s) => s.url.split('/').pop()),
+      ['getToken', 'getTrainSchedule', 'getToken', 'getTrainSchedule'],
+    );
+    assert.equal(sent[3].fields.token, 'tok-456');
+  } finally {
+    restore();
+  }
+});
+
+test('the token is cached on disk, so restarts do not spend the daily allowance', async () => {
+  const tokenPath = join(mkdtempSync(join(tmpdir(), 'njt-')), 'token.json');
+  const cfg = {
+    baseUrl: 'http://example.invalid',
+    username: 'u',
+    password: 'p',
+    station: 'NY',
+    requestTimeoutMs: 1000,
+    tokenPath,
+    maxTokensPerDay: 4,
+  };
+
+  const first = stubFetch([{ body: TOKEN_OK }, { body: BOARD }]);
+  try {
+    await new NjtClient(cfg).fetchBoard();
+    assert.equal(first.sent.length, 2);
+  } finally {
+    first.restore();
+  }
+
+  // A brand-new client, as after a systemd restart: no getToken this time.
+  const second = stubFetch([{ body: BOARD }]);
+  try {
+    await new NjtClient(cfg).fetchBoard();
+    assert.deepEqual(second.sent.map((s) => s.url.split('/').pop()), ['getTrainSchedule']);
+    assert.equal(second.sent[0].fields.token, 'tok-123');
+  } finally {
+    second.restore();
+  }
+});
+
+test('it stops asking for tokens before the API locks the account out', async () => {
+  const tokenPath = join(mkdtempSync(join(tmpdir(), 'njt-')), 'token.json');
+  const cfg = {
+    baseUrl: 'http://example.invalid',
+    username: 'u',
+    password: 'p',
+    station: 'NY',
+    requestTimeoutMs: 1000,
+    tokenPath,
+    maxTokensPerDay: 2,
+  };
+
+  // Every board call rejects the token, so each poll wants a fresh one.
+  const { sent, restore } = stubFetch([
+    { body: TOKEN_OK },
+    { body: JSON.stringify({ errorMessage: 'Invalid token.' }) },
+  ]);
+  try {
+    for (let i = 0; i < 6; i += 1) {
+      await assert.rejects(() => new NjtClient(cfg).fetchBoard());
+    }
+    const tokenCalls = sent.filter((s) => s.url.endsWith('getToken')).length;
+    assert.ok(
+      tokenCalls <= 2,
+      `spent ${tokenCalls} getToken calls against a budget of 2; the API allows 10 a day`,
+    );
+  } finally {
+    restore();
+  }
+});
+
+test('a rate-limit reply is recognised, so the loop does not chase it', async () => {
+  const { restore } = stubFetch([
+    { body: JSON.stringify({ errorMessage: 'Daily usage limit:10. Your current daily usage: 11' }) },
+  ]);
+  try {
+    await assert.rejects(
+      () => makeClient().fetchBoard(),
+      (err: NjtError) => {
+        assert.ok(err.rateLimited, 'must be recognisable as a lockout, not a transient failure');
+        return true;
+      },
+    );
+  } finally {
+    restore();
   }
 });

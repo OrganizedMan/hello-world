@@ -146,11 +146,15 @@ journalctl -u nypenn-collector -n 20
 ```
 
 - `getToken returned HTTP 401/403` — check `NJT_USERNAME` / `NJT_PASSWORD` in `.env`
-- `getToken returned HTTP 500` — not credentials. A 500 rather than a 404 means
-  the endpoint exists and its handler is failing, which usually means the
-  request body is not in the form it expects. Run `./scripts/probe-njt.sh`: it
-  tries the plausible shapes against your account and says which one is
-  accepted, printing statuses only and never the token.
+- `getToken ... Missing user account.` — this was the collector sending
+  urlencoded to an endpoint that only accepts multipart, so the API saw no
+  username at all. Fixed; re-run `./deploy/install.sh`. If it persists after
+  that, check `NJT_BASE_URL` matches which credentials you were issued — NJT
+  sends separate Test and Production sets.
+- `Daily usage limit:10` — `getToken` is capped at 10 calls a day and the
+  account is locked out until midnight. Nothing to do but wait. The collector
+  now caches its token in `data/njt-token.json` and stops at four attempts a
+  day so this cannot happen from restarts alone.
 - `could not locate a departure array` — NJT's endpoint names differ from what was
   assumed. See README, "Confirming the feed contract". Only one file needs changing.
 

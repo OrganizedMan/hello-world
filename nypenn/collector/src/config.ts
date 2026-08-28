@@ -7,6 +7,8 @@ export interface Config {
     password: string;
     station: string;
     requestTimeoutMs: number;
+    tokenPath: string;
+    maxTokensPerDay: number;
   };
   pollIntervalMs: number;
   /** Max age of buffered changes before they are committed. */
@@ -47,6 +49,10 @@ export function loadConfig(): Config {
       // "NY" is New York Penn Station in NJT's two-character station codes.
       station: process.env.NJT_STATION ?? 'NY',
       requestTimeoutMs: num('NJT_TIMEOUT_MS', 15_000),
+      tokenPath: process.env.NJT_TOKEN_FILE ?? 'data/njt-token.json',
+      // The API allows 10 a day and locks the account out past that. Staying
+      // under leaves room to run scripts/probe-njt.sh without breaking the day.
+      maxTokensPerDay: num('NJT_MAX_TOKENS_PER_DAY', 4),
     },
     pollIntervalMs: num('POLL_INTERVAL_MS', 20_000),
     flushIntervalMs: num('FLUSH_INTERVAL_MS', 30_000),

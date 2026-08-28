@@ -24,7 +24,10 @@ const DEPART_GRACE_MS = 2 * 60_000;
 
 const cfg: Config = {
   dbPath: ':memory:',
-  njt: { baseUrl: '', username: '', password: '', station: 'NY', requestTimeoutMs: 1000 },
+  njt: {
+    baseUrl: '', username: '', password: '', station: 'NY', requestTimeoutMs: 1000,
+    tokenPath: 'data/unused-token.json', maxTokensPerDay: 4,
+  },
   pollIntervalMs: POLL_INTERVAL_MS,
   flushIntervalMs: 30_000,
   heartbeatIntervalMs: 300_000,

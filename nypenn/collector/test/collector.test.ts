@@ -8,7 +8,10 @@ import { Store } from '../src/store.js';
 
 const cfg: Config = {
   dbPath: ':memory:',
-  njt: { baseUrl: '', username: '', password: '', station: 'NY', requestTimeoutMs: 1000 },
+  njt: {
+    baseUrl: '', username: '', password: '', station: 'NY', requestTimeoutMs: 1000,
+    tokenPath: 'data/unused-token.json', maxTokensPerDay: 4,
+  },
   pollIntervalMs: 20_000,
   flushIntervalMs: 0, // flush every poll, so assertions see committed state
   heartbeatIntervalMs: 300_000,

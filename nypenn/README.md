@@ -74,37 +74,61 @@ the board can render: a posted track, confident predictions, a deliberately
 erratic line, and a train with no history at all. It refuses to overwrite
 `nypenn.db`.
 
-## Confirming the feed contract
+## The NJT feed contract
 
-**This is the one part that has not been tested against the live API.** NJ
-Transit has shipped two API generations, and the current portal's exact
-endpoint names are not public. Everything else in this project is covered by
-tests; this is not.
+Taken from *NJ TRANSIT RailData API V2*, and matched by tests in
+`collector/test/parsing.test.ts` rather than assumed.
 
-`collector/src/njt.ts` is the only file that talks to NJT. It assumes:
+Every call is `POST` with **`multipart/form-data`**. Sending
+`application/x-www-form-urlencoded` instead makes the API see no parameters at
+all, and `getToken` then answers HTTP 500 `{"errorMessage":"Missing user
+account."}` -- which reads exactly like a credentials problem and is not one.
 
-- `POST {NJT_BASE_URL}/getToken` with `username`/`password`, returning a
-  token in an `Authorization` field
-- `POST {NJT_BASE_URL}/getStationSchedule` with `station`, carrying that
-  token in the `Authorization` header
+The token travels as a **form field named `token`**, not an `Authorization`
+header.
 
-Field extraction is deliberately tolerant — it accepts both `TRAIN_ID` and
-`trainId` styles, three timestamp formats, and finds the departure array
-wherever it is nested — so if only the shape differs, it will likely just
-work. If the *endpoint names* differ, fix them in `NjtClient`; nothing else
-needs to change.
+| Call | Purpose | Daily cap |
+|---|---|---|
+| `getToken` | credentials to token | **10** |
+| `getTrainSchedule` | the live board for one station, with `TRACK` and `STATUS` | 40,000 (shared) |
+| `getStationSchedule` | the flat 27-hour timetable | **200** |
 
-To check quickly:
+The collector polls `getTrainSchedule` -- the DepartureVision feed, the next 19
+departures with their tracks. `getStationSchedule` is the wrong endpoint for
+this: it is the timetable rather than the live board, and its 200/day cap would
+be spent before 08:00 at a 20s poll while still never reporting a track.
+
+**The 10/day cap on `getToken` is the sharp edge.** Exceeding it locks the
+account out until midnight and costs the rest of the day's history. So the
+token is cached in `data/njt-token.json` and reused across restarts, attempts
+are counted rather than successes -- a failed `getToken` has still been spent --
+and the collector stops at `NJT_MAX_TOKENS_PER_DAY` (default 4) regardless of
+what the API would still allow.
+
+The API reports its own failures with **HTTP 200**, so the status is not the
+signal:
+
+- `{"errorMessage":"Invalid token."}` -- re-authenticate once, which is the only
+  thing that triggers a new `getToken`
+- `{"errorMessage":"Daily usage limit:10. ..."}` -- locked out; wait
+- a bare `Null` -- the call arrived with no usable parameters
+
+To check the account and the request shape without spending the day's quota:
 
 ```bash
-LOG_LEVEL=debug npm run collector
+./scripts/probe-njt.sh
 ```
 
-A working collector logs its poll interval and then goes quiet. Anything else
-prints the failing request. If it cannot find the departure array it says so
-explicitly rather than silently collecting nothing — that failure mode was
-designed out, because a collector that appears healthy while recording zero
-rows is the worst outcome here.
+NJT issues **separate Test and Production credentials**, and recommends
+developing against Test:
+
+```
+Test:       https://testraildata.njtransit.com/api/TrainData
+Production: https://raildata.njtransit.com/api/TrainData
+```
+
+Set `NJT_BASE_URL` to match the credentials you are using. Crossing them over
+is another way to get an account-not-found answer.
 
 ## Deploying to the Pi
 
