@@ -237,23 +237,26 @@ export class NjtClient {
    */
   async fetchBoard(): Promise<RawDeparture[]> {
     try {
-      return this.parseBoard(
-        await this.request('getTrainSchedule', {
-          token: await this.token(),
-          station: this.cfg.station,
-        }),
-      );
+      return this.parseBoard(await this.board(await this.token()));
     } catch (err) {
       if (!(err instanceof NjtError) || !err.invalidToken) throw err;
 
       this.cache = null;
-      return this.parseBoard(
-        await this.request('getTrainSchedule', {
-          token: await this.authenticate(),
-          station: this.cfg.station,
-        }),
-      );
+      return this.parseBoard(await this.board(await this.authenticate()));
     }
+  }
+
+  /**
+   * The portal's request examples carry `username` alongside `token` on data
+   * calls, while the V2 PDF shows token alone. Sending both satisfies either,
+   * since an endpoint that does not want it ignores it.
+   */
+  private board(token: string): Promise<unknown> {
+    return this.request('getTrainSchedule', {
+      token,
+      username: this.cfg.username,
+      station: this.cfg.station,
+    });
   }
 
   /**

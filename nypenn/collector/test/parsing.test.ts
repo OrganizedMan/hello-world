@@ -270,6 +270,7 @@ test('authenticates and polls exactly as the published contract specifies', asyn
     assert.match(board.url, /\/getTrainSchedule$/, 'getStationSchedule is capped at 200/day');
     assert.equal(board.fields.token, 'tok-123', 'the token is a form field, not a header');
     assert.equal(board.fields.station, 'NY');
+    assert.equal(board.fields.username, 'u', 'the portal examples send username with the token');
 
     assert.equal(departures.length, 1);
     assert.equal(departures[0].trainId, '6643');
