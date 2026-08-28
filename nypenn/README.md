@@ -50,13 +50,9 @@ For a Pi deployment use [SETUP.md](SETUP.md). To run it on a development machine
 
 ```bash
 cd nypenn
-cp .env.example .env         # four blanks marked FILL ME IN
+cp .env.example .env         # two blanks marked FILL ME IN
 npm install
 npm run build
-
-# Create a login (after the build — adduser is a build artifact).
-node server/dist/adduser.js alice 'a good password'
-# Paste the printed line into NYPENN_USERS in .env, comma-separated for two.
 
 npm run collector            # terminal 1 — start this first
 npm run server               # terminal 2
@@ -135,7 +131,17 @@ sudo tailscale up
 ```
 
 Then reach the board at `http://<pi-name>:3005` from any device on your
-tailnet. JWT auth sits behind that as a second layer.
+tailnet. The board has no login of its own, so the tailnet is the access
+control — do not forward port 3005 from a router instead.
+
+The server is deliberately served over plain HTTP: there is no certificate for
+`http://<pi-name>:3005` and no way to get one. That rules out any security
+header that assumes TLS. In particular `upgrade-insecure-requests`, which
+helmet sets by default, makes the browser rewrite the board's own JavaScript
+URL to `https://` and the page renders blank on every device except the Pi
+itself — `localhost` is exempt from the upgrade, so it looks fine there. See
+the comment in `server/src/app.ts`, which `server/test/headers.test.ts`
+enforces.
 
 ### The SD card is fine
 
@@ -163,14 +169,19 @@ journalctl -u nypenn-collector -f
 curl -s localhost:3005/api/health
 ```
 
-`/api/health` needs no token, so an uptime monitor can watch it. `ok` goes
-false when the last poll is more than three minutes old — that is the alert
-worth having, because a silently dead collector costs history.
+`/api/health` is the one an uptime monitor should watch. `ok` goes false when
+the last poll is more than three minutes old — that is the alert worth having,
+because a silently dead collector costs history.
+
+It also goes false when the collector has never created the database. The
+server binds the port and reports that rather than exiting, so a misconfigured
+collector shows up as an unhealthy board you can read, instead of a refused
+connection whose cause is only in the *collector's* journal.
 
 Once you have a few weeks of data:
 
 ```bash
-curl -s localhost:3005/api/accuracy -H "Authorization: Bearer $TOKEN"
+curl -s localhost:3005/api/accuracy
 ```
 
 Read `byConfidence` first. High-confidence predictions should be right far
@@ -203,8 +214,6 @@ colour trustworthy, and gives any future model a baseline to beat.
 | `NYPENN_DB` | `data/nypenn.db` | Shared by collector (write) and server (read). |
 | `POLL_INTERVAL_MS` | `20000` | Polite, and fine for a personal feed. |
 | `OBSERVATION_RETENTION_DAYS` | `14` | Rolling window; `departures` is never purged. |
-| `JWT_SECRET` | — | Required. `openssl rand -hex 32`. |
-| `NYPENN_USERS` | — | Required. `user:salt:hash`, comma-separated. |
 | `LINE_PRIORS` | `{}` | Cold-start fallbacks, e.g. `{"Morris & Essex Line":"4"}`. |
 | `BACKUP_REMOTE` | — | Optional rsync target for off-Pi copies. |
 
@@ -214,11 +223,13 @@ colour trustworthy, and gives any future model a baseline to beat.
 npm test
 ```
 
-39 tests across the collector, the parser, the predictor and auth. The ones
-worth knowing about:
+Tests across the collector, the parser, the predictor and the served
+responses. The ones worth knowing about:
 
 - an unchanging board writes nothing beyond the first sighting
 - the first track posting time survives later updates and a restart
 - a prediction never reads the day it is predicting, or later
 - weekday history never leaks into a weekend prediction
 - a single past run never reaches high confidence
+- the served page never asks the browser to upgrade its own bundle to `https`
+- the server still listens, and says why, when the collector has made no database
