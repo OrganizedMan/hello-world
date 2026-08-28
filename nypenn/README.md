@@ -169,9 +169,14 @@ journalctl -u nypenn-collector -f
 curl -s localhost:3005/api/health
 ```
 
-`/api/health` is the one an uptime monitor should watch. `ok` goes
-false when the last poll is more than three minutes old — that is the alert
-worth having, because a silently dead collector costs history.
+`/api/health` is the one an uptime monitor should watch. `ok` goes false when
+the last poll is more than three minutes old — that is the alert worth having,
+because a silently dead collector costs history.
+
+It also goes false when the collector has never created the database. The
+server binds the port and reports that rather than exiting, so a misconfigured
+collector shows up as an unhealthy board you can read, instead of a refused
+connection whose cause is only in the *collector's* journal.
 
 Once you have a few weeks of data:
 
@@ -227,3 +232,4 @@ responses. The ones worth knowing about:
 - weekday history never leaks into a weekend prediction
 - a single past run never reaches high confidence
 - the served page never asks the browser to upgrade its own bundle to `https`
+- the server still listens, and says why, when the collector has made no database

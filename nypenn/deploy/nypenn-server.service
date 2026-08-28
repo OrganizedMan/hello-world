@@ -1,7 +1,12 @@
 [Unit]
 Description=NY Penn departure board server
-After=network-online.target
+After=network-online.target nypenn-collector.service
 Wants=network-online.target
+
+# Ordering only, deliberately not a dependency. The collector creates the
+# database the server reads, so starting second avoids a pointless race on a
+# fresh install; but the server still starts, listens, and reports itself
+# unhealthy if the collector is dead, rather than following it down.
 
 [Service]
 Type=simple

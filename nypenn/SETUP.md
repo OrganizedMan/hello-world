@@ -57,6 +57,10 @@ curl -s localhost:3005/api/health
 
 You want `"ok":true`. If you see that, you're done for today — data is accumulating.
 
+`"ok":false` means the server is up but the collector is not feeding it — check
+`journalctl -u nypenn-collector -n 30`. A refused connection means the server
+itself is down; see "If something's wrong" below.
+
 Open `http://localhost:3005` on the Pi, or from another machine on your network at
 `http://<pi-address>:3005`. There is no login — the board loads straight away, so
 keep it on your own network or on Tailscale rather than exposing port 3005 to the
@@ -128,6 +132,30 @@ journalctl -u nypenn-collector -n 20
 - `getToken returned HTTP 401/403` — check `NJT_USERNAME` / `NJT_PASSWORD` in `.env`
 - `could not locate a departure array` — NJT's endpoint names differ from what was
   assumed. See README, "Confirming the feed contract". Only one file needs changing.
+
+**Port 3005 refuses the connection**
+
+Nothing is listening. The server exits at startup if it cannot open the
+database, and systemd restarts it every five seconds, so the port stays shut.
+The database is created by the **collector**, not the server, which is why the
+reason is in the collector's journal:
+
+```bash
+systemctl status nypenn-collector
+journalctl -u nypenn-collector -n 30
+```
+
+`Missing required environment variable NJT_USERNAME` means `.env` was not filled
+in, or systemd is not reading it — the collector checks credentials before it
+creates the database, so a bad `.env` leaves both services down.
+
+Newer builds no longer do this: the server binds the port regardless and the
+board loads showing itself as unhealthy, which is a state you can diagnose. If
+the port is refusing outright, you are on an older checkout:
+
+```bash
+cd /home/pi/nypenn-repo && git pull && cd /home/pi/nypenn && ./deploy/install.sh
+```
 
 **The page is blank, but `curl` works**
 

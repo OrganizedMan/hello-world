@@ -1,9 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openDb } from '@nypenn/shared';
-import { BoardService } from './board.js';
-import { Predictor } from './predictor.js';
 import { createApp } from './app.js';
+import { LazyServices } from './services.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -13,14 +11,19 @@ const DB_PATH = process.env.NYPENN_DB ?? 'data/nypenn.db';
 /** Cold-start fallbacks, used only until a train has real history. */
 const linePriors = JSON.parse(process.env.LINE_PRIORS ?? '{}') as Record<string, string>;
 
-// Read-only: the collector owns every write, and opening read-only makes it
-// impossible for a server bug to corrupt the history.
-const db = openDb(DB_PATH, { readonly: true });
-const predictor = new Predictor(db, linePriors);
-const board = new BoardService(db, predictor);
+// Read-only, and opened lazily: the collector owns every write, and it may not
+// have created the file yet. See services.ts — binding the port regardless is
+// what makes the failure diagnosable instead of a refused connection.
+const services = new LazyServices(DB_PATH, linePriors);
 
-const app = createApp({ board, predictor, clientDir: join(here, '../../client/dist') });
+const app = createApp({ services: () => services.get(), clientDir: join(here, '../../client/dist') });
 
 app.listen(PORT, () => {
   console.log(`nypenn server listening on :${PORT} (db ${DB_PATH}, read-only)`);
+  if (!services.get()) {
+    console.warn(
+      `waiting for ${DB_PATH}; the collector creates it. The board will load ` +
+        `and report itself unhealthy until then. Check: systemctl status nypenn-collector`,
+    );
+  }
 });

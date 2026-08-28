@@ -6,8 +6,7 @@ import { after, before, test } from 'node:test';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { createApp } from '../src/app.js';
-import type { BoardService } from '../src/board.js';
-import type { Predictor } from '../src/predictor.js';
+import type { Services } from '../src/services.js';
 
 /**
  * These assert on the response the Pi actually sends, not on the helmet options
@@ -31,18 +30,17 @@ function fixtureClientDir(): string {
   return dir;
 }
 
-const stubBoard = { health: () => ({}), departures: () => [], trainHistory: () => [] };
-const stubPredictor = { backtest: () => ({}) };
+const stubServices = () =>
+  ({
+    board: { health: () => ({}), departures: () => [], trainHistory: () => [] },
+    predictor: { backtest: () => ({}) },
+  }) as unknown as Services;
 
 let server: Server;
 let origin: string;
 
 before(async () => {
-  const app = createApp({
-    board: stubBoard as unknown as BoardService,
-    predictor: stubPredictor as unknown as Predictor,
-    clientDir: fixtureClientDir(),
-  });
+  const app = createApp({ services: stubServices, clientDir: fixtureClientDir() });
   await new Promise<void>((resolve) => {
     server = app.listen(0, '127.0.0.1', resolve);
   });
@@ -89,8 +87,7 @@ test('the bundle the page references is served over the scheme it was requested 
 
 test('an unbuilt client says so instead of serving a blank page', async () => {
   const app = createApp({
-    board: stubBoard as unknown as BoardService,
-    predictor: stubPredictor as unknown as Predictor,
+    services: stubServices,
     clientDir: join(tmpdir(), 'nypenn-client-does-not-exist'),
   });
   const s = await new Promise<Server>((resolve) => {

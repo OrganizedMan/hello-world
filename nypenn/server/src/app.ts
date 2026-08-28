@@ -2,12 +2,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
-import type { BoardService } from './board.js';
-import type { Predictor } from './predictor.js';
+import { WAITING_HEALTH, type Services } from './services.js';
 
 export interface AppDeps {
-  board: BoardService;
-  predictor: Predictor;
+  /** Resolves to null while the collector has not produced a database yet. */
+  services: () => Services | null;
   /** Directory holding the built client (index.html and assets/). */
   clientDir: string;
 }
@@ -48,24 +47,40 @@ function localNetworkHelmet() {
   });
 }
 
-export function createApp({ board, predictor, clientDir }: AppDeps): Express {
+export function createApp({ services, clientDir }: AppDeps): Express {
   const app = express();
   app.use(localNetworkHelmet());
 
-  app.get('/api/health', (_req, res) => res.json(board.health()));
+  // Every route below tolerates a missing database. The server's job is to be
+  // reachable and say what is wrong; a closed port cannot do either.
+
+  app.get('/api/health', (_req, res) => {
+    res.json(services()?.board.health() ?? WAITING_HEALTH);
+  });
 
   app.get('/api/board', (_req, res) => {
-    res.json({ departures: board.departures(), health: board.health() });
+    const ready = services();
+    if (!ready) return res.json({ departures: [], health: WAITING_HEALTH });
+    res.json({ departures: ready.board.departures(), health: ready.board.health() });
   });
 
   app.get('/api/train/:trainId/history', (req, res) => {
-    res.json({ history: board.trainHistory(req.params.trainId) });
+    const ready = services();
+    res.json({ history: ready ? ready.board.trainHistory(req.params.trainId) : [] });
   });
 
   app.get('/api/accuracy', (req, res) => {
+    const ready = services();
+    if (!ready) {
+      return res.status(503).json({
+        error:
+          'No database yet. The collector creates it — check `systemctl status ' +
+          'nypenn-collector` and `journalctl -u nypenn-collector`.',
+      });
+    }
     const to = typeof req.query.to === 'string' ? req.query.to : today();
     const from = typeof req.query.from === 'string' ? req.query.from : shift(to, -30);
-    res.json(predictor.backtest(from, to));
+    res.json(ready.predictor.backtest(from, to));
   });
 
   // Serve the built client, falling through to index.html for client routing.
