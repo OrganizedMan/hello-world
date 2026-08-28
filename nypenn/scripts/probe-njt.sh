@@ -18,7 +18,20 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 [ -f .env ] || { echo "No .env here. Run this from the nypenn directory." >&2; exit 1; }
+
+# Anything already in the environment wins over .env, so a one-off
+#   NJT_USERNAME=someone ./scripts/probe-njt.sh
+# tests what it says it tests. Sourcing .env unconditionally silently
+# overwrote it, and spent a token call re-testing the value already on file.
+for var in NJT_USERNAME NJT_PASSWORD NJT_BASE_URL; do
+  eval "override_$var=\${$var:-}"
+done
 set -a; . ./.env; set +a
+for var in NJT_USERNAME NJT_PASSWORD NJT_BASE_URL; do
+  eval "value=\$override_$var"
+  [ -n "$value" ] && eval "$var=\$value"
+done
+
 : "${NJT_USERNAME:?NJT_USERNAME is not set in .env}"
 : "${NJT_PASSWORD:?NJT_PASSWORD is not set in .env}"
 
