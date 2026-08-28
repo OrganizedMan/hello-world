@@ -21,11 +21,28 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+# Dev dependencies are required here, not optional: tsc and vite live there
+# and the build cannot run without them. Prune afterwards, once dist/ exists.
 echo "==> Installing dependencies"
-npm ci --omit=dev || npm install
+npm install --no-audit --no-fund
 
 echo "==> Building"
 npm run build
+
+# A half-built tree starts cleanly and then fails at runtime, which is a far
+# worse way to find out. Check the artifacts now.
+echo "==> Verifying build output"
+for artifact in shared/dist/index.js collector/dist/index.js \
+                collector/dist/schema.sql server/dist/index.js \
+                client/dist/index.html; do
+  if [ ! -f "$artifact" ]; then
+    echo "Build incomplete: $artifact is missing. Fix the build before deploying." >&2
+    exit 1
+  fi
+done
+
+echo "==> Removing build tooling"
+npm prune --omit=dev
 
 echo "==> Installing systemd units"
 for unit in nypenn-collector.service nypenn-server.service \
@@ -48,6 +65,27 @@ sudo systemctl enable --now nypenn-collector.service nypenn-server.service
 sudo systemctl enable --now nypenn-backup.timer
 
 echo
-echo "Done. Check it is collecting:"
-echo "  systemctl status nypenn-collector"
-echo "  curl -s localhost:\${PORT:-3005}/api/health"
+echo "==> Collector is running and gathering history."
+
+# The collector is the urgent half and is now live. The server needs logins,
+# which cannot be generated until after this build — so if they are missing,
+# say exactly what to do rather than leaving a crash-looping unit behind.
+if ! grep -qE '^NYPENN_USERS=.+' .env; then
+  cat <<'NEXT'
+
+One step left — the server has no logins yet, so it will keep restarting
+until you add them:
+
+  node server/dist/adduser.js alice 'a good password'
+
+Paste the printed line into NYPENN_USERS in .env (comma-separate a second
+person), then:
+
+  sudo systemctl restart nypenn-server
+
+NEXT
+else
+  echo
+  echo "Done. Check it is collecting:"
+  echo "  curl -s localhost:${PORT:-3005}/api/health"
+fi

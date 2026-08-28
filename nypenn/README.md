@@ -11,6 +11,10 @@ the prediction is derived from history this collector gathers itself.
 Not affiliated with NJ Transit. Their feed is offered as a public service and
 not for commercial use — keep this private and don't charge for it.
 
+> **Setting this up? Read [SETUP.md](SETUP.md) instead.** It is a short list of
+> commands in order. This file is the reference: how things work, and every
+> configuration option.
+
 ## The one thing that matters
 
 **Start the collector before anything else, today.**
@@ -40,20 +44,19 @@ shared/      types, service-date logic, DB setup
 deploy/      systemd units, backup, install
 ```
 
-## Quick start
+## Running it locally
+
+For a Pi deployment use [SETUP.md](SETUP.md). To run it on a development machine:
 
 ```bash
 cd nypenn
-cp .env.example .env         # fill in your NJT portal credentials
+cp .env.example .env         # four blanks marked FILL ME IN
 npm install
 npm run build
 
-# Create a login for each of you.
+# Create a login (after the build — adduser is a build artifact).
 node server/dist/adduser.js alice 'a good password'
-# Paste the printed line into NYPENN_USERS in .env, comma-separated.
-
-# Generate a signing secret.
-openssl rand -hex 32         # paste into JWT_SECRET
+# Paste the printed line into NYPENN_USERS in .env, comma-separated for two.
 
 npm run collector            # terminal 1 — start this first
 npm run server               # terminal 2
