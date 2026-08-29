@@ -1,0 +1,49 @@
+{
+  "_comment": "Machine-readable mirror of docs/m0-experiment-plan.md. Frozen 2026-08-17. A unit test asserts these match the values quoted in the plan. Do not edit without appending to the plan's amendment log.",
+  "plan_frozen_at": "2026-08-17",
+  "pose_gate": {
+    "min_registration_ratio": 0.80,
+    "min_dominant_model_fraction": 0.95,
+    "max_temporal_gap_seconds": 1.5,
+    "max_consecutive_missing_selected_frames": 5,
+    "min_median_triangulation_angle_deg": 3.0,
+    "min_translation_to_depth_ratio": 0.05,
+    "max_mean_reprojection_error_px": 1.5,
+    "requires_camera_path_review": true
+  },
+  "min_registered_frames": {
+    "object": 80,
+    "room": 120
+  },
+  "candidate_extraction": {
+    "decode_fps": 4.0,
+    "min_sharpness_ratio_of_median": 0.15,
+    "max_clipped_highlight_fraction": 0.35,
+    "max_clipped_shadow_fraction": 0.35
+  },
+  "comparative_split": {
+    "policy": "fixed_candidate_stratified",
+    "split_algorithm_version": 1,
+    "split_seed": 20260817,
+    "n_eval": 32,
+    "min_common_evaluation_views": 12
+  },
+  "production_split": {
+    "policy": "registered_interval",
+    "evaluation_interval": 8,
+    "small_capture_holdout_fraction": 0.125
+  },
+  "training_selections": [60, 120, 240],
+  "public_control": {
+    "name": "COLMAP South Building",
+    "expected_registered_images": 128,
+    "min_acceptable_registered_images": 126
+  },
+  "effort_bound": {
+    "total_sessions": 6,
+    "gate_a_sessions": 2,
+    "gate_b_sessions": 4,
+    "session_active_hours": 3,
+    "max_recaptures_per_scene": 1
+  }
+}
